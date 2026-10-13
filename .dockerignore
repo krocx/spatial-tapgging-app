@@ -40,6 +40,7 @@ skills/
 !docs/architecture/*.json
 !docs/architecture/*.mmd
 !docs/devices/*.md
+!docs/devices/landscape/*.md
 !docs/APP-WIREFRAME.html
 !docs/CONTAINERS.html
 !docs/explain/*.html

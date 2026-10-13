@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" class="ax">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Fit for the cleanroom · appliedx Connected Worker AR OMS Platform</title>
+<link rel="stylesheet" href="/portal/brand/brand.css">
+<style>
+  /* /devices/fit - which glasses fit our requirements. Two matrices and the
+     strategic read, from docs/devices/fit.md; opens with the IP key only.
+     Reader mode is the paper, monochrome view; the verdict words carry the
+     meaning when the colour goes. */
+  body { margin: 0; }
+  .ft-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s3) var(--ax-s5); border-bottom: var(--ax-hair); }
+  .ft-header .ax-nav { margin-left: var(--ax-s4); }
+  .ft-tools { margin-left: auto; display: flex; gap: var(--ax-s2); align-items: center; }
+  .dv-tabs { display: flex; gap: var(--ax-s4); padding: var(--ax-s3) var(--ax-s5); border-bottom: var(--ax-hair); font: var(--ax-label-s); }
+  .dv-tabs a { color: var(--ax-ink-2); } .dv-tabs a[aria-current] { color: var(--ax-ink); border-bottom: 2px solid var(--ax-blue); padding-bottom: 2px; }
+  .dv-tabs .dv-back { color: var(--ax-ink-3); margin-right: var(--ax-s3); }
+  .ft-wrap { max-width: 1280px; margin: 0 auto; padding: var(--ax-s5) var(--ax-s5) var(--ax-s7); }
+  .ft-hero { display: flex; align-items: flex-end; gap: var(--ax-s4); flex-wrap: wrap; margin-bottom: var(--ax-s5); }
+  .ft-hero h1 { margin: 0; } .ft-hero p { color: var(--ax-ink-2); margin: 4px 0 0; max-width: 860px; }
+  .ft-signal { border-left: 3px solid var(--ax-red); margin-bottom: var(--ax-s5); }
+  .ft-signal .ax-eyebrow { color: var(--ax-red); }
+  .ft-signal p { margin: 4px 0 0; color: var(--ax-ink); font: var(--ax-label-r); max-width: 980px; }
+  .ft-section { margin-bottom: var(--ax-s6); }
+  .ft-section h2 { margin: 0 0 4px; font: var(--ax-h3); }
+  .ft-section .sub { margin: 0 0 var(--ax-s3); color: var(--ax-ink-3); font: var(--ax-label-s); }
+  .ft-scroll { overflow: auto; border: var(--ax-hair); border-radius: var(--ax-r); }
+  table.ft { border-collapse: collapse; width: 100%; font: var(--ax-label-s); }
+  table.ft th, table.ft td { padding: 8px 10px; border-bottom: var(--ax-hair); border-right: var(--ax-hair); vertical-align: top; text-align: left; }
+  table.ft th { background: var(--ax-paper-2); color: var(--ax-ink-2); font-weight: 500; }
+  table.ft th.cat { min-width: 110px; }
+  table.ft th.cat b { display: block; color: var(--ax-ink); } table.ft th.cat i { display: block; font-style: normal; color: var(--ax-ink-3); }
+  table.ft th.cat .ax-chip { margin-top: 6px; background: var(--ax-paper); color: var(--ax-pc); border: 1px solid var(--ax-pc); text-transform: none; letter-spacing: 0; font: var(--ax-label-s); }
+  table.ft td.name { min-width: 220px; color: var(--ax-ink); background: var(--ax-paper-2); }
+  table.ft td.v { text-align: center; font: 600 12px/18px var(--ax-mono); }
+  td.v-YES { color: var(--ax-green); background: var(--ax-green-fill); } td.v-PART { color: var(--ax-orange); background: var(--ax-orange-fill); } td.v-NO { color: var(--ax-red); background: var(--ax-red-fill); }
+  td.r { min-width: 150px; } td.r b { display: block; font: 600 12px/18px var(--ax-mono); } td.r span { color: var(--ax-ink-2); }
+  td.r.v-YES b { color: var(--ax-green); } td.r.v-PART b { color: var(--ax-orange); } td.r.v-NO b { color: var(--ax-red); }
+  tr.role td { background: var(--ax-paper-2); color: var(--ax-ink); font-weight: 500; }
+  .lane-poc { --ax-pc: var(--ax-orange); } .lane-target { --ax-pc: var(--ax-green); } .lane-interim { --ax-pc: var(--ax-blue); } .lane-watch { --ax-pc: var(--ax-purple); } .lane-no { --ax-pc: var(--ax-grey); }
+  .ft-legend { display: flex; gap: var(--ax-s4); flex-wrap: wrap; font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: var(--ax-s3); }
+  .ft-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .ft-reads { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--ax-s4); }
+  .ft-reads .ax-card h3 { margin: 2px 0 4px; font: var(--ax-label); }
+  .ft-reads .ax-card p { margin: 0 0 6px; font: var(--ax-label-s); color: var(--ax-ink-2); }
+  .ft-reads .ax-card p.read { color: var(--ax-ink); }
+  .ft-means { border-left: 3px solid var(--ax-green); }
+  .ft-means .ax-eyebrow { color: var(--ax-green); }
+  .ft-means p { margin: 6px 0; font: var(--ax-label-r); color: var(--ax-ink); max-width: 980px; }
+  .ft-means p.bottom { font-weight: 600; }
+  .ft-foot { margin-top: var(--ax-s5); font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .ex-reader { font: var(--ax-label-s); color: var(--ax-ink-2); background: var(--ax-paper); border: 1px solid var(--ax-rule); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+  html[data-reader] td.v, html[data-reader] td.r b, html[data-reader] .ft-signal .ax-eyebrow, html[data-reader] .ft-means .ax-eyebrow { color: var(--ax-ink); }
+  html[data-reader] td.v-YES, html[data-reader] td.v-PART, html[data-reader] td.v-NO { background: var(--ax-paper); }
+  html[data-reader] .ft-signal, html[data-reader] .ft-means { border-left-color: var(--ax-ink-3); }
+  @media print { .ft-header, .dv-tabs, .ft-tools { display: none !important; } .ft-scroll { overflow: visible; } }
+</style>
+</head>
+<body>
+<header class="ft-header">
+  <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
+  <nav class="ax-nav"><a href="/">Home</a><a href="/platform">Platform map</a><a href="/devices/fit" aria-current="page">Fit for the cleanroom</a></nav>
+  <span class="ft-tools"><button class="ex-reader" type="button" data-reader-toggle title="Reader mode: paper, monochrome (R)">Reader</button><button class="ax-btn" type="button" id="ft-dl">Download Word</button><span data-brand-slot style="display:flex;align-items:center"></span></span>
+</header>
+<nav class="dv-tabs" data-devices-tabs></nav>
+
+<main class="ft-wrap">
+  <div class="ft-hero"><div><div class="ax-eyebrow">Which glasses fit</div><h1>Fit for the cleanroom</h1>
+    <p>What each device category can and cannot do for AR work instructions, how the shipping devices score against our enterprise cleanroom requirements, and what the market is telling us. Capability of the category, not of any single product; our POC criteria, not vendor marketing.</p></div></div>
+  <div id="ft-body"><div class="ax-empty">Reading fit.md…</div></div>
+</main>
+
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const LANE = { poc: 'our POC lane today', target: 'the AR OMS target', interim: 'interim lane', watch: 'watch', no: 'not a lane' };
+function render(f) {
+  const cats = f.categories;
+  const byCat = `<div class="ft-section"><h2>By category: what each device category can and cannot do for AR work instructions</h2><p class="sub">YES / PART / NO per category. Every category has a role; only one delivers AR OMS.</p>
+    <div class="ft-scroll"><table class="ft"><thead><tr><th>Capability</th>${cats.map(c => `<th class="cat lane-${esc(c.lane)}"><b>${esc(c.eye)}</b><i>${esc(c.kind)}</i><i>${esc(c.examples)}</i>${c.lane !== 'no' ? `<span class="ax-chip" style="--ax-pc:var(--ax-pc)">${esc(LANE[c.lane] || c.lane)}</span>` : ''}</th>`).join('')}</tr></thead>
+    <tbody>${f.capabilities.map(r => `<tr><td class="name">${esc(r.name)}</td>${r.cells.map(v => `<td class="v v-${esc(v)}">${esc(v)}</td>`).join('')}</tr>`).join('')}
+    <tr class="role"><td class="name">Role in AR OMS</td>${cats.map(c => `<td>${esc(c.role)}</td>`).join('')}</tr></tbody></table></div>
+    <div class="ft-legend"><span><i style="background:var(--ax-green-fill);border:1px solid var(--ax-green)"></i>YES · the category does it today</span><span><i style="background:var(--ax-orange-fill);border:1px solid var(--ax-orange)"></i>PART · partially, with caveats</span><span><i style="background:var(--ax-red-fill);border:1px solid var(--ax-red)"></i>NO</span><span>Amber lane = our POC lane today · Green lane = the SENZ™-era target</span></div></div>`;
+  const devs = f.devices;
+  const byReq = `<div class="ft-section"><h2>By requirement: devices against our enterprise cleanroom requirements</h2><p class="sub">Each cell is the verdict and the reason. The last row is the fit for AR OMS today.</p>
+    <div class="ft-scroll"><table class="ft"><thead><tr><th>Enterprise cleanroom requirement</th>${devs.map(d => `<th class="cat"><b><a href="/devices/gallery#${esc(d.id)}">${esc(d.name)}</a></b><i>${esc(d.segment)}</i></th>`).join('')}</tr></thead>
+    <tbody>${f.requirements.map(r => `<tr><td class="name">${esc(r.name)}</td>${r.cells.map(c => `<td class="r v-${esc(c.verdict)}"><b>${esc(c.verdict)}</b><span>${esc(c.reason)}</span></td>`).join('')}</tr>`).join('')}
+    <tr class="role"><td class="name">Fit for AR OMS today</td>${devs.map(d => `<td>${esc(d.verdict)}</td>`).join('')}</tr></tbody></table></div></div>`;
+  const reads = `<div class="ft-section"><h2>The strategic read: what each product is really telling us</h2><div class="ft-reads">${f.reads.map(r => `<div class="ax-card"><div class="ax-eyebrow">${esc(r.id.replace(/-/g, ' '))}</div><h3>${esc(r.device)}</h3><p><b>Designed for.</b> ${esc(r.designedFor)}</p><p class="read"><b>For Applied.</b> ${esc(r.read)}</p></div>`).join('')}</div></div>`;
+  const means = `<div class="ax-card ft-means"><div class="ax-eyebrow">What this means</div>${f.means.map(m => `<p>${esc(m)}</p>`).join('')}<p class="bottom">${esc(f.bottom)}</p></div>`;
+  document.getElementById('ft-body').innerHTML = `<div class="ax-card ft-signal"><div class="ax-eyebrow">The market signal · status as of ${esc(f.asOf)}</div><p>${esc(f.signal)}</p></div>${byCat}${byReq}${reads}${means}<div class="ft-foot">Market status as of ${esc(f.asOf)}. Sources: ${esc(f.sources)} SENZ™ is Applied Materials' integrated visual system for smart glasses (<a href="https://www.appliedmaterials.com/sg/en/senz.html" target="_blank" rel="noopener">appliedmaterials.com/senz</a>). Applied Materials Strictly Confidential.</div>`;
+}
+fetch('/devices/fit.json').then(r => r.json()).then(j => { if (j.data) render(j.data); else document.getElementById('ft-body').innerHTML = `<div class="ax-notice">${esc(j.hint || j.error || 'Not available')}</div>`; })
+  .catch(() => { document.getElementById('ft-body').innerHTML = '<div class="ax-empty">fit.md could not be read.</div>'; });
+document.getElementById('ft-dl').onclick = e => devicesDownload('/devices/fit/export.docx', e.currentTarget);
+</script>
+<script src="/portal/devices-chrome.js"></script>
+<script src="/portal/brand.js"></script>
+</body>
+</html>

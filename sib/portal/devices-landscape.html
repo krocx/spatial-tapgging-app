@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" class="ax">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>AR glasses landscape · appliedx Connected Worker AR OMS Platform</title>
+<link rel="stylesheet" href="/portal/brand/brand.css">
+<style>
+  /* /devices/landscape - announcements and what they mean for us. Curated
+     entries from docs/devices/landscape/*.md (authored, newest first); the
+     "On the wire" strip is public feeds the server reads hourly, labelled
+     external and never mixed with our reads. "What it means for us" shows
+     with the IP key only. */
+  body { margin: 0; }
+  .ls-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s3) var(--ax-s5); border-bottom: var(--ax-hair); }
+  .ls-header .ax-nav { margin-left: var(--ax-s4); }
+  .ls-tools { margin-left: auto; display: flex; gap: var(--ax-s2); align-items: center; }
+  .dv-tabs { display: flex; gap: var(--ax-s4); padding: var(--ax-s3) var(--ax-s5); border-bottom: var(--ax-hair); font: var(--ax-label-s); }
+  .dv-tabs a { color: var(--ax-ink-2); } .dv-tabs a[aria-current] { color: var(--ax-ink); border-bottom: 2px solid var(--ax-blue); padding-bottom: 2px; }
+  .dv-tabs .dv-back { color: var(--ax-ink-3); margin-right: var(--ax-s3); }
+  .ls-wrap { max-width: 1240px; margin: 0 auto; padding: var(--ax-s5) var(--ax-s5) var(--ax-s7); display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--ax-s5); }
+  .ls-hero { grid-column: 1 / -1; display: flex; align-items: flex-end; gap: var(--ax-s4); flex-wrap: wrap; }
+  .ls-hero h1 { margin: 0; } .ls-hero p { color: var(--ax-ink-2); margin: 4px 0 0; max-width: 820px; }
+  .ls-filters { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .ls-filters .ax-chip { cursor: pointer; text-transform: none; letter-spacing: 0; font: var(--ax-label-s); background: var(--ax-paper); color: var(--ax-ink-2); border: 1px solid transparent; }
+  .ls-filters .ax-chip.on { background: var(--ax-blue-fill); color: var(--ax-blue); border-color: var(--ax-blue); }
+  .ls-filters .sep { color: var(--ax-ink-4); margin: 0 4px; }
+  .ls-list { display: flex; flex-direction: column; gap: var(--ax-s4); }
+  .ls-entry { border-left: 3px solid var(--ax-pc, var(--ax-blue)); }
+  .ls-entry .top { display: flex; gap: var(--ax-s3); align-items: baseline; flex-wrap: wrap; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .ls-entry .top .date { font-family: var(--ax-mono); color: var(--ax-ink-2); }
+  .ls-entry .top .ax-chip { text-transform: none; letter-spacing: 0; font: var(--ax-label-s); background: var(--ax-paper-2); color: var(--ax-pc, var(--ax-ink-2)); border: 1px solid var(--ax-pc, var(--ax-rule)); }
+  .ls-entry h2 { margin: 6px 0 6px; font: var(--ax-h3); }
+  .ls-entry p { margin: 0 0 8px; color: var(--ax-ink-2); font: var(--ax-label-r); }
+  .ls-entry .means { background: var(--ax-paper-2); border-radius: var(--ax-r-field); padding: 8px 12px; color: var(--ax-ink); }
+  .ls-entry .means b { color: var(--ax-green); }
+  .ls-entry .links { display: flex; gap: var(--ax-s3); flex-wrap: wrap; align-items: center; font: var(--ax-label-s); }
+  .ls-entry .links a { color: var(--ax-ink-2); } .ls-entry .links button { font: var(--ax-label-s); padding: 2px 10px; }
+  .sig-candidate { --ax-pc: var(--ax-green); } .sig-watch { --ax-pc: var(--ax-blue); } .sig-exited { --ax-pc: var(--ax-red); } .sig-optics { --ax-pc: var(--ax-purple); }
+  .ls-side { display: flex; flex-direction: column; gap: var(--ax-s4); }
+  .ls-wire .ax-eyebrow { display: flex; justify-content: space-between; align-items: baseline; }
+  .ls-wire .ax-eyebrow small { font: var(--ax-label-s); text-transform: none; letter-spacing: 0; color: var(--ax-ink-3); }
+  .ls-wire ul { list-style: none; margin: var(--ax-s3) 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .ls-wire li { font: var(--ax-label-s); } .ls-wire li a { color: var(--ax-ink); } .ls-wire li span { display: block; color: var(--ax-ink-3); font-family: var(--ax-mono); font-size: 11px; }
+  .ls-wire .ext { margin-top: var(--ax-s3); font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .ls-locked { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .ex-reader { font: var(--ax-label-s); color: var(--ax-ink-2); background: var(--ax-paper); border: 1px solid var(--ax-rule); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+  html[data-reader] .ls-entry { border-left-color: var(--ax-ink-3); } html[data-reader] .ls-entry .top .ax-chip { color: var(--ax-ink-2); border-color: var(--ax-rule); } html[data-reader] .ls-entry .means b { color: var(--ax-ink); }
+  @media (max-width: 900px) { .ls-wrap { grid-template-columns: 1fr; } }
+  @media print { .ls-header, .dv-tabs, .ls-filters, .ls-side, .links button { display: none !important; } .ls-wrap { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="ls-header">
+  <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
+  <nav class="ax-nav"><a href="/">Home</a><a href="/platform">Platform map</a><a href="/devices/landscape" aria-current="page">AR glasses landscape</a></nav>
+  <span class="ls-tools"><button class="ex-reader" type="button" data-reader-toggle title="Reader mode: paper, monochrome (R)">Reader</button><button class="ax-btn" type="button" id="ls-dl">Download all as Word</button><span data-brand-slot style="display:flex;align-items:center"></span></span>
+</header>
+<nav class="dv-tabs" data-devices-tabs></nav>
+
+<main class="ls-wrap">
+  <div class="ls-hero"><div><div class="ax-eyebrow">Announcements, and what they mean for us</div><h1>AR glasses landscape</h1>
+    <p>What the makers announced, in our words, newest first, each with its public source. The wire on the right is the public feeds as they arrive, external and unedited. Our read on each announcement opens with the IP key.</p></div></div>
+  <div class="ls-filters" id="ls-filters"></div>
+  <div class="ls-list" id="ls-list"><div class="ax-empty">Reading the landscape…</div></div>
+  <aside class="ls-side">
+    <div class="ax-card ls-wire" id="ls-wire"><div class="ax-eyebrow">On the wire <small id="ls-refreshed">…</small></div><ul id="ls-wire-list"></ul><div class="ext">External headlines from public feeds, kept when they mention glasses, waveguides or the makers we track. Not our view.</div></div>
+    <div class="ax-card"><div class="ax-eyebrow">Add an entry</div><p style="margin:6px 0 0;font:var(--ax-label-s);color:var(--ax-ink-2)">One file under <span style="font-family:var(--ax-mono)">docs/devices/landscape/</span>: date, maker, title, class, signal, summary, source, url, and the line that is ours. SENZ™ always with the ™.</p></div>
+  </aside>
+</main>
+
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const SIGNAL = { candidate: 'Candidate', watch: 'Watch', exited: 'Exited', optics: 'Optics layer' };
+const CLASS = { handheld: 'Handheld', 'binocular-headset': 'Binocular headset', 'binocular-glasses': 'Binocular glasses', monocular: 'Monocular', 'no-display': 'No display' };
+let DATA = null, fSig = '', fCls = '';
+function filters() {
+  const sigs = [...new Set(DATA.entries.map(e => e.signal))], clss = [...new Set(DATA.entries.map(e => e.class))];
+  document.getElementById('ls-filters').innerHTML = `<button class="ax-chip ${!fSig ? 'on' : ''}" data-s="">All signals</button>${sigs.map(s => `<button class="ax-chip ${fSig === s ? 'on' : ''}" data-s="${esc(s)}">${esc(SIGNAL[s] || s)}</button>`).join('')}<span class="sep">·</span><button class="ax-chip ${!fCls ? 'on' : ''}" data-c="">All classes</button>${clss.map(c => `<button class="ax-chip ${fCls === c ? 'on' : ''}" data-c="${esc(c)}">${esc(CLASS[c] || c)}</button>`).join('')}`;
+  document.querySelectorAll('#ls-filters [data-s]').forEach(b => b.onclick = () => { fSig = b.dataset.s; render(); });
+  document.querySelectorAll('#ls-filters [data-c]').forEach(b => b.onclick = () => { fCls = b.dataset.c; render(); });
+}
+function render() {
+  filters();
+  const list = DATA.entries.filter(e => (!fSig || e.signal === fSig) && (!fCls || e.class === fCls));
+  document.getElementById('ls-list').innerHTML = list.length ? list.map(e => `<article class="ax-card ls-entry sig-${esc(e.signal)}" id="${esc(e.id)}">
+      <div class="top"><span class="date">${esc(e.date)}</span><span>${esc(e.maker)}</span><span class="ax-chip">${esc(SIGNAL[e.signal] || e.signal)}</span><span>${esc(CLASS[e.class] || e.class)}</span></div>
+      <h2>${esc(e.title)}</h2><p>${esc(e.summary)}</p>
+      ${e.means ? `<p class="means"><b>What it means for us.</b> ${esc(e.means)}</p>` : (DATA.restricted ? '' : `<p class="ls-locked">Our read on this opens with the IP key.</p>`)}
+      <div class="links"><a href="${esc(e.url)}" target="_blank" rel="noopener">Source: ${esc(e.source)}</a><button class="ax-btn" type="button" data-dl="${esc(e.id)}">Download as Word</button></div></article>`).join('')
+    : '<div class="ax-empty">No entries match.</div>';
+  document.querySelectorAll('[data-dl]').forEach(b => b.onclick = e => devicesDownload('/devices/landscape/export.docx?id=' + encodeURIComponent(b.dataset.dl), e.currentTarget));
+  const w = DATA.wire || { items: [] };
+  document.getElementById('ls-refreshed').textContent = w.refreshedAt ? 'refreshed ' + new Date(w.refreshedAt).toLocaleString() : 'refreshing…';
+  document.getElementById('ls-wire-list').innerHTML = w.items.length ? w.items.slice(0, 15).map(i => `<li><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a><span>${esc(i.source)}${i.date ? ' · ' + esc(i.date.slice(0, 10)) : ''}</span></li>`).join('')
+    : `<li class="ls-locked">${w.error ? 'The feeds could not be read from this server: ' + esc(w.error) : 'Nothing on the wire yet; the server reads the feeds on the first visit of the hour.'}</li>`;
+  if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView({ block: 'start' }); }
+}
+fetch('/devices/landscape.json').then(r => r.json()).then(j => { DATA = j.data; render(); if (!DATA.wire.refreshedAt) setTimeout(() => fetch('/devices/landscape.json').then(r => r.json()).then(j2 => { DATA = j2.data; render(); }), 6000); })
+  .catch(() => { document.getElementById('ls-list').innerHTML = '<div class="ax-empty">The landscape could not be read.</div>'; });
+document.getElementById('ls-dl').onclick = e => devicesDownload('/devices/landscape/export.docx', e.currentTarget);
+</script>
+<script src="/portal/devices-chrome.js"></script>
+<script src="/portal/brand.js"></script>
+</body>
+</html>

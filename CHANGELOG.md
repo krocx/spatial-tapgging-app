@@ -7,6 +7,35 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Which glasses fit: the device card on the map, Fit for the cleanroom,
+  the AR glasses landscape.** Clicking a device pill on the platform map now
+  opens its card on the same page (picture or class icon, what it is,
+  display, field of view, weight, battery, the fit verdict, how SIB runs it)
+  with Close, "All devices" and "Fit for the cleanroom"; the gallery stays
+  for the long look and gains a tab bar across the three device pages with
+  "Back to the map", Reader mode and the fit verdict on each card.
+  `/devices/fit` (IP key only) is the answer page: the market signal, the
+  category matrix from the device-category use-case matrix (nine
+  categories against eight AR OMS capabilities, the role each category
+  plays, the POC lane and the SENZ™-era target marked), the requirements
+  scorecard from the hardware landscape scorecard (eight enterprise
+  cleanroom requirements against the shipping devices, verdict and reason
+  in every cell, the fit-for-AR-OMS-today row), the strategic read per
+  product and what it means - all from `docs/devices/fit.md` with its
+  status date. `/devices/landscape` is the landscape: curated announcements
+  in `docs/devices/landscape/*.md` (date, maker, title, class, signal,
+  summary, source, url, and the line that is ours, shown with the IP key
+  only), filters by signal and class, and "On the wire": public feeds the
+  server reads hourly (`sources.md`), kept when a headline mentions
+  glasses, waveguides or the makers we track, labelled external with the
+  refresh time. Both pages have Reader mode and Download as Word: the
+  server builds the document with the Applied Materials and appliedx logos
+  in the header (from `/platform-media/`), the report-generated date, and
+  "Applied Materials Strictly Confidential" in the footer (needs the `docx`
+  package: `npm install`; until then the page prints to PDF). SENZ™ is
+  written with the ™ throughout and links to appliedmaterials.com/senz.
+  New fill tokens `--ax-green-fill`, `--ax-orange-fill`, `--ax-red-fill`
+  (the blue-fill pattern) for YES / PART / NO cells.
 - **Play the chamber, told as a story (`/platform/chamber`).** One
   technician on a complex task, any shift, any tenure, in eight stages on
   the rail: before (The task: the instructions on a tablet ten steps away,

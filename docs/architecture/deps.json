@@ -284,7 +284,9 @@
   ],
   "routes/devices.ts": [
    "catalog/catalog-core.ts",
-   "guides/readiness.ts"
+   "data-dir.ts",
+   "guides/readiness.ts",
+   "middleware/auth.ts"
   ],
   "routes/gemba-library.ts": [
    "gemba/library-core.ts",

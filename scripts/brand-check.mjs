@@ -33,6 +33,9 @@ const GOVERNED = [
   'sib/portal/platform.html',       // /platform (the platform in one picture)
   'sib/portal/platform-map.js',     // the drawing (home hero + /platform)
   'sib/portal/devices.html',        // /devices/gallery (the devices, by eye)
+  'sib/portal/devices-fit.html',    // /devices/fit (Fit for the cleanroom, IP key)
+  'sib/portal/devices-landscape.html', // /devices/landscape (AR glasses landscape)
+  'sib/portal/devices-chrome.js',   // the device pages' shared tabs, Reader, Download
   'sib/portal/platform-chamber.html', // /platform/chamber (Play the chamber)
   'sib/roadmap-client/src/studio.css', // the Designer's 3D Studio (first Designer surface on the system)
   'sib/roadmap-client/src/styles.css', // the Designer (tokens only since 2026.4.46)

@@ -60,6 +60,9 @@
   --ax-warn-fill:  rgba(255, 159, 10, .15);
   --ax-bad-fill:   rgba(255, 69, 58, .15);
   --ax-blue-fill:  rgba(10, 132, 255, .15);       /* .blue.opacity(0.15) selected / focus tint */
+  --ax-green-fill: rgba(48, 209, 88, .15);        /* .green.opacity(0.15) a YES cell          */
+  --ax-orange-fill:rgba(255, 159, 10, .15);       /* .orange.opacity(0.15) a PART cell        */
+  --ax-red-fill:   rgba(255, 69, 58, .15);        /* .red.opacity(0.15) a NO cell             */
   --ax-indigo-fill: rgba(94, 92, 230, .12);
   --ax-teal-fill:  rgba(64, 200, 224, .12);
   --ax-on-accent:  #FFFFFF;                       /* text on a filled accent button */

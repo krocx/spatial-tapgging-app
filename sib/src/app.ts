@@ -436,6 +436,18 @@ document.getElementById('w').addEventListener('submit', async function(ev){
     res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(__dirname, '../portal/devices.html'));
   });
+  // GET /devices/fit - Fit for the cleanroom (docs/devices/fit.md): the category
+  // matrix, the requirements scorecard and the strategic read. IP key only.
+  app.get('/devices/fit', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    if (!canViewRestricted(req)) { const locked = explainFile('locked.html'); if (locked) res.status(403).sendFile(locked); else res.status(403).json({ error: 'restricted', hint: 'This page needs the IP key' }); return; }
+    res.sendFile(path.join(__dirname, '../portal/devices-fit.html'));
+  });
+  // GET /devices/landscape - AR glasses landscape: curated announcements and the wire.
+  app.get('/devices/landscape', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(__dirname, '../portal/devices-landscape.html'));
+  });
   app.use('/devices', devicesRouter);
   // Technology Readiness scorecard SIB keeps for its tracks (docs/TRL-SCORECARD.md).
   app.use('/scorecard', scorecardRouter);
