@@ -169,6 +169,8 @@
   .sibc-node.here .pill .n{background:var(--ax-scrim)}
   .sibc-node.here .pill .ax-mark{color:var(--ax-on-accent)}
   .sibc-node.here .youare{font-size:12px}
+  /* In a side column the stops are 40px apart, so the label sits beside the pill, not above it. */
+  .sibc-node.al-l .youare,.sibc-node.al-r .youare{display:inline-block;margin:0 8px;vertical-align:middle;font-size:10px}
   .sibc-node.here .pill .ax-mark{font-size:10px;margin-right:2px}
   .sibc-node .pill{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:var(--ax-hair);
     background:var(--ax-solid);font-size:13px;font-weight:600;white-space:nowrap;transition:transform .15s,border-color .15s}
@@ -453,7 +455,7 @@
     const delay = kind === 'centre' ? 0 : kind === 'hub' ? .08 : .16;
     const label = kind === 'centre' ? 'SIB Home' : n.label;
     return `<a class="sibc-node ${kind}${here ? ' here' : ''}${away}${al ? ' al-' + al : ''}" data-id="${n.id}" href="${n.href}" style="left:${x}px;top:${y}px;--d:${delay}s;--c:${color || 'var(--ax-blue)'}" title="${n.hint || n.label}">
-      ${youare}<span class="pill">${mark}${swatch}${label}${bHtml}<kbd>${key}</kbd></span>${hint}</a>`;
+      ${al === 'r' ? youare : ''}${al ? '' : youare}<span class="pill">${mark}${swatch}${label}${bHtml}<kbd>${key}</kbd></span>${al === 'l' ? youare : ''}${hint}</a>`;
   }
 
   let closing = null;
