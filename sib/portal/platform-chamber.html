@@ -74,11 +74,12 @@
   .pc-band-st { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
   .pc-rail .pc-beat .pc-n { display: inline-flex; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ax-pc); color: var(--ax-pc); font: 600 10px var(--ax-mono); align-items: center; justify-content: center; margin-right: 6px; vertical-align: -4px; }
   .pc-rail .pc-beat.on .pc-n { background: var(--ax-pc); color: var(--ax-on-accent); }
-  .pc-me { position: fixed; top: 84px; right: var(--ax-s5); z-index: 3; display: none; width: 300px; border-left: 3px solid var(--ax-orange); }
+  .pc-insets { position: fixed; top: 84px; right: var(--ax-s5); z-index: 3; width: 300px; display: flex; flex-direction: column; gap: var(--ax-s3); pointer-events: none; }
+  .pc-me { display: none; border-left: 3px solid var(--ax-orange); }
   .pc-me.on { display: block; }
   .pc-me .ax-eyebrow { color: var(--ax-orange); }
   .pc-me-row { margin-top: 8px; }
-  .pc-lead { top: 190px; border-left-color: var(--ax-grey); }
+  .pc-lead { border-left-color: var(--ax-grey); }
   .pc-lead .ax-eyebrow { color: var(--ax-ink-3); }
   .pc-me.is-off { border-left-color: var(--ax-red); } .pc-me.is-off .ax-eyebrow { color: var(--ax-red); }
   .pc-me.is-on { border-left-color: var(--ax-green); } .pc-me.is-on .ax-eyebrow { color: var(--ax-green); }
@@ -104,7 +105,7 @@
     .pc-cap { left: var(--ax-s4); right: var(--ax-s4); bottom: 140px; max-width: none; }
     .pc-cap h2 { font: var(--ax-h2); }
     .pc-rail .pc-beat span.n { display: none; }
-    .pc-me { display: none !important; }
+    .pc-insets { display: none !important; }
     .pc-rail .pc-hint { display: none; }
     .pc-live { display: none !important; }
   }
@@ -138,8 +139,7 @@
 <div class="pc-pin" id="pin-sib" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><span class="ax-mark"><i></i></span>SIB · one origin per chamber</span></div>
 <div class="pc-pin" id="pin-cobot" style="--ax-pc:var(--ax-teal)"><span class="ax-chip">Cobot · the gas-line check, same origin</span></div>
 <div class="pc-pin" id="pin-amr" style="--ax-pc:var(--ax-teal)"><span class="ax-chip">AMR · brings the next part to the chamber</span></div>
-<div class="pc-me ax-card" id="pc-me"></div>
-<div class="pc-me pc-lead ax-card" id="pc-lead"></div>
+<div class="pc-insets"><div class="pc-me ax-card" id="pc-me"></div><div class="pc-me pc-lead ax-card" id="pc-lead"></div></div>
 <svg class="pc-leads" id="pc-leads"></svg>
 <div class="pc-eye" id="pc-eye"><div class="sc" id="sc-t"></div><div class="sc" id="sc-b"></div><div class="sc" id="sc-l"></div><div class="sc" id="sc-r"></div><div class="win" id="eye-win"></div></div>
 <div class="pc-live ax-tiles" id="pc-live">
