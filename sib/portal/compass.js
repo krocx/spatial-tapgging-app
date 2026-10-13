@@ -139,13 +139,13 @@
   .sibc-veil{position:fixed;inset:0;z-index:9500;background:var(--ax-page);display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .18s ease-out}
   .sibc-veil.open{display:flex}
   .sibc-veil.shown{opacity:1}
-  .sibc-fold{width:calc(1180px * var(--k,1));height:calc(800px * var(--k,1));
+  .sibc-fold{width:calc(1320px * var(--k,1));height:calc(860px * var(--k,1));
     transform-origin:100% 100%;transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.92);opacity:0;
     transition:transform .42s cubic-bezier(.2,.9,.25,1.15),opacity .25s ease-out}
   .sibc-veil.shown .sibc-fold{transform:none;opacity:1}
   .sibc-veil.folding .sibc-fold{transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.9);opacity:0;transition-duration:.22s,.16s}
-  /* The map is drawn on a fixed 1180 x 800 stage and scaled to the window, so the layout is the same everywhere. */
-  .sibc-map{position:relative;width:1180px;height:800px;transform-origin:0 0;transform:scale(var(--k,1));color:var(--ax-ink);font-family:var(--ax-font)}
+  /* The map is drawn on a fixed 1320 x 860 stage and scaled to the window (up to 1.3x on a big screen), so the layout is the same everywhere. */
+  .sibc-map{position:relative;width:1320px;height:860px;transform-origin:0 0;transform:scale(var(--k,1));color:var(--ax-ink);font-family:var(--ax-font)}
   .sibc-veil.folding{opacity:0}
   .sibc-title{position:absolute;top:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;z-index:1}
   .sibc-title .eyebrow{font:var(--ax-eyebrow);letter-spacing:.08em;text-transform:uppercase;color:var(--ax-ink-3)}
@@ -305,7 +305,7 @@
     const path = locate();
     const W = mapEl.clientWidth, H = mapEl.clientHeight;
     const cx = W / 2, cy = H / 2 - 10;
-    const R = 165;
+    const R = 190;
     const pos = { sib: [cx, cy] };
     const align = {};                                   // id → 'l' | 'r' (pill edge pinned to x) or undefined (centred)
     const side = {};                                    // hub id → 'up' | 'down' | 'left' | 'right' (where its stops sit)
@@ -317,7 +317,7 @@
     });
     // One row above Portal, one row below Admin, one column beside the others.
     // Rows are spaced from the pills' measured widths in a second pass.
-    const reach = 205, colGap = 44, rowUp = 78, rowDown = 78;
+    const reach = 230, colGap = 40, rowUp = 90, rowDown = 90;
     hubs.forEach(h => {
       const kids = h.children || []; if (!kids.length) return;
       const [vx, vy] = pos[h.id];
@@ -326,6 +326,13 @@
         else if (side[h.id] === 'down') pos[k.id] = [vx, vy + rowDown];
         else { const r = side[h.id] === 'right'; pos[k.id] = [vx + (r ? reach : -reach), vy + (j - (kids.length - 1) / 2) * colGap]; align[k.id] = r ? 'l' : 'r'; }
       });
+      // A long side column must stay between the row above Portal and the row below Admin.
+      if (side[h.id] === 'left' || side[h.id] === 'right') {
+        const top = pos[kids[0].id][1], bottom = pos[kids[kids.length - 1].id][1];
+        const minTop = cy - R - rowUp + 36, maxBottom = cy + R + rowDown - 36;
+        const shift = top < minTop ? minTop - top : bottom > maxBottom ? maxBottom - bottom : 0;
+        if (shift) kids.forEach(k => { pos[k.id][1] += shift; });
+      }
     });
 
     const words = path.map((id, i) => i === 0 ? 'SIB Home' : (find(id)?.label || id));
@@ -451,7 +458,7 @@
 
   let closing = null;
   function fitStage() {
-    const k = Math.min(1, (window.innerWidth - 32) / 1180, (window.innerHeight - 32) / 800);
+    const k = Math.min(1.3, (window.innerWidth - 32) / 1320, (window.innerHeight - 32) / 860);
     veil.style.setProperty('--k', k.toFixed(3));
   }
   function open() {

@@ -33,7 +33,11 @@ it, it gets a line.
   the landscape, and "Ask SIB" opens the drawer in place. A zero on the
   platform drawing reads as "none yet" (quieter ink), not a fault. Unknown
   URLs show a brand 404 page with the Compass and Ask SIB instead of a JSON
-  error. (Unlocking a restricted page already returns to that page: the
+  error. The Compass itself is bigger: a 1320 × 860 stage scaled up to 1.3x
+  on a large screen (it used to cap at 1x on 1180 × 800), the hexagon and
+  the stop rows spread to match, and a long side column (Platform now has
+  eight stops) stays between the Portal row and the Admin row instead of
+  running into them. (Unlocking a restricted page already returns to that page: the
   locked page is served at the URL asked for and reloads it.)
 
 ## 2026.4.46 - 2026-09-08
