@@ -8,7 +8,8 @@ depends: [guide-bundle, live-telemetry, contextual-intelligence, evidence-signof
 terms: [Assembly Model, Anchor, Operator Mode]
 spec: ar-ojt/UNITY-RUNTIME.md
 api: |
-  GET /xr - the kit page; open as /xr?guide=<guideId> (browser · same gate as the portal)
+  GET /xr - the kit page; open as /xr?guide=<guideId>; ?hands=sim drives the hand pipeline from the mouse on the desktop preview (browser · same gate as the portal)
+  POST /guide-sessions/live/:id/events - hands:gesture { gesture, part, did } for a held pinch / point / thumbs-up / open palm; perception:result carries the hands-at-the-part fact; step completions carry hands { tracked, inZoneSeconds, share, onPartAtCheck } (any client · API key / token)
   GET /guides/:id/bundle - everything the page loads (any client · API key / token)
   POST /guide-sessions/live - the kit opens a live session like the iPad (any client · API key / token)
   POST /guide-sessions/live/:id/observations - 1 Hz attention / distance / alignment samples (any client · API key / token)
@@ -52,3 +53,19 @@ evidence the TRL scorecard needs before any glasses decision.
 From the portal Guide Library each guide has an **🥽 XR kit** link. On a
 key-locked server the page asks for the API key once and keeps it in the
 browser, like the portal.
+
+Hands (H1, 2026.4.50): on a device whose profile says `hands: tracked`
+(Quest 3, HoloLens 2) the kit asks WebXR for hand tracking and `xr-hands.js`
+draws the joints as a quiet skeleton, recognises four gestures that must be
+held for 0.8 s against a registration mark that locks in (pinch on a part to
+take a copy into the hand and turn it; point at a part to mark it; thumbs up
+to pass the check or go to the next step; open palm to call for help), lights
+the step's part as the index finger approaches and holds it green when the
+hand is on it, sits the step card on the back of the free hand when it faces
+the viewer, and records hands-at-the-part evidence per step: time within 15
+cm of the step's parts, the share of the step spent there, and whether a hand
+was on the part at the check - a fact about the run, never a recording. A
+device with `hands: pinch` (Vision Pro) keeps pinch-as-select; devices
+without hand tracking keep the kit as it was. Own code on the WebXR Hand
+Input API; a desktop simulator (`?hands=sim`) runs the same pipeline from
+the mouse for reviewing the look.

@@ -10,6 +10,11 @@ trackpad, gaze, hands, controller, mouse, buttons]), `delivery` (app | xrkit |
 companion-text | spoken), `notes`. See
 docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md for the rules that use them.
 
+`hands` (tracked | pinch) says what the XR kit's hand input can do on the
+device: `tracked` gives joints (the four held gestures, the part lighting as
+the hand approaches, the wrist card, grab to inspect, hands-at-the-part
+evidence); `pinch` is pinch-as-select only.
+
 The device gallery (`/devices/gallery`) reads the same files and adds, all
 optional: `class` (handheld | binocular-headset | binocular-glasses |
 monocular | no-display - the grouping by eye), `what` (one plain sentence),

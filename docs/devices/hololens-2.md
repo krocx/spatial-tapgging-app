@@ -6,6 +6,7 @@ overlay: 3d
 input: [hands, gaze, voice]
 delivery: xrkit
 notes: WebXR in Edge. Narrower field of view than Quest; the full model still renders, the operator turns more.
+hands: tracked
 class: binocular-headset
 what: Microsoft's see-through industrial headset: a waveguide over each eye, the chamber seen directly with holograms drawn on it.
 displaySpec: 2K see-through holographic waveguides, 3:2 aspect

@@ -105,7 +105,7 @@ function card(p, cls) {
   const spec = [['Display', i.displaySpec], ['Field of view', i.fov], ['Weight', i.weight], ['Battery', i.battery]].filter(x => x[1]);
   return `<div class="ax-card dv-card" id="${esc(p.id)}" style="--ax-pc:${cls.color}">
     <div class="dv-top">${pic}<div style="min-width:0"><div class="ax-eyebrow">${esc(cls.label)}</div><h3>${esc(p.name)}</h3>${i.what ? `<p>${esc(i.what)}</p>` : ''}${credit}</div></div>
-    <div class="dv-form"><span class="ax-chip">${esc(FORM.display[p.display] || p.display)}</span><span class="ax-chip">${esc(FORM.overlay[p.overlay] || p.overlay)}</span><span class="ax-chip">${esc(FORM.delivery[p.delivery] || p.delivery)}</span>${(p.input || []).map(x => `<span class="ax-chip">${esc(x)}</span>`).join('')}</div>
+    <div class="dv-form"><span class="ax-chip">${esc(FORM.display[p.display] || p.display)}</span><span class="ax-chip">${esc(FORM.overlay[p.overlay] || p.overlay)}</span><span class="ax-chip">${esc(FORM.delivery[p.delivery] || p.delivery)}</span>${(p.input || []).map(x => `<span class="ax-chip">${esc(x)}</span>`).join('')}${p.hands ? `<span class="ax-chip" style="color:var(--ax-green);border:1px solid var(--ax-green)" title="${p.hands === 'tracked' ? 'Hand tracking in the XR kit: held gestures, the part lights as the hand approaches, the wrist card, grab to inspect, hands-at-the-part evidence' : 'Pinch as select in the XR kit'}">hands · ${esc(p.hands)}</span>` : ''}</div>
     ${spec.length ? `<dl class="dv-spec">${spec.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
     ${i.poc ? `<div class="dv-poc"><b>In the POC:</b> ${esc(i.poc)}</div>` : ''}
     ${i.cleanroom ? `<p class="dv-floor"><b>On the floor:</b> ${esc(i.cleanroom)}</p>` : ''}

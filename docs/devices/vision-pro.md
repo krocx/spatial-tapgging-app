@@ -6,6 +6,7 @@ overlay: 3d
 input: [hands, gaze, voice]
 delivery: xrkit
 notes: Safari WebXR (to verify on hardware). No image anchoring in Safari today: place by hand.
+hands: pinch
 class: binocular-headset
 what: Apple's headset: the chamber is seen through cameras on two micro-OLED displays; eyes and hands drive it.
 displaySpec: micro-OLED, 23 million pixels across both eyes, colour passthrough

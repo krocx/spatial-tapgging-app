@@ -4796,6 +4796,7 @@ function renderAGStepRows(sess) {
       <div class="ag-step-icon ag-step-done"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg></div>
       <div class="ag-step-txt">Step ${i + 1}
         <span style="color:var(--muted);font-size:0.78rem"> · ${esc(doneAt)} · ${dur}</span>
+        ${sc.hands?.tracked ? `<span class="ax-chip" style="margin-left:8px;text-transform:none;letter-spacing:0;font:var(--ax-label-s);color:${sc.hands.onPartAtCheck || sc.hands.share >= 0.5 ? 'var(--ax-green)' : 'var(--ax-orange)'};border:1px solid currentColor" title="Hands-at-the-part evidence from a hand-tracked XR run: time the hand was within 15 cm of the step's parts, the share of the step spent there, and whether a hand was on the part at the check. A fact about the run, never a recording.">hands at the part ${sc.hands.inZoneSeconds}s · ${Math.round(sc.hands.share * 100)}%${sc.hands.onPartAtCheck ? ' · on it at the check' : ''}</span>` : ''}
       </div>`;
     if (hasEvidence) {
       const evidUrl = `/guide-sessions/${sess.id}/evidence/${sc.stepId}`;

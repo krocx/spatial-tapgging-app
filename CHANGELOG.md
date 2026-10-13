@@ -7,6 +7,28 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **Hands in the XR kit (H1).** On Quest 3 and HoloLens 2 (profiles with
+  `hands: tracked`) the kit asks WebXR for hand tracking and `xr-hands.js`,
+  own code on the WebXR Hand Input API, gives the technician's hands a part
+  in the work: the joints drawn as a quiet skeleton; four gestures, every
+  one held for 0.8 s against a registration mark that closes in and locks
+  (pinch on a part takes a copy into the hand to turn and inspect, open the
+  hand to return it; point at a part marks it; thumbs up passes the step's
+  check or goes to the next step; an open palm calls for help and the ME
+  sees the step); the step's part lights as the index finger approaches
+  and holds green when the hand is on it; the step card sits on the back of
+  the free hand when it faces the viewer and returns to the head otherwise;
+  and hands-at-the-part evidence per step - time within 15 cm of the
+  step's parts, the share of the step spent there, whether a hand was on
+  the part at the check - carried on the perception result, on the step
+  completion and shown as a chip on the run in the portal. A fact about the
+  run, never a recording. Vision Pro keeps pinch-as-select (`hands: pinch`);
+  devices without hand tracking keep the kit as it was; the readiness matrix
+  scores hands-busy steps as adapted on tracked-hands devices ("a held
+  gesture between actions - nothing touched"). `?hands=sim` on the desktop
+  preview drives the same pipeline from the mouse (P pinch · I point · T
+  thumbs up · O open palm) for reviewing the look; the real test is the
+  Quest 3 with cleanroom gloves on, recorded on the scorecard.
 - **Ask SIB on every page.** One drawer, injected by `brand.js` beside the
   Compass on every SIB web surface (`/` focuses it, Esc closes, presets that
   change with the page), replacing the separate drawers on the Catalogue and

@@ -1442,6 +1442,11 @@ export interface GuideStepCompletion {
   durationSeconds:      number;   // time from step entry to checkmark tap
   evidencePhotoBase64?: string;   // request only - base64 JPEG; server strips on receipt
   evidencePhotoPath?:   string;   // stored only - relative path set by server after save
+  /** H1 (2026.4.50): hands-at-the-part evidence from a hand-tracked XR run -
+   *  a fact about the step, never a recording: whether hands were tracked,
+   *  how long the index tip was within 15 cm of the step's parts, the share
+   *  of the step spent there, and whether a hand was on the part at the check. */
+  hands?: { tracked: boolean; inZoneSeconds: number; share: number; onPartAtCheck: boolean };
 }
 
 /**
@@ -1517,6 +1522,9 @@ export type GuideSessionEventType =
    *  payload: { hintId, signal?, scope?: 'step' | 'guide' | 'device' }. */
   | 'hint:shown'
   | 'hint:muted'
+  /** H1 (2026.4.50): a held hand gesture in the XR kit. payload: { gesture:
+   *  'pinch' | 'point' | 'thumbs-up' | 'open-palm', part?, did? }. */
+  | 'hands:gesture'
   | 'session:submitted';
 
 export interface GuideSessionEvent {

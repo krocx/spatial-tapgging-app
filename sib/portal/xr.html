@@ -134,6 +134,7 @@
       <span class="title" id="topTitle">Guide</span>
       <span class="pill" id="stepPill">–</span>
       <span class="pill" id="framePill">not placed</span>
+      <span class="pill hidden" id="handsPill" title="Hand tracking: the four held gestures, the part lighting as the hand approaches, hands-at-the-part evidence">Hands</span>
       <button class="ghost" id="btnExit" title="End session">✕</button>
     </div>
     <div>
@@ -183,6 +184,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DEFAULT_SPEED, GHOST_OPACITY, stateBefore, stateAfter, scheduleStep, scheduleLength, stepParts, originForSurface, attentionFor } from '/portal/xr-engine.js';
 import { XRPanel } from '/portal/xr-panel.js';
+import { XRHands } from '/portal/xr-hands.js';
 
 // ── Config / auth ────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -274,6 +276,48 @@ const cssVar = (n, fb) => (getComputedStyle(document.documentElement).getPropert
 const panel = new XRPanel(THREE, { colors: { text: cssVar('--text', '#f4f6fa'), muted: cssVar('--muted', '#9aa4b2'), border: cssVar('--border', 'rgba(255,255,255,.18)') } });
 scene.add(panel.mesh);
 let panelMode = false;
+// ── Hands (H1): tracked joints, held gestures, part proximity, wrist card, grab, evidence ──
+const HAND_SIM = params.get('hands') === 'sim';
+let handsOn = null;                     // the step part the hand is on right now (name) or null
+const hands = new XRHands(THREE, scene, {
+  colors: { ink: cssVar('--text', '#f1f3f8'), green: cssVar('--green', '#22c55e'), blue: cssVar('--blue', '#3b82f6'), orange: cssVar('--amber', '#f59e0b') },
+  onGesture: (g, h) => {
+    const st = steps[idx]; if (!st) return;
+    const near = nearestStepPart(h.focus);
+    if (g === 'pinch') {
+      if (hands.grab) { const n = hands.grabEnd(); toast(`Returned ${labelOf(n)}`); return; }
+      if (near) { hands.grabStart(h, parts.get(near).obj, near); observeInteraction('hands-grab', near); ev('hands:gesture', { payload: { gesture: 'pinch', part: near } }); toast(`${labelOf(near)} in hand - turn it, open the hand to return it`, 2600); }
+    } else if (g === 'point') {
+      if (near) { pulseParts([near], 2); observeInteraction('hands-mark', near); ev('hands:gesture', { payload: { gesture: 'point', part: near } }); toast(`Marked: ${labelOf(near)}`); }
+    } else if (g === 'thumbs-up') {
+      const v = validationFor(st);
+      if (v && !verdicts[st.id]) { verdict('pass'); ev('hands:gesture', { payload: { gesture: 'thumbs-up', did: 'pass' } }); }
+      else if (!$('btnNext').disabled) { ev('hands:gesture', { payload: { gesture: 'thumbs-up', did: 'next' } }); completeStep(); }
+    } else if (g === 'open-palm') {
+      observeInteraction('hands-help'); ev('hands:gesture', { payload: { gesture: 'open-palm', did: 'help' } }); ev('step:stalled', { payload: { reason: 'help requested by gesture' } });
+      toast('Help requested - the ME sees this step', 3000);
+    }
+  },
+});
+/** The step's parts in world space, for proximity and evidence. */
+function stepTargets() {
+  const st = steps[idx]; if (!st) return [];
+  return stepParts(st).map(n => { const p = parts.get(n); if (!p) return null; const c = p.obj.parent ? p.obj.parent.localToWorld(p.centerLocal.clone()) : p.centerLocal.clone(); return { name: n, center: c, mats: p.meshes.flatMap(m => m.userData.mats || []) }; }).filter(Boolean);
+}
+function nearestStepPart(point) { let best = null, bd = 0.06; for (const t of stepTargets()) { const d = t.center.distanceTo(point); if (d < bd) { bd = d; best = t.name; } } return best; }
+function handsFrame(frame, cam, dt) {
+  hands.update(frame, refSpace, xrSession, cam, dt);
+  if (hands.grab && !hands.pinching(hands.grab.hand.side)) { const n = hands.grabEnd(); if (n) toast(`Returned ${labelOf(n)}`); }
+  const targets = stepTargets();
+  const prox = hands.proximity(targets, dt);
+  // the part lights as the hand approaches; on the part it holds the brand green
+  const near = new Map(prox.near.map(n => [n.name, n.strength]));
+  for (const t of targets) { const k = near.get(t.name) ?? 0; const on = prox.on === t.name; for (const m of t.mats) if (m.emissive && !m.userData?.pulsing) m.emissive.setRGB(on ? 0.19 : 0.04 * k, on ? 0.82 : 0.52 * k, on ? 0.35 : 1.0 * k).multiplyScalar(k || on ? 0.55 : 0); }
+  if (prox.on !== handsOn) { handsOn = prox.on; if (handsOn) observeInteraction('hands-on-part', handsOn); }
+  const pill = $('handsPill');
+  if (hands.enabled) { pill.classList.remove('hidden'); pill.textContent = handsOn ? `Hands · on ${labelOf(handsOn)}` : prox.nearest !== null && prox.nearest < 0.12 ? 'Hands · near the part' : 'Hands tracked'; pill.className = 'pill' + (handsOn ? ' ok' : ''); }
+  else pill.classList.add('hidden');
+}
 const pointerRays = new Map();   // XRInputSource → THREE.Line (controller ray)
 const panelRay = new THREE.Raycaster();
 /** Mirror the visible DOM card into the panel - the DOM is the source of truth. */
@@ -483,7 +527,8 @@ function fire(e) {
 }
 function pulseParts(names, seconds = 1.6) {
   const mats = names.flatMap(n => parts.get(n)?.meshes.flatMap(m => m.userData.mats || []) || []);
-  tween(seconds * 1000, k => { const s = Math.sin(k * Math.PI * 4) * 0.5 + 0.5; for (const m of mats) m.emissive?.setRGB(0.1 * s, 0.7 * s, 0.9 * s); }, () => { for (const m of mats) m.emissive?.setScalar(0); });
+  for (const m of mats) m.userData.pulsing = true;
+  tween(seconds * 1000, k => { const s = Math.sin(k * Math.PI * 4) * 0.5 + 0.5; for (const m of mats) m.emissive?.setRGB(0.1 * s, 0.7 * s, 0.9 * s); }, () => { for (const m of mats) { m.emissive?.setScalar(0); m.userData.pulsing = false; } });
 }
 
 // ── Placement ────────────────────────────────────────────────────────────────
@@ -604,7 +649,7 @@ function startText() {
 }
 function showStep(k) {
   flushObservations();
-  idx = k; const st = steps[k]; stepEnteredAt = performance.now();
+  idx = k; const st = steps[k]; stepEnteredAt = performance.now(); hands.resetEvidence(); handsOn = null;
   if (textMode) { renderTextStep(st, stepParts(st)); ev('step:entered'); return; }
   $('stepPill').textContent = `Step ${k + 1} / ${steps.length}`;
   $('stepTitle').textContent = st.title || `Step ${k + 1}`;
@@ -630,7 +675,8 @@ function showStep(k) {
 }
 function completeStep() {
   const st = steps[idx]; const dur = Math.round((performance.now() - stepEnteredAt) / 1000);
-  completions.push({ stepId: st.id, enteredAt: new Date(Date.now() - dur * 1000).toISOString(), completedAt: new Date().toISOString(), durationSeconds: dur });
+  const hv = hands.evidence();
+  completions.push({ stepId: st.id, enteredAt: new Date(Date.now() - dur * 1000).toISOString(), completedAt: new Date().toISOString(), durationSeconds: dur, ...(hv.tracked ? { hands: hv } : {}) });
   ev('step:completed', { durationSeconds: dur });
   if (idx < steps.length - 1) showStep(idx + 1); else openSignoff();
 }
@@ -752,7 +798,7 @@ async function startAR() {
   // floor while you work, so the two drifted apart and the model slid. The
   // three.js hit-test sample pins 'local' for both; so do we.
   renderer.xr.setReferenceSpaceType('local');
-  const opt = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'anchors'], domOverlay: { root: $('overlay') } };
+  const opt = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'anchors', 'hand-tracking'], domOverlay: { root: $('overlay') } };
   const qr = bundle.anchor?.frames?.qr;
   if (qr?.available && qr.markerSizeM && bundle.anchor?.id) {
     try {
@@ -810,6 +856,27 @@ function startDesktop() {
   });
   enterSession('desktop');
   lockPlacement();
+  if (HAND_SIM) startHandSim(controls);
+}
+// The desktop simulator: the fingertip is where the pointer meets the model; keys hold the gestures.
+function startHandSim(controls) {
+  let point = null, gesture = null;
+  $('framePill').textContent += ' · hands simulated (P pinch · I point · T thumbs up · O open palm)';
+  canvas.addEventListener('pointermove', e => {
+    const m = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(m, camera); const hit = ray.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01)[0];
+    point = hit ? hit.point.clone() : (point ? ray.ray.at(point.distanceTo(camera.position), new THREE.Vector3()) : null);
+  });
+  const KEYS = { p: 'pinch', i: 'point', t: 'thumbs-up', o: 'open-palm' };
+  window.addEventListener('keydown', e => { const g = KEYS[e.key.toLowerCase()]; if (g && !e.repeat) { gesture = g; controls.enabled = false; } });
+  window.addEventListener('keyup', e => { if (KEYS[e.key.toLowerCase()]) { gesture = null; controls.enabled = true; } });
+  renderer.setAnimationLoop((t) => {
+    const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 1 / 60; lastT = t;
+    stepTweens(performance.now());
+    hands.simulate(point, gesture, camera);
+    if (steps.length) handsFrame(null, camera, dt);
+    renderer.render(scene, camera);
+  });
 }
 function tapAt(rc) {
   const hits = rc.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01);
@@ -838,7 +905,9 @@ function lockPlacement() {
 }
 
 let frameRef = null;
+let lastT = 0;
 renderer.setAnimationLoop((t, frame) => {
+  const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 1 / 60; lastT = t;
   stepTweens(performance.now());
   if (frame && xrSession && hitTestSource) {
     frameRef = frame;
@@ -855,8 +924,12 @@ renderer.setAnimationLoop((t, frame) => {
       }
     }
     followAnchor(frame);
+    if (locked && steps.length) handsFrame(frame, renderer.xr.getCamera(), dt);
     if (panelMode) {
-      panel.follow(renderer.xr.getCamera(), 1 / 60);
+      // The step card sits on the back of the free hand when it faces the viewer; the head carries it otherwise.
+      const w = hands.enabled ? hands.wrist(renderer.xr.getCamera(), 'left') : null;
+      if (w) { panel.mesh.position.lerp(w.position, 0.5); panel.mesh.lookAt(w.lookAt); panel.mesh.scale.setScalar(0.55); if (panel.dirty) panel.draw(); }
+      else { panel.mesh.scale.setScalar(1); panel.follow(renderer.xr.getCamera(), 1 / 60); }
       // Hover highlight + a short ray for tracked controllers / hands.
       let hov = null;
       const seen = new Set();
@@ -918,9 +991,10 @@ $('stepText').onclick = () => { panelOpen = true; observeInteraction('panel-open
 function verdict(result) {
   const st = steps[idx]; verdicts[st.id] = result;
   observeInteraction('validate-attempt');
-  ev('perception:result', { payload: { mode: 'manual', result, client: 'webxr' } });
+  const hv = hands.evidence();
+  ev('perception:result', { payload: { mode: 'manual', result, client: 'webxr', ...(hv.tracked ? { hands: hv } : {}) } });
   $('btnNext').disabled = false;
-  toast(result === 'pass' ? 'Recorded: pass' : 'Recorded: fail - you may continue');
+  toast(result === 'pass' ? (hv.tracked ? `Recorded: pass · hands at the part ${hv.inZoneSeconds} s${hv.onPartAtCheck ? ', on it at the check' : ''}` : 'Recorded: pass') : 'Recorded: fail - you may continue', hv.tracked ? 3200 : 2200);
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────

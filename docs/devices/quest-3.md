@@ -6,6 +6,7 @@ overlay: 3d
 input: [hands, controller, voice]
 delivery: xrkit
 notes: WebXR in the headset browser. Passthrough AR; anchoring by QR in the XR kit. Full model within the kit's budget.
+hands: tracked
 class: binocular-headset
 what: A self-contained headset with colour passthrough cameras: the chamber is seen through the cameras, with the model drawn over it.
 displaySpec: 2064 x 2208 per eye LCD, 90 Hz (120 Hz experimental), colour passthrough

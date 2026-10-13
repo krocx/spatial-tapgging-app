@@ -33,6 +33,8 @@ export interface DeviceProfile {
   /** How a guide reaches it. */
   delivery: 'app' | 'xrkit' | 'companion-text' | 'spoken';
   notes?: string;
+  /** Hand tracking in the XR kit: `tracked` = joints (gestures, proximity, evidence), `pinch` = pinch as select only. */
+  hands?: 'tracked' | 'pinch';
   /** Eye class for the gallery's grouping (docs/devices/README.md). */
   class?: DeviceClass;
   /** The gallery's plain-language card (/devices/gallery); every field optional, nothing invented. */
@@ -102,6 +104,7 @@ export function judge(need: StepNeed, p: DeviceProfile, ctx: { hasHoseFrames: bo
       return { need, level: 'assisted', how: 'no image on this device - phone or colleague' };
     case 'hands-busy':
       if (voice) return { need, level: 'native', how: 'voice-driven' };
+      if (p.hands === 'tracked') return { need, level: 'adapted', how: 'a held gesture between actions - nothing touched' };
       if (p.input.includes('ring') || p.input.includes('trackpad') || p.input.includes('gaze')) return { need, level: 'adapted', how: 'advance with the ring / trackpad between actions' };
       return { need, level: 'assisted', how: 'needs a hand on the device' };
   }
@@ -147,7 +150,7 @@ export function profileFrom(fm: Record<string, string | string[]>): DeviceProfil
   const input = Array.isArray(fm.input) ? (fm.input as string[]) : typeof fm.input === 'string' ? [fm.input] : [];
   if (!id || !name || !display || !overlay || !delivery) return null;
   if (!DISPLAYS.includes(display) || !OVERLAYS.includes(overlay) || !DELIVERIES.includes(delivery)) return null;
-  const cls = s('class');
+  const cls = s('class'); const hands = s('hands');
   const info: DeviceInfo = {};
   for (const k of ['what', 'displaySpec', 'fov', 'weight', 'battery', 'cleanroom', 'poc', 'officialUrl', 'specSource', 'image', 'imageCredit', 'imageCreditUrl'] as const) {
     const v = s(k); if (v && v.trim()) info[k] = v.trim();
@@ -155,5 +158,6 @@ export function profileFrom(fm: Record<string, string | string[]>): DeviceProfil
   return { id, name, display: display as DeviceProfile['display'], overlay: overlay as DeviceProfile['overlay'],
     input: input as DeviceProfile['input'], delivery: delivery as DeviceProfile['delivery'], ...(s('notes') ? { notes: s('notes') } : {}),
     ...(cls && DEVICE_CLASSES.some(c => c.id === cls) ? { class: cls as DeviceClass } : {}),
+    ...(hands === 'tracked' || hands === 'pinch' ? { hands } : {}),
     ...(Object.keys(info).length ? { info } : {}) };
 }
