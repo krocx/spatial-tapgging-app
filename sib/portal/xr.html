@@ -858,23 +858,41 @@ function startDesktop() {
   lockPlacement();
   if (HAND_SIM) startHandSim(controls);
 }
-// The desktop simulator: the fingertip is where the pointer meets the model; keys hold the gestures.
+// The desktop simulator: the fingertip is where the pointer meets the model
+// (or the model's depth plane when it is beside it); keys hold the gestures.
 function startHandSim(controls) {
   let point = null, gesture = null;
-  $('framePill').textContent += ' · hands simulated (P pinch · I point · T thumbs up · O open palm)';
+  $('framePill').textContent += ' · hands simulated';
+  const help = document.createElement('div');
+  help.id = 'handSimHelp'; help.className = 'card';
+  help.style.cssText = 'position:fixed;left:12px;top:64px;max-width:300px;font-size:12.5px;line-height:1.5;pointer-events:none';
+  help.innerHTML = '<b>Hand simulator</b><div style="color:var(--muted)">Move the pointer over the model: the fingertip follows it. Hold a key for 0.8 s to make the gesture:</div><div style="margin-top:6px"><b>P</b> pinch (on a part: take it in hand) · <b>I</b> point (mark it)<br><b>T</b> thumbs up (pass / next) · <b>O</b> open palm (help)</div><div id="handSimState" style="margin-top:6px;color:var(--cyan)">waiting for the pointer…</div>';
+  $('overlay').appendChild(help);
+  const plane = new THREE.Plane();
   canvas.addEventListener('pointermove', e => {
     const m = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-    ray.setFromCamera(m, camera); const hit = ray.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01)[0];
-    point = hit ? hit.point.clone() : (point ? ray.ray.at(point.distanceTo(camera.position), new THREE.Vector3()) : null);
+    ray.setFromCamera(m, camera);
+    const hit = ray.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01)[0];
+    if (hit) point = hit.point.clone();
+    else { // beside the model: the fingertip stays at the model's depth so the hand never vanishes
+      const c = new THREE.Box3().setFromObject(assembly).getCenter(new THREE.Vector3());
+      plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), c);
+      const p = new THREE.Vector3(); point = ray.ray.intersectPlane(plane, p) ? p : point;
+    }
   });
   const KEYS = { p: 'pinch', i: 'point', t: 'thumbs-up', o: 'open-palm' };
-  window.addEventListener('keydown', e => { const g = KEYS[e.key.toLowerCase()]; if (g && !e.repeat) { gesture = g; controls.enabled = false; } });
+  window.addEventListener('keydown', e => { const g = KEYS[e.key.toLowerCase()]; if (g && !e.repeat && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) { e.preventDefault(); gesture = g; controls.enabled = false; } });
   window.addEventListener('keyup', e => { if (KEYS[e.key.toLowerCase()]) { gesture = null; controls.enabled = true; } });
+  let warned = false;
   renderer.setAnimationLoop((t) => {
     const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 1 / 60; lastT = t;
     stepTweens(performance.now());
-    hands.simulate(point, gesture, camera);
-    if (steps.length) handsFrame(null, camera, dt);
+    try {
+      hands.simulate(point, gesture, camera);
+      if (steps.length && idx >= 0) handsFrame(null, camera, dt);
+      const h = hands.hands.right, st = $('handSimState');
+      if (st) st.textContent = !point ? 'waiting for the pointer…' : h.gesture ? `${h.gesture} · holding ${Math.round(h.progress * 100)}%` : (handsOn ? `on ${labelOf(handsOn)}` : 'hand on the model - hold a key');
+    } catch (e) { if (!warned) { warned = true; toast('Hand simulator error: ' + e.message, 6000); console.error(e); } }
     renderer.render(scene, camera);
   });
 }
