@@ -49,6 +49,7 @@ export class XRHands {
     this.colors = c;
     this.hands = { left: this._newHand('left'), right: this._newHand('right') };
     this.enabled = false; this.sim = null; this.grab = null; this.zone = { tracked: false, ms: 0, onPart: null, samples: 0, onSamples: 0 };
+    this.scale = 1;                                   // simulator only: a big model gets a proportionally bigger hand and reach
     this._v = new THREE.Vector3(); this._w = new THREE.Vector3(); this._q = new THREE.Quaternion();
   }
   _newHand(side) {
@@ -86,7 +87,7 @@ export class XRHands {
     h.group.visible = h.tracked;
     if (!h.group.visible) { if (!h.tracked) h.mark.visible = false; return; }
     const m = new this.THREE.Matrix4();
-    h.pos.forEach((p, i) => { m.makeTranslation(p.x, p.y, p.z); h.joints.setMatrixAt(i, m); }); h.joints.instanceMatrix.needsUpdate = true;
+    const k = this.scale; h.pos.forEach((p, i) => { m.makeScale(k, k, k).setPosition(p); h.joints.setMatrixAt(i, m); }); h.joints.instanceMatrix.needsUpdate = true;
     const a = h.bones.geometry.attributes.position; BONES.forEach(([i, j], k) => { a.setXYZ(k * 2, h.pos[i].x, h.pos[i].y, h.pos[i].z); a.setXYZ(k * 2 + 1, h.pos[j].x, h.pos[j].y, h.pos[j].z); }); a.needsUpdate = true;
   }
   _extended(h, finger) { // tip far from the wrist relative to the hand's size (wrist → middle metacarpal)
@@ -101,7 +102,7 @@ export class XRHands {
     const a = this._v.subVectors(h.pos[5], h.pos[0]), b = new THREE.Vector3().subVectors(h.pos[20], h.pos[0]);
     h.palm.crossVectors(a, b).normalize(); if (h.side === 'right') h.palm.negate();
     const pinchD = h.pos[TIPS.thumb].distanceTo(h.pos[TIPS.index]);
-    h.pinching = pinchD < PINCH_M;
+    h.pinching = pinchD < PINCH_M * this.scale;
     let g = null;
     if (this.sim) { g = this.sim.gesture || null; h.pinching = g === 'pinch'; h.focus.copy(g === 'thumbs-up' ? h.pos[TIPS.thumb] : g === 'open-palm' ? h.pos[10] : h.pos[TIPS.index]); }
     else if (h.pinching) { g = 'pinch'; h.focus.lerpVectors(h.pos[TIPS.thumb], h.pos[TIPS.index], 0.5); }
@@ -119,9 +120,9 @@ export class XRHands {
   /** The registration mark at the hand's focus: four corners that close in with the hold and lock in. */
   _mark(h) {
     const show = !!h.gesture && h.tracked; h.mark.visible = show; if (!show) return;
-    const p = h.progress, size = 0.05 - 0.025 * p, len = 0.012 + 0.012 * p, c = h.focus;
-    const a = h.mark.geometry.attributes.position; let k = 0;
-    const seg = (x1, y1, x2, y2) => { a.setXYZ(k++, c.x + x1, c.y + y1, c.z); a.setXYZ(k++, c.x + x2, c.y + y2, c.z); };
+    const k = this.scale, p = h.progress, size = (0.05 - 0.025 * p) * k, len = (0.012 + 0.012 * p) * k, c = h.focus;
+    const a = h.mark.geometry.attributes.position; let n = 0;
+    const seg = (x1, y1, x2, y2) => { a.setXYZ(n++, c.x + x1, c.y + y1, c.z); a.setXYZ(n++, c.x + x2, c.y + y2, c.z); };
     for (const [sx, sy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { seg(sx * size, sy * size, sx * (size - len), sy * size); seg(sx * size, sy * size, sx * size, sy * (size - len)); }
     a.needsUpdate = true;
     h.mark.material.color.set(h.gesture === 'thumbs-up' ? this.colors.green : h.gesture === 'open-palm' ? this.colors.orange : this.colors.blue);
@@ -137,15 +138,16 @@ export class XRHands {
     let on = null, nearest = null; const near = [];
     // the hand is "at" a part by its index tip, its thumb tip, or its palm (a closed hand on the part still counts)
     const probes = Object.values(this.hands).filter(h => h.tracked).flatMap(h => [[h.pos[TIPS.index], 0], [h.pos[TIPS.thumb], 0], [h.pos[10], -0.04]]);
+    const k = this.scale, nearM = NEAR_M * k, onM = ON_M * k, zoneM = ZONE_M * k;
     for (const t of targets) {
-      let d = Infinity; for (const [p, bias] of probes) d = Math.min(d, p.distanceTo(t.center) + bias);
-      if (d < NEAR_M) near.push({ name: t.name, strength: 1 - d / NEAR_M });
-      if (d < ON_M && (on === null || d < nearest)) on = t.name;
+      let d = Infinity; for (const [p, bias] of probes) d = Math.min(d, (t.box ? t.box.distanceToPoint(p) : p.distanceTo(t.center)) + bias * k);
+      if (d < nearM) near.push({ name: t.name, strength: 1 - d / nearM });
+      if (d < onM && (on === null || d < nearest)) on = t.name;
       if (nearest === null || d < nearest) nearest = d;
     }
     // evidence: hands tracked, and at the part (within the zone) for how long
     this.zone.tracked = this.zone.tracked || this.enabled;
-    if (this.enabled) { this.zone.samples++; if (nearest !== null && nearest < ZONE_M) { this.zone.ms += dt * 1000; this.zone.onSamples++; } }
+    if (this.enabled) { this.zone.samples++; if (nearest !== null && nearest < zoneM) { this.zone.ms += dt * 1000; this.zone.onSamples++; } }
     this.zone.onPart = on;
     return { near, on, nearest };
   }
@@ -155,17 +157,25 @@ export class XRHands {
     return out;
   }
   resetEvidence() { this.zone = { tracked: this.enabled, ms: 0, onPart: null, samples: 0, onSamples: 0 }; }
-  /** Grab to inspect: a copy of the part comes into the pinching hand; release returns it. */
+  /** Grab to inspect: the part itself follows the pinching hand - pull it aside, turn, look - and goes back where it was on release. */
   grabStart(hand, partObj, name) {
     if (this.grab) this.grabEnd();
-    const clone = partObj.clone(true);
-    clone.traverse(o => { if (o.isMesh) { o.material = (Array.isArray(o.material) ? o.material : [o.material]).map(m => { const c = m.clone(); c.transparent = true; c.opacity = Math.max(0.85, c.opacity ?? 1); c.visible = true; c.emissive?.set(this.colors.blue); c.emissiveIntensity = 0.25; return c; }); if (o.material.length === 1) o.material = o.material[0]; } });
-    const box = new this.THREE.Box3().setFromObject(partObj); const size = box.getSize(new this.THREE.Vector3()).length() || 0.1;
-    const g = new this.THREE.Group(); g.add(clone); clone.position.sub(box.getCenter(new this.THREE.Vector3())); g.scale.setScalar(Math.min(1, 0.12 / size));
-    this.scene.add(g); this.grab = { hand, group: g, name };
+    const { THREE } = this; partObj.updateMatrixWorld();
+    const world = new THREE.Vector3().setFromMatrixPosition(partObj.matrixWorld);
+    const mats = []; partObj.traverse(o => { if (o.isMesh) for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (m?.emissive) { mats.push([m, m.emissive.clone(), m.emissiveIntensity]); m.emissive.set(this.colors.blue); m.emissiveIntensity = 0.35; } });
+    this.grab = { hand, obj: partObj, name, rest: { pos: partObj.position.clone(), quat: partObj.quaternion.clone() }, offset: world.sub(hand.focus), mats };
   }
-  _followGrab() { const h = this.grab.hand; if (!h.tracked) return; this.grab.group.position.copy(h.focus); this.grab.group.quaternion.setFromRotationMatrix(new this.THREE.Matrix4().lookAt(h.pos[0], h.pos[10], h.palm)); }
-  grabEnd() { if (!this.grab) return null; this.scene.remove(this.grab.group); const n = this.grab.name; this.grab = null; return n; }
+  _followGrab() {
+    const g = this.grab, h = g.hand; if (!h.tracked) return;
+    const target = h.focus.clone().add(g.offset);
+    g.obj.position.copy(g.obj.parent ? g.obj.parent.worldToLocal(target) : target);
+  }
+  grabEnd() {
+    const g = this.grab; if (!g) return null;
+    g.obj.position.copy(g.rest.pos); g.obj.quaternion.copy(g.rest.quat);
+    for (const [m, e, i] of g.mats) { m.emissive.copy(e); m.emissiveIntensity = i; }
+    this.grab = null; return g.name;
+  }
   /** Where the step card may sit: the back of the non-dominant hand when it faces the viewer. */
   wrist(camera, side = 'left') {
     const h = this.hands[side]; if (!h.tracked) return null;
@@ -180,7 +190,7 @@ export class XRHands {
 
   // ── Simulator (desktop review) ────────────────────────────────────────────
   /** Drive one hand from a world point (the pointer on the model) and a held gesture; `side` picks the hand. */
-  simulate(point, gesture, camera, side = 'right') { this.sim = { point: point ? point.clone() : null, gesture, side }; }
+  simulate(point, gesture, camera, side = 'right', part = null) { this.sim = { point: point ? point.clone() : null, gesture, side, part }; }
   _readSim(camera) {
     const s = this.sim; const { THREE } = this;
     for (const k of ['left', 'right']) if (k !== s.side) this.hands[k].tracked = false;
@@ -191,7 +201,8 @@ export class XRHands {
     const m = s.side === 'right' ? -1 : 1;                       // the other fingers sit to this side of the index
     const g = s.gesture;
     const oy = g === 'thumbs-up' ? 0.11 : 0;                     // a thumbs-up is a fist on the part: the palm sits at the pointer
-    const P = (dx, dy, dz) => s.point.clone().addScaledVector(right, dx).addScaledVector(up, dy + oy).addScaledVector(toCam, dz);
+    const k = this.scale;
+    const P = (dx, dy, dz) => s.point.clone().addScaledVector(right, dx * k).addScaledVector(up, (dy + oy) * k).addScaledVector(toCam, dz * k);
     const curled = f => (g === 'pinch' && (f === 'middle' || f === 'ring' || f === 'pinky')) || (g === 'point' && f !== 'index') || (g === 'thumbs-up' && f !== 'thumb');
     const L = { thumb: 0, index: 0, middle: m * 0.022, ring: m * 0.044, pinky: m * 0.064 };   // lateral offset per finger
     const wristX = m * 0.03;

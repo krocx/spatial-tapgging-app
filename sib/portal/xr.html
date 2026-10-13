@@ -302,9 +302,17 @@ const hands = new XRHands(THREE, scene, {
 /** The step's parts in world space, for proximity and evidence. */
 function stepTargets() {
   const st = steps[idx]; if (!st) return [];
-  return stepParts(st).map(n => { const p = parts.get(n); if (!p) return null; const c = p.obj.parent ? p.obj.parent.localToWorld(p.centerLocal.clone()) : p.centerLocal.clone(); return { name: n, center: c, mats: p.meshes.flatMap(m => m.userData.mats || []) }; }).filter(Boolean);
+  return stepParts(st).map(n => { const p = parts.get(n); if (!p) return null; const c = p.obj.parent ? p.obj.parent.localToWorld(p.centerLocal.clone()) : p.centerLocal.clone(); return { name: n, center: c, box: new THREE.Box3().setFromObject(p.obj), mats: p.meshes.flatMap(m => m.userData.mats || []) }; }).filter(Boolean);
 }
-function nearestStepPart(point) { let best = null, bd = 0.06; for (const t of stepTargets()) { const d = t.center.distanceTo(point); if (d < bd) { bd = d; best = t.name; } } return best; }
+/** The part under the hand: the step's parts first (by their bounds), then any part the hand is inside. In the simulator the pointer says which. */
+function nearestStepPart(point) {
+  if (hands.sim?.part) return hands.sim.part;
+  const reach = 0.03 * hands.scale; let best = null, bd = reach;
+  for (const t of stepTargets()) { const d = t.box.distanceToPoint(point); if (d < bd) { bd = d; best = t.name; } }
+  if (best) return best;
+  for (const [n, p] of parts) { if (new THREE.Box3().setFromObject(p.obj).expandByScalar(reach * 0.5).containsPoint(point)) return n; }
+  return null;
+}
 function handsFrame(frame, cam, dt) {
   hands.update(frame, refSpace, xrSession, cam, dt);
   if (hands.grab && !hands.pinching(hands.grab.hand.side)) { const n = hands.grabEnd(); if (n) toast(`Returned ${labelOf(n)}`); }
@@ -864,7 +872,9 @@ function startDesktop() {
 // up (pass / next); M marks (point); H calls for help (open palm); V toggles
 // the virtual hands on and off. The palette does the same by click.
 function startHandSim(controls) {
-  let point = null, side = 'right', held = null, sticky = null, visible = true;
+  let point = null, side = 'right', held = null, sticky = null, visible = true, underPointer = null;
+  // a big model gets a proportionally bigger hand and reach, so the review reads at any model size
+  hands.scale = Math.min(4, Math.max(1, (new THREE.Box3().setFromObject(assembly).getSize(new THREE.Vector3()).length() || 1) / 1.2));
   $('framePill').textContent += ' · virtual hands';
   const help = document.createElement('div');
   help.id = 'handSimHelp'; help.className = 'card';
@@ -884,8 +894,8 @@ function startHandSim(controls) {
     const m = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(m, camera);
     const hit = ray.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01)[0];
-    if (hit) point = hit.point.clone();
-    else { const c = new THREE.Box3().setFromObject(assembly).getCenter(new THREE.Vector3()); plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), c); const p = new THREE.Vector3(); point = ray.ray.intersectPlane(plane, p) ? p : point; }
+    if (hit) { point = hit.point.clone(); let o = hit.object; while (o && !(typeof o.name === 'string' && o.name.startsWith('cmp:'))) o = o.parent; underPointer = o ? o.name : null; }
+    else { underPointer = null; const c = new THREE.Box3().setFromObject(assembly).getCenter(new THREE.Vector3()); plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), c); const p = new THREE.Vector3(); point = ray.ray.intersectPlane(plane, p) ? p : point; }
   });
   canvas.addEventListener('pointerleave', () => { point = null; });
   const KEYS = { ' ': 'pinch', Enter: 'thumbs-up', m: 'point', h: 'open-palm' };
@@ -901,7 +911,7 @@ function startHandSim(controls) {
     const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 1 / 60; lastT = t;
     stepTweens(performance.now());
     try {
-      if (visible) hands.simulate(point, held || sticky, camera, side);
+      if (visible) hands.simulate(point, held || sticky, camera, side, underPointer);
       if (steps.length && idx >= 0) handsFrame(null, camera, dt);
       const h = hands.hands[side], st = $('handSimState');
       if (st) st.textContent = !visible ? 'virtual hands off' : !point ? 'waiting for the pointer…' : h.gesture ? `${side} hand · ${h.gesture} · holding ${Math.round(h.progress * 100)}%` : (handsOn ? `${side} hand on ${labelOf(handsOn)}` : `${side} hand on the model`);

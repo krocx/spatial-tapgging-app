@@ -12,8 +12,8 @@ it, it gets a line.
   own code on the WebXR Hand Input API, gives the technician's hands a part
   in the work: the joints drawn as a quiet skeleton; four gestures, every
   one held for 0.8 s against a registration mark that closes in and locks
-  (pinch on a part takes a copy into the hand to turn and inspect, open the
-  hand to return it; point at a part marks it; thumbs up passes the step's
+  (pinch on a part takes the part itself into the hand - pull it aside,
+  turn, look - and it goes back where it was when the hand opens; point at a part marks it; thumbs up passes the step's
   check or goes to the next step; an open palm calls for help and the ME
   sees the step); the step's part lights as the index finger approaches
   and holds green when the hand is on it; the step card sits on the back of
@@ -32,7 +32,9 @@ it, it gets a line.
   Enter is thumbs up, M marks, H calls for help, V toggles the hands on and
   off (a palette does the same by click, and shows the hold filling); the
   hand is drawn as a hand, rising from below the fingertip, fingers curling
-  with the gesture. The real test is the Quest 3 with cleanroom gloves on,
+  with the gesture, and scaled with the model so a two-metre axle gets a
+  hand and a reach you can see; the part under the pointer is the one the
+  hand works on. The real test is the Quest 3 with cleanroom gloves on,
   recorded on the scorecard.
 - **Ask SIB on every page.** One drawer, injected by `brand.js` beside the
   Compass on every SIB web surface (`/` focuses it, Esc closes, presets that
