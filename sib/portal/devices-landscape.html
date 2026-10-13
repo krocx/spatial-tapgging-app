@@ -55,7 +55,7 @@
 <header class="ls-header">
   <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
   <nav class="ax-nav"><a href="/">Home</a><a href="/platform">Platform map</a><a href="/devices/landscape" aria-current="page">AR glasses landscape</a></nav>
-  <span class="ls-tools"><button class="ex-reader" type="button" data-reader-toggle title="Reader mode: paper, monochrome (R)">Reader</button><button class="ax-btn" type="button" id="ls-dl">Download all as Word</button><span data-brand-slot style="display:flex;align-items:center"></span></span>
+  <span class="ls-tools"><button class="ex-reader" type="button" data-reader-toggle title="Reader mode: paper, monochrome (R)">Reader</button><button class="ax-btn ax-btn--primary" type="button" id="ls-pdf">Download all as PDF</button><button class="ax-btn" type="button" id="ls-dl" title="Word, for editing">Word</button><span data-brand-slot style="display:flex;align-items:center"></span></span>
 </header>
 <nav class="dv-tabs" data-devices-tabs></nav>
 
@@ -88,9 +88,10 @@ function render() {
       <div class="top"><span class="date">${esc(e.date)}</span><span>${esc(e.maker)}</span><span class="ax-chip">${esc(SIGNAL[e.signal] || e.signal)}</span><span>${esc(CLASS[e.class] || e.class)}</span></div>
       <h2>${esc(e.title)}</h2><p>${esc(e.summary)}</p>
       ${e.means ? `<p class="means"><b>What it means for us.</b> ${esc(e.means)}</p>` : (DATA.restricted ? '' : `<p class="ls-locked">Our read on this opens with the IP key.</p>`)}
-      <div class="links"><a href="${esc(e.url)}" target="_blank" rel="noopener">Source: ${esc(e.source)}</a><button class="ax-btn" type="button" data-dl="${esc(e.id)}">Download as Word</button></div></article>`).join('')
+      <div class="links"><a href="${esc(e.url)}" target="_blank" rel="noopener">Source: ${esc(e.source)}</a><button class="ax-btn" type="button" data-pdf="${esc(e.id)}">Download PDF</button><button class="ax-btn" type="button" data-dl="${esc(e.id)}" title="Word, for editing">Word</button></div></article>`).join('')
     : '<div class="ax-empty">No entries match.</div>';
   document.querySelectorAll('[data-dl]').forEach(b => b.onclick = e => devicesDownload('/devices/landscape/export.docx?id=' + encodeURIComponent(b.dataset.dl), e.currentTarget));
+  document.querySelectorAll('[data-pdf]').forEach(b => b.onclick = e => devicesDownload('/devices/landscape/export.pdf?id=' + encodeURIComponent(b.dataset.pdf), e.currentTarget));
   const w = DATA.wire || { items: [] };
   document.getElementById('ls-refreshed').textContent = w.refreshedAt ? 'refreshed ' + new Date(w.refreshedAt).toLocaleString() : 'refreshing…';
   document.getElementById('ls-wire-list').innerHTML = w.items.length ? w.items.slice(0, 15).map(i => `<li><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a><span>${esc(i.source)}${i.date ? ' · ' + esc(i.date.slice(0, 10)) : ''}</span></li>`).join('')
@@ -99,6 +100,7 @@ function render() {
 }
 fetch('/devices/landscape.json').then(r => r.json()).then(j => { DATA = j.data; render(); if (!DATA.wire.refreshedAt) setTimeout(() => fetch('/devices/landscape.json').then(r => r.json()).then(j2 => { DATA = j2.data; render(); }), 6000); })
   .catch(() => { document.getElementById('ls-list').innerHTML = '<div class="ax-empty">The landscape could not be read.</div>'; });
+document.getElementById('ls-pdf').onclick = e => devicesDownload('/devices/landscape/export.pdf', e.currentTarget);
 document.getElementById('ls-dl').onclick = e => devicesDownload('/devices/landscape/export.docx', e.currentTarget);
 </script>
 <script src="/portal/devices-chrome.js"></script>

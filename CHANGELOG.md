@@ -28,11 +28,13 @@ it, it gets a line.
   only), filters by signal and class, and "On the wire": public feeds the
   server reads hourly (`sources.md`), kept when a headline mentions
   glasses, waveguides or the makers we track, labelled external with the
-  refresh time. Both pages have Reader mode and Download as Word: the
-  server builds the document with the Applied Materials and appliedx logos
-  in the header (from `/platform-media/`), the report-generated date, and
-  "Applied Materials Strictly Confidential" in the footer (needs the `docx`
-  package: `npm install`; until then the page prints to PDF). SENZ™ is
+  refresh time. Both pages have Reader mode and Download PDF (Word as the
+  editable second option): the server builds the report with the Applied
+  Materials and appliedx logos in the header (from `/platform-media/`), the
+  report-generated date, and "Applied Materials Strictly Confidential ·
+  page n of m" in the footer. PDF is `sib/src/pdf-lite.ts`, written in-house
+  with no new dependency (Helvetica, tinted YES / PART / NO cells, logos
+  decoded with jimp); Word needs the `docx` package (`npm install`). SENZ™ is
   written with the ™ throughout and links to appliedmaterials.com/senz.
   New fill tokens `--ax-green-fill`, `--ax-orange-fill`, `--ax-red-fill`
   (the blue-fill pattern) for YES / PART / NO cells.

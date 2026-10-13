@@ -13,6 +13,7 @@ import { parseFrontmatter } from '../catalog/catalog-core.js';
 import { profileFrom, type DeviceProfile } from '../guides/readiness.js';
 import { canViewRestricted } from '../middleware/auth.js';
 import { DATA_DIR } from '../data-dir.js';
+import { PdfLite, reportHead } from '../pdf-lite.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -193,5 +194,41 @@ router.get('/landscape/export.docx', async (req: Request, res: Response) => {
   const blocks: unknown[] = list.flatMap(e => [h2(D, e.title), para(D, `${e.date} · ${e.maker} · ${e.class} · ${e.signal}`, { color: '666666', size: 17 }), para(D, e.summary), ...(e.means ? [para(D, 'What it means for us: ' + e.means, { italics: true })] : []), para(D, `Source: ${e.source} - ${e.url}`, { size: 16, color: '666666' })]);
   const buf = await buildDoc(D, id ? list[0].title : 'AR glasses landscape', id ? 'AR glasses landscape · Connected Worker AR OMS Platform' : 'Announcements and what they mean for us · Connected Worker AR OMS Platform', blocks);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'); res.setHeader('Content-Disposition', `attachment; filename="AR-glasses-landscape${id ? '-' + id : ''}-${new Date().toISOString().slice(0, 10)}.docx"`); res.send(buf);
+});
+// PDF, with no extra package: pdf-lite draws the same report (logos, generated date, footnote).
+function logos(): Buffer[] { return ['logo-amat.png', 'logo-appliedx.png'].map(logoBytes).filter((b): b is Buffer => !!b); }
+router.get('/fit/export.pdf', async (req: Request, res: Response) => {
+  if (!canViewRestricted(req)) { res.status(403).json({ error: 'restricted' }); return; }
+  const fit = readFit(); if (!fit) { res.status(404).json({ error: 'not available' }); return; }
+  const pdf = new PdfLite({ title: 'Fit for the cleanroom', logos: logos() });
+  reportHead(pdf, 'Fit for the cleanroom', 'AR glasses and headsets against AR OMS and our enterprise cleanroom requirements · Connected Worker AR OMS Platform');
+  pdf.h2(`The market signal · status as of ${fit.asOf}`); pdf.p(fit.signal);
+  pdf.h2('By category: what each device category can and cannot do for AR work instructions');
+  pdf.table(['Capability', ...fit.categories.map(c => `${c.eye} · ${c.kind} (${c.examples})`)], [...fit.capabilities.map(c => [c.name, ...c.cells]), ['Role in AR OMS', ...fit.categories.map(c => c.role)]], [2.2, ...fit.categories.map(() => 1)], { size: 6.5 });
+  pdf.p('YES = the category does it today · PART = partially, with caveats · NO. Amber lane = our POC lane today · green lane = the SENZ™-era target. Every category has a role; only one delivers AR OMS.', { size: 8, ink: [0.4, 0.4, 0.4] });
+  pdf.h2('By requirement: devices against our enterprise cleanroom requirements');
+  pdf.table(['Enterprise cleanroom requirement', ...fit.devices.map(d => `${d.name} (${d.segment})`)], [...fit.requirements.map(r => [r.name, ...r.cells.map(c => c.reason ? `${c.verdict}: ${c.reason}` : c.verdict)]), ['Fit for AR OMS today', ...fit.devices.map(d => d.verdict)]], [2.4, ...fit.devices.map(() => 1.3)], { size: 7 });
+  pdf.p('YES = meets the requirement today · PART = partially, with caveats · NO = does not meet. The assessment reflects our POC criteria, not vendor marketing.', { size: 8, ink: [0.4, 0.4, 0.4] });
+  pdf.h2('The strategic read: what each product is really telling us');
+  for (const r of fit.reads) { pdf.p(r.device, { bold: true }); pdf.p(`Designed for: ${r.designedFor}`, { indent: 12 }); pdf.p(`For Applied: ${r.read}`, { indent: 12 }); }
+  pdf.h2('What this means'); for (const m of fit.means) pdf.p(m); pdf.p(fit.bottom, { bold: true });
+  pdf.p(`Market status as of ${fit.asOf}. Sources: ${fit.sources} SENZ™ is Applied Materials' integrated visual system for smart glasses (appliedmaterials.com/senz).`, { size: 8, ink: [0.4, 0.4, 0.4] });
+  const buf = await pdf.build();
+  res.setHeader('Content-Type', 'application/pdf'); res.setHeader('Content-Disposition', `${req.query.open === '1' ? 'inline' : 'attachment'}; filename="Fit-for-the-cleanroom-${new Date().toISOString().slice(0, 10)}.pdf"`); res.send(buf);
+});
+router.get('/landscape/export.pdf', async (req: Request, res: Response) => {
+  const restricted = canViewRestricted(req); const id = typeof req.query.id === 'string' ? req.query.id : '';
+  const all = readLandscape(restricted); const list = id ? all.filter(e => e.id === id) : all;
+  if (!list.length) { res.status(404).json({ error: 'no such entry' }); return; }
+  const pdf = new PdfLite({ title: 'AR glasses landscape', logos: logos() });
+  reportHead(pdf, id ? list[0].title : 'AR glasses landscape', id ? 'AR glasses landscape · Connected Worker AR OMS Platform' : 'Announcements and what they mean for us · Connected Worker AR OMS Platform');
+  for (const e of list) {
+    if (!id) pdf.h2(e.title);
+    pdf.p(`${e.date} · ${e.maker} · ${e.class} · ${e.signal}`, { size: 8, ink: [0.4, 0.4, 0.4] }); pdf.p(e.summary);
+    if (e.means) pdf.p(`What it means for us: ${e.means}`, { italic: true });
+    pdf.p(`Source: ${e.source} · ${e.url}`, { size: 8, ink: [0.4, 0.4, 0.4] }); pdf.gap(6);
+  }
+  const buf = await pdf.build();
+  res.setHeader('Content-Type', 'application/pdf'); res.setHeader('Content-Disposition', `${req.query.open === '1' ? 'inline' : 'attachment'}; filename="AR-glasses-landscape${id ? '-' + id : ''}-${new Date().toISOString().slice(0, 10)}.pdf"`); res.send(buf);
 });
 export default router;

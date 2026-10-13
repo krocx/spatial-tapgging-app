@@ -63,7 +63,7 @@
 <header class="ft-header">
   <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
   <nav class="ax-nav"><a href="/">Home</a><a href="/platform">Platform map</a><a href="/devices/fit" aria-current="page">Fit for the cleanroom</a></nav>
-  <span class="ft-tools"><button class="ex-reader" type="button" data-reader-toggle title="Reader mode: paper, monochrome (R)">Reader</button><button class="ax-btn" type="button" id="ft-dl">Download Word</button><span data-brand-slot style="display:flex;align-items:center"></span></span>
+  <span class="ft-tools"><button class="ex-reader" type="button" data-reader-toggle title="Reader mode: paper, monochrome (R)">Reader</button><button class="ax-btn ax-btn--primary" type="button" id="ft-pdf">Download PDF</button><button class="ax-btn" type="button" id="ft-dl" title="Word, for editing">Word</button><span data-brand-slot style="display:flex;align-items:center"></span></span>
 </header>
 <nav class="dv-tabs" data-devices-tabs></nav>
 
@@ -94,6 +94,7 @@ function render(f) {
 }
 fetch('/devices/fit.json').then(r => r.json()).then(j => { if (j.data) render(j.data); else document.getElementById('ft-body').innerHTML = `<div class="ax-notice">${esc(j.hint || j.error || 'Not available')}</div>`; })
   .catch(() => { document.getElementById('ft-body').innerHTML = '<div class="ax-empty">fit.md could not be read.</div>'; });
+document.getElementById('ft-pdf').onclick = e => devicesDownload('/devices/fit/export.pdf', e.currentTarget);
 document.getElementById('ft-dl').onclick = e => devicesDownload('/devices/fit/export.docx', e.currentTarget);
 </script>
 <script src="/portal/devices-chrome.js"></script>

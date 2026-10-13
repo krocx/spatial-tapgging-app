@@ -29,7 +29,7 @@
       const r = await fetch(url);
       if (r.status === 503) { alert('Word export needs the docx package on this server. Ask the appliedx team to run npm install; until then use Print to PDF from the browser.'); return; }
       if (!r.ok) { alert('The download did not work (' + r.status + ').'); return; }
-      const blob = await r.blob(); const name = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'export.docx';
+      const blob = await r.blob(); const name = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || (url.includes('.pdf') ? 'export.pdf' : 'export.docx');
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     } finally { if (btn) { btn.disabled = false; btn.textContent = was; } }
   };

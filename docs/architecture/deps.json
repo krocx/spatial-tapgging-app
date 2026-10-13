@@ -228,6 +228,7 @@
   "ops-log.ts": [
    "stores/json-file-store.ts"
   ],
+  "pdf-lite.ts": [],
   "perception/image-comparator.ts": [],
   "portfolio/portfolio-core.ts": [],
   "procedure/compiler.ts": [],
@@ -286,7 +287,8 @@
    "catalog/catalog-core.ts",
    "data-dir.ts",
    "guides/readiness.ts",
-   "middleware/auth.ts"
+   "middleware/auth.ts",
+   "pdf-lite.ts"
   ],
   "routes/gemba-library.ts": [
    "gemba/library-core.ts",
