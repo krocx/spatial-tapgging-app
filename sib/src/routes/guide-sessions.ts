@@ -22,6 +22,7 @@
 //   GET  /guide-sessions/live/:id                 - current session snapshot (catch-up)
 //   GET  /guide-sessions/live/:id/hints           - AI hint poll; consume-once (Step 3)
 
+import { requireRole } from '../middleware/auth.js';
 import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
 import { ingestObservations, guideBaselines } from '../oms/observations.js';
@@ -549,8 +550,8 @@ router.get('/:id/evidence/:stepId', (req: Request, res: Response): void => {
   fs.createReadStream(filepath).pipe(res);
 });
 
-// DELETE /guide-sessions/:id - remove a single guide session + its evidence folder
-router.delete('/:id', (req: Request, res: Response): void => {
+// DELETE /guide-sessions/:id - Owner only (2026.4.50): runs are live data; only an Owner removes them, from the Sessions page.
+router.delete('/:id', requireRole('owner'), (req: Request, res: Response): void => {
   const session = guideSessionStore.findById(req.params.id);
   if (!session) { res.status(404).json({ error: 'Guide session not found' }); return; }
   const evidenceDir = path.join(EVIDENCE_DIR, req.params.id);
@@ -560,8 +561,8 @@ router.delete('/:id', (req: Request, res: Response): void => {
   res.status(204).send();
 });
 
-// DELETE /guide-sessions - remove ALL guide sessions + all evidence folders
-router.delete('/', (_req: Request, res: Response): void => {
+// DELETE /guide-sessions - Owner only: remove ALL guide sessions + all evidence folders
+router.delete('/', requireRole('owner'), (_req: Request, res: Response): void => {
   const all = guideSessionStore.findAll();
   for (const s of all) {
     const dir = path.join(EVIDENCE_DIR, s.id);

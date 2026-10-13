@@ -7,6 +7,23 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **Guide lifecycle: archive, a 30-day trash, and who may do what
+  (docs/GUIDE-LIFECYCLE-REVIEW.md).** A guide is draft → published →
+  archived → deleted → purged. Publishing is a Manager's decision and needs
+  a chamber configuration on the anchor (an archived guide cannot be
+  published). Archive (Manager+, `POST /guides/:id/archive`) hides a guide
+  from Operator and from the library's default view and unpublishes it;
+  steps, placements, runs, evidence and usage stay; "Show archived" in the
+  library and Restore bring it back. Delete (Owner only) moves the guide,
+  its steps, its cone-training tags and its Roadmap map into a trash for 30
+  days; runs, evidence and the usage log are live data and never move; the
+  confirm says in words what goes, what stays and how many runs are kept.
+  Admin › Ops log gains a Guide trash card: Restore, Delete now, and an
+  integrity line (maps, sessions, usage rows and steps whose guide is gone,
+  reported never auto-fixed); expired items purge hourly. Deleting sessions
+  or inspection records is Owner only. Every transition is one line in the
+  ops log. The Roadmap home's ✕ on a procedure reads "Remove from the
+  Roadmap" and says the guide stays. (Backlog #1 and the server half of #5.)
 - **Hands in the XR kit (H1).** On Quest 3 and HoloLens 2 (profiles with
   `hands: tracked`) the kit asks WebXR for hand tracking and `xr-hands.js`,
   own code on the WebXR Hand Input API, gives the technician's hands a part

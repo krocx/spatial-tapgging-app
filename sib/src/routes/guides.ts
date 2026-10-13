@@ -89,6 +89,7 @@ export function deleteImportLog(guideId: string): void {
 import { deriveStepsFromAssembly, normalizeAssemblyPose, validateAssemblyPose } from '../guides/assembly.js';
 import { copyGuideToAnchor } from '../guides/copy.js';
 import { guideVisibleTo } from '../uam/guide-visibility.js';
+import { archiveGuide, trashGuide, restoreGuide, purgeTrash, guideTrashStore, runsOf, integrityReport, TRASH_DAYS } from '../guides/lifecycle.js';
 import { currentUamUser, uamIsActive } from '../middleware/auth.js';
 import { normalizeEmail } from '../uam/uam-core.js';
 import { findUserByEmail } from './uam.js';
@@ -408,6 +409,9 @@ router.get('/', (req: Request, res: Response): void => {
   // (or with everyone). Engineer+ and unidentified callers are unaffected.
   const viewer = currentUamUser(req);
   guides = guides.filter(g => guideVisibleTo(viewer, g));
+  // Lifecycle: archived guides are hidden unless the library asks for them (never for technicians).
+  const wantArchived = req.query.archived === 'true' && viewer?.role !== 'technician';
+  guides = guides.filter(g => wantArchived ? true : !g.archivedAt);
 
   // Sort by name for consistent ordering
   guides.sort((a, b) => a.name.localeCompare(b.name));
@@ -417,6 +421,25 @@ router.get('/', (req: Request, res: Response): void => {
     timestamp: new Date().toISOString(),
   };
   res.json(resp);
+});
+
+// Lifecycle reads that must come before /:id (a literal path is not a guide id).
+// GET /guides/trash - Owner. What can still be restored, and until when.
+router.get('/trash', requireRole('owner'), (_req: Request, res: Response): void => {
+  res.json({ data: guideTrashStore.findAll().sort((a, b) => b.deletedAt.localeCompare(a.deletedAt)).map(t => ({ id: t.id, name: t.name, deletedAt: t.deletedAt, deletedBy: t.deletedBy, expiresAt: t.expiresAt, runs: t.runs, steps: t.steps.length, hasMap: !!t.map, anchorId: t.guide.anchorId })), trashDays: TRASH_DAYS, timestamp: new Date().toISOString() });
+});
+router.post('/trash/:id/restore', requireRole('owner'), (req: Request, res: Response): void => {
+  const g = restoreGuide(req.params.id, whoIs(req));
+  if (!g) { res.status(404).json({ error: 'Not in the trash', timestamp: new Date().toISOString() }); return; }
+  res.json({ data: g, timestamp: new Date().toISOString() });
+});
+router.delete('/trash/:id', requireRole('owner'), (req: Request, res: Response): void => {
+  if (!purgeTrash(req.params.id, whoIs(req))) { res.status(404).json({ error: 'Not in the trash', timestamp: new Date().toISOString() }); return; }
+  res.status(204).send();
+});
+// GET /guides/integrity - Owner / Manager: dangling references, reported, never auto-fixed.
+router.get('/integrity', requireRole('owner', 'manager'), (_req: Request, res: Response): void => {
+  res.json({ data: integrityReport(), timestamp: new Date().toISOString() });
 });
 
 // GET /guides/:id - get a single Guide
@@ -623,6 +646,21 @@ router.patch('/:id', (req: Request, res: Response): void => {
     const v = Number(body.assemblyAnimationSpeed);
     if (!Number.isFinite(v) || v < 0.1 || v > 3) { res.status(400).json({ error: 'assemblyAnimationSpeed must be between 0.1 and 3', timestamp: now }); return; }
     assembly = { ...(assembly ?? guide.assembly), animationSpeed: Math.round(v * 100) / 100 };
+  }
+
+  // Lifecycle gates: publishing is a Manager's decision and needs a chamber
+  // configuration on the anchor (Operator reaches a guide through the
+  // chamber's QR and its configuration); an archived guide cannot be published.
+  if (body.published === true && !guide.published) {
+    const role = uamActor(req)?.kind === 'legacy-admin' ? 'owner' : currentUamUser(req)?.role;
+    if (uamIsActive() && role !== 'manager' && role !== 'owner') { res.status(403).json({ error: 'Publishing requires Manager role or above', timestamp: now }); return; }
+    if (guide.archivedAt) { res.status(409).json({ error: 'This guide is archived - restore it before publishing', timestamp: now }); return; }
+    const anchor = anchorStore.findById(body.anchorId?.trim() || guide.anchorId);
+    if (!anchor?.configId) { res.status(409).json({ error: 'This guide cannot be published until its chamber has a configuration assigned (Chambers → the chamber → Configuration)', code: 'needs-config', timestamp: now }); return; }
+  }
+  if (body.published === false && guide.published) {
+    const role = uamActor(req)?.kind === 'legacy-admin' ? 'owner' : currentUamUser(req)?.role;
+    if (uamIsActive() && role !== 'manager' && role !== 'owner') { res.status(403).json({ error: 'Unpublishing requires Manager role or above', timestamp: now }); return; }
   }
 
   const updated: Guide = {
@@ -867,7 +905,26 @@ router.post('/:id/assembled-pose', requireRole('owner', 'manager', 'engineer'), 
   }
 });
 
-router.delete('/:id', (req: Request, res: Response): void => {
+// ── Lifecycle (2026.4.50): archive · delete to the trash · restore · purge ──
+const whoIs = (req: Request) => currentUamUser(req)?.email ?? (uamActor(req)?.kind === 'legacy-admin' ? 'admin key' : 'unknown');
+
+// POST /guides/:id/archive | /unarchive - Manager+. Archived = hidden from
+// Operator and the library's default view; runs, evidence and usage stay.
+router.post('/:id/archive', requireRole('owner', 'manager'), (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  res.json({ data: archiveGuide(guide, whoIs(req), true), timestamp: new Date().toISOString() });
+});
+router.post('/:id/unarchive', requireRole('owner', 'manager'), (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  res.json({ data: archiveGuide(guide, whoIs(req), false), timestamp: new Date().toISOString() });
+});
+
+// DELETE /guides/:id - Owner only. The guide, its steps, its designer map and
+// its cone-training tags go to the trash for 30 days (restorable); runs,
+// evidence and the usage log stay where they are. Import log goes with it.
+router.delete('/:id', requireRole('owner'), (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) {
     res.status(404).json({
@@ -876,17 +933,13 @@ router.delete('/:id', (req: Request, res: Response): void => {
     });
     return;
   }
-
-  deleteImportLog(guide.id);
-  const steps = guideStepStore.findAll().filter(s => s.guideId === req.params.id);
-  for (const step of steps) {
-    if (step.mediaPath) deleteStepImage(step.mediaPath);
-    guideStepStore.delete(step.id);
-  }
-  guideStore.delete(req.params.id);
-
-  console.log(`[SIB] Guide deleted: ${req.params.id} (+${steps.length} steps)`);
-  res.status(204).send();
+  const item = trashGuide(guide, whoIs(req), { deleteImportLog });
+  console.log(`[SIB] Guide deleted → trash: ${req.params.id} (${item.steps.length} steps, ${item.runs} runs kept, until ${item.expiresAt})`);
+  res.json({ data: { trashed: item.id, expiresAt: item.expiresAt, runsKept: item.runs, steps: item.steps.length, map: !!item.map }, timestamp: new Date().toISOString() });
+});
+// GET /guides/:id/runs-count - what a delete would leave behind (the confirm says it in words).
+router.get('/:id/runs-count', (req: Request, res: Response): void => {
+  res.json({ data: { runs: runsOf(req.params.id) }, timestamp: new Date().toISOString() });
 });
 
 // GET /guides/:id/steps - list steps in ascending sequenceNumber order

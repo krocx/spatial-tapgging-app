@@ -1223,6 +1223,15 @@
     </div>
     <div id="ops-log" style="max-height:420px;overflow-y:auto;font-family:var(--ax-mono);font-size:0.78rem;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--muted)">Loading…</div>
   </div>
+  <div class="adm-card admin-only" id="adm-trash-card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Guide trash</h3>
+      <span class="ax-label-s ax-muted" style="flex:1">deleted guides, restorable for 30 days (steps, images, cone training and the Roadmap map come back with them; runs were never removed) - Owner only</span>
+      <button class="btn btn-ghost btn-sm" onclick="loadGuideTrash()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
+    </div>
+    <div id="guide-trash" class="ax-label-s ax-muted">Loading…</div>
+    <div id="guide-integrity" class="ax-label-s ax-muted" style="margin-top:10px"></div>
+  </div>
 </div>
 
 <!-- Import Guide modal -->
@@ -1286,6 +1295,7 @@
     <input id="gl-search" class="ax-input" type="search" placeholder="Find a guide by name, chamber or configuration" oninput="filterGuideLibrary(this.value)">
     <button class="ax-btn ax-btn--primary ax-btn--sm" onclick="openImportGuideModal()" data-tour="gl-import"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import guide</button>
     <a class="ax-btn ax-btn--sm" href="/roadmap" target="_blank" title="Draw a procedure on a canvas and send it here as a guide" data-tour="gl-designer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Procedure Designer</a>
+    <label class="ax-label-s ax-muted" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap" title="Archived guides are hidden from Operator and from this list; a Manager archives and restores"><input type="checkbox" id="gl-archived" onchange="glShowArchived=this.checked;loadGuideLibrary()"> Show archived</label>
     <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="loadGuideLibrary()" aria-label="Refresh"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg></button>
   </div>
   <div id="guide-library-list"></div>
@@ -6058,9 +6068,29 @@ function qaLogsDownload() {
     .catch(e => toast('Download failed: ' + e.message));
 }
 
+async function loadGuideTrash() {
+  const el = document.getElementById('guide-trash'), ig = document.getElementById('guide-integrity');
+  try {
+    const j = await apiFetch('/guides/trash');
+    const rows = j.data || [];
+    el.innerHTML = rows.length ? `<table class="ax-table"><thead><tr><th>Guide</th><th>Deleted</th><th>By</th><th>Restorable until</th><th>Runs kept</th><th>Steps</th><th></th></tr></thead><tbody>${rows.map(t => `<tr><td>${esc(t.name)}</td><td>${esc(new Date(t.deletedAt).toLocaleString())}</td><td>${esc(t.deletedBy)}</td><td>${esc(new Date(t.expiresAt).toLocaleDateString())}</td><td>${t.runs}</td><td>${t.steps}${t.hasMap ? ' · map' : ''}</td><td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="restoreTrashedGuide('${t.id}','${esc(t.name).replace(/'/g, '')}')">Restore</button> <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="purgeTrashedGuide('${t.id}','${esc(t.name).replace(/'/g, '')}')">Delete now</button></td></tr>`).join('')}</tbody></table>` : 'The trash is empty.';
+  } catch (e) { el.textContent = e.message.includes('role') ? 'Owner only.' : `Could not read the trash: ${e.message}`; }
+  try {
+    const r = (await apiFetch('/guides/integrity')).data;
+    const bits = [];
+    if (r.orphanMaps.length) bits.push(`${r.orphanMaps.length} Roadmap map${r.orphanMaps.length === 1 ? '' : 's'} whose guide is gone${r.orphanMaps.some(m => m.inTrash) ? ' (some in the trash)' : ''}`);
+    if (r.sessionsWithoutGuide.length) bits.push(`${r.sessionsWithoutGuide.length} session${r.sessionsWithoutGuide.length === 1 ? '' : 's'} of guides that no longer exist (kept as history)`);
+    if (r.usageRowsWithoutGuide) bits.push(`${r.usageRowsWithoutGuide} usage rows of guides that no longer exist (kept)`);
+    if (r.orphanSteps.length) bits.push(`${r.orphanSteps.length} orphan step${r.orphanSteps.length === 1 ? '' : 's'}`);
+    ig.innerHTML = `<b>Integrity</b> · ${bits.length ? bits.join(' · ') : 'no dangling references'} · checked ${new Date(r.generatedAt).toLocaleTimeString()}`;
+  } catch { ig.textContent = ''; }
+}
+async function restoreTrashedGuide(id, name) { try { await apiFetch(`/guides/trash/${encodeURIComponent(id)}/restore`, { method: 'POST' }); toast(`Restored "${name}"`); loadGuideTrash(); } catch (e) { toast(`Restore failed: ${e.message}`, 4000); } }
+async function purgeTrashedGuide(id, name) { if (!confirm(`Delete "${name}" now, for good?\n\nIts steps, images and cone training files are removed. Runs and evidence stay.`)) return; try { await _apiDelete(`/guides/trash/${encodeURIComponent(id)}`); toast('Deleted for good'); loadGuideTrash(); } catch (e) { toast(`Failed: ${e.message}`, 4000); } }
 async function loadOpsLog() {
   const el = document.getElementById('ops-log');
   el.textContent = 'Loading…';
+  if (document.getElementById('guide-trash')) loadGuideTrash();
   try {
     const r = await fetch('/admin/events?limit=200',
       { headers: { 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() } });
@@ -6467,7 +6497,7 @@ async function loadGuideLibrary() {
 
     // Fetch all guides for all anchors in parallel
     const results = await Promise.allSettled(
-      allAnchors.map(a => apiFetch(`/guides?anchorId=${encodeURIComponent(a.id)}&all=true`))
+      allAnchors.map(a => apiFetch(`/guides?anchorId=${encodeURIComponent(a.id)}&all=true${glShowArchived ? '&archived=true' : ''}`))
     );
 
     // Status rail data: readiness per guide (summary) and the last 30 days of runs.
@@ -6497,6 +6527,7 @@ async function loadGuideLibrary() {
 }
 
 let glExtras = { summary: new Map(), runs: new Map() };
+let glShowArchived = false;
 function renderGuideLibrary() {
   const list = document.getElementById('guide-library-list');
   let html = '';
@@ -6543,7 +6574,7 @@ function renderGuideLibrary() {
       const allPlaced    = steps ? (placedCount === totalSteps) : true; // unknown until expanded → assume ok
       const hasUnplaced  = steps && !allPlaced;
 
-      const pubBadge   = guide.published
+      const pubBadge   = guide.archivedAt ? `<span class="gl-badge gl-badge-warn" title="Archived ${esc(guide.archivedAt.slice(0, 10))} by ${esc(guide.archivedBy || '')} - hidden from Operator; runs and evidence kept">Archived</span>` : guide.published
         ? `<span class="gl-badge gl-badge-published"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Published</span>` : `<span class="gl-badge gl-badge-draft">Draft</span>`;
       const placePill  = steps
         ? `<span class="gl-placement-pill">${placedCount}/${totalSteps} placed</span>` : '';
@@ -6647,7 +6678,10 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
     ${siblings ? `<button onclick="copyGuideToConfigChambers('${guideId}','${anchorId}','${configId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy-all"/></svg> Copy to all ${siblings} chambers of this configuration</button>` : ''}
     <hr>
     <button onclick="resetGuideMap('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-map-reset"/></svg> Reset map and unplace steps</button>
-    <button class="is-danger" onclick="deleteGuideFromLibrary('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete guide</button>`;
+    ${(UAM_USER?.role === 'owner' || UAM_USER?.role === 'manager' || !UAM_USER) ? (guide?.archivedAt
+      ? `<button onclick="archiveGuide('${guideId}','${anchorId}',false);closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-restart"/></svg> Restore from archive</button>`
+      : `<button onclick="archiveGuide('${guideId}','${anchorId}',true);closeRowMenu()" title="Hidden from Operator and from this list; runs, evidence and usage are kept"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-backup"/></svg> Archive guide</button>`) : ''}
+    ${(UAM_USER?.role === 'owner' || !UAM_USER) ? `<button class="is-danger" onclick="deleteGuideFromLibrary('${guideId}','${anchorId}');closeRowMenu()" title="Owner only: to the trash for 30 days, restorable from Admin"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete guide</button>` : `<button disabled title="Only an Owner deletes a guide; a Manager can archive it"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete guide (Owner)</button>`}`;
   document.body.appendChild(m);
   const r = ev.currentTarget.getBoundingClientRect();
   m.style.top  = (r.bottom + window.scrollY + 4) + 'px';
@@ -7173,13 +7207,27 @@ async function togglePublishGuide(guideId, anchorId, currentlyPublished) {
 async function deleteGuideFromLibrary(guideId, anchorId) {
   const entry = guideLibraryData[anchorId];
   const guide = entry?.guides.find(g => g.id === guideId);
-  if (!confirm(`Delete guide "${guide?.name ?? guideId}" and all its steps? This cannot be undone.`)) return;
+  let runs = 0, steps = guide?.stepCount ?? guide?.steps?.length;
+  try { runs = (await apiFetch(`/guides/${encodeURIComponent(guideId)}/runs-count`)).data.runs; } catch {}
+  const what = `The guide${steps != null ? `, its ${steps} steps` : ', its steps'}, its images, its cone training and its Roadmap map go to the trash for 30 days; an Owner can restore them from Admin › Guide trash.\n\n${runs ? `${runs} run${runs === 1 ? '' : 's'} are recorded against it - they stay, with the evidence and the usage log.` : 'No runs are recorded against it.'}\n\nPrefer Archive if the guide may come back.`;
+  if (!confirm(`Delete "${guide?.name ?? guideId}"?\n\n${what}`)) return;
   try {
-    await _apiDelete(`/guides/${encodeURIComponent(guideId)}`);
+    const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}`, { method: 'DELETE' });
     if (entry) entry.guides = entry.guides.filter(g => g.id !== guideId);
-    toast('Guide deleted.');
+    toast(`Moved to the trash until ${new Date(r.data.expiresAt).toLocaleDateString()} · ${r.data.runsKept} run${r.data.runsKept === 1 ? '' : 's'} kept`, 5000);
     renderGuideLibrary();
   } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
+async function archiveGuide(guideId, anchorId, archive) {
+  const entry = guideLibraryData[anchorId];
+  const guide = entry?.guides.find(g => g.id === guideId);
+  if (archive && !confirm(`Archive "${guide?.name ?? guideId}"?\n\nIt disappears from Operator and from this list (tick "Show archived" to see it) and is unpublished. Steps, placements, runs, evidence and usage are kept. A Manager can restore it any time.`)) return;
+  try {
+    const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/${archive ? 'archive' : 'unarchive'}`, { method: 'POST' });
+    if (entry) { const i = entry.guides.findIndex(g => g.id === guideId); if (i >= 0) { if (archive && !glShowArchived) entry.guides.splice(i, 1); else entry.guides[i] = r.data; } }
+    toast(archive ? 'Archived - hidden from Operator; runs kept' : 'Restored from archive (still unpublished)');
+    renderGuideLibrary();
+  } catch (e) { toast(`${archive ? 'Archive' : 'Restore'} failed: ${e.message}`, 4000); }
 }
 
 // G1 (2026.4.46): reset a guide's world map. Pins only mean something inside

@@ -13,6 +13,7 @@
   ],
   "app.ts": [
    "data-dir.ts",
+   "guides/lifecycle.ts",
    "guides/store.ts",
    "logging/device-logs.ts",
    "loto/loto-core.ts",
@@ -101,6 +102,17 @@
    "procedure/designer-images.ts",
    "routes/anchors.ts",
    "routes/chamber-configs.ts"
+  ],
+  "guides/lifecycle.ts": [
+   "guides/store.ts",
+   "models/mindmap.model.ts",
+   "oms/usage-log.ts",
+   "ops-log.ts",
+   "procedure/export.ts",
+   "routes/guide-sessions.ts",
+   "routes/tags.ts",
+   "stores/json-file-store.ts",
+   "stores/pass-state-store.ts"
   ],
   "guides/readiness.ts": [],
   "guides/step-models.ts": [],
@@ -339,6 +351,7 @@
    "guides/bundle.ts",
    "guides/copy.ts",
    "guides/ingest.ts",
+   "guides/lifecycle.ts",
    "guides/readiness.ts",
    "guides/step-models.ts",
    "guides/store.ts",
@@ -437,6 +450,7 @@
    "stores/json-file-store.ts"
   ],
   "routes/sessions.ts": [
+   "middleware/auth.ts",
    "stores/json-file-store.ts"
   ],
   "routes/tag-groups.ts": [

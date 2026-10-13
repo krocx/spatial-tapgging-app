@@ -207,8 +207,10 @@ export function MapList(): JSX.Element {
               </button>
               <button
                 className="btn ghost danger gallery-delete"
-                title="Delete map"
-                onClick={() => { if (confirm(`Delete "${m.name}" and its version history?`)) void deleteMap(m.id); }}
+                title={m.kind === 'procedure' ? 'Remove from the Roadmap (the guide stays in the Content Library)' : 'Delete map'}
+                onClick={() => { if (confirm(m.kind === 'procedure'
+                  ? `Remove "${m.name}" from the Roadmap?\n\nOnly this canvas and its version history go. The guide itself stays in the Content Library with its steps, placements and runs; "Open in Designer" there draws it again.`
+                  : `Delete "${m.name}" and its version history?`)) void deleteMap(m.id); }}
               >✕</button>
             </div>
           ))}

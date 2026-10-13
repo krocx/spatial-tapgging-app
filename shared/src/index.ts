@@ -1384,6 +1384,11 @@ export interface Guide {
    * behaves the same every time.
    */
   ciMode?:     'normal' | 'demo';
+  /** Lifecycle (2026.4.50): an archived guide is hidden from Operator and from
+   *  the library's default view; its runs, evidence and usage stay. Managers
+   *  archive and restore; only an Owner deletes (to the 30-day trash). */
+  archivedAt?: string;
+  archivedBy?: string;
   createdAt:   string;
   updatedAt:   string;
 }
@@ -1435,6 +1440,28 @@ export type UpdateGuideRequest = {
  * Absent on sessions recorded before this field was added; consumers should treat
  * it as optional.
  */
+/**
+ * A deleted guide, kept for 30 days with everything needed to put it back
+ * exactly as it was: the guide, its steps, its designer map (with versions
+ * and access), and the cone-training tags of its steps. Runs, evidence and
+ * the usage log are never part of it - they are live data and stay in place.
+ * Step images and pass-state files stay on disk until the item is purged.
+ */
+export interface GuideTrashItem {
+  id:         string;          // the guide id
+  name:       string;
+  deletedAt:  string;
+  deletedBy:  string;
+  expiresAt:  string;          // deletedAt + 30 days; purged after
+  runs:       number;          // sessions recorded against the guide at deletion (kept)
+  guide:      Guide;
+  steps:      GuideStep[];
+  map?:       unknown;         // Mindmap
+  mapVersions?: unknown[];
+  mapAccess?: unknown;
+  tags:       Tag[];           // validation (cone) tags of trained steps
+}
+
 export interface GuideStepCompletion {
   stepId:               string;
   enteredAt?:           string;   // ISO 8601 - when step first shown to Operator

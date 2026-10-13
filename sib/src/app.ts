@@ -45,6 +45,7 @@ import { sessionStore } from './routes/sessions.js';
 import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
 import { derivePointStatus } from './loto/loto-core.js';
 import { apiKeyAuth, adminKeyAuth, contentGate, hasValidApiKey, canViewRestricted, webLockEmails } from './middleware/auth.js';
+import { purgeExpiredTrash } from './guides/lifecycle.js';
 import { redeemDeviceCode } from './middleware/device-link.js';
 // NOT from @spatial/shared: that package is types-only at runtime - its exports
 // point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
@@ -670,6 +671,8 @@ document.getElementById('w').addEventListener('submit', async function(ev){
   // DELETE /guides/:id/steps/:stepId         - Author: delete Step
   // GET    /guides/step-image/:filename      - serve step media image
   app.use('/guides', guideRouter);
+  // Guide trash: items older than 30 days are purged hourly (docs/GUIDE-LIFECYCLE-REVIEW.md).
+  setInterval(() => { try { const n = purgeExpiredTrash(); if (n) console.log(`[SIB] Guide trash: purged ${n} expired item(s)`); } catch (e) { console.warn('[SIB] trash purge failed', e); } }, 3600_000).unref();
 
   // POST /guide-sessions                     - Operator: submit completed session (sign-off)
   // GET  /guide-sessions?anchorId=xxx        - list sessions for an anchor

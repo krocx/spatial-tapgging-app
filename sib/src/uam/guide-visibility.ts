@@ -19,6 +19,7 @@ export function guideVisibleTo(user: UamUser | undefined, guide: Guide): boolean
   if (!user) return true;                       // unidentified - historical behaviour
   if (user.role !== 'technician') return true;  // engineer+ see everything
   if (!guide.published) return false;           // technicians never see drafts
+  if (guide.archivedAt) return false;           // nor archived guides (2026.4.50)
   const list = guide.sharedWith ?? [];
   if (list.length === 0) return true;           // unshared = shared with all
   return list.includes(normalizeEmail(user.email));

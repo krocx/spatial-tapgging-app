@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { requireRole } from '../middleware/auth.js';
 import { Router, type Request, type Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import type {
@@ -222,7 +223,7 @@ router.get('/evidence/:filename', (req: Request, res: Response) => {
 });
 
 // DELETE /sessions/:id - remove a single inspection session record
-router.delete('/:id', (req: Request, res: Response): void => {
+router.delete('/:id', requireRole('owner'), (req: Request, res: Response): void => {
   const session = sessionStore.findById(req.params.id);
   if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
   sessionStore.delete(req.params.id);
@@ -230,8 +231,8 @@ router.delete('/:id', (req: Request, res: Response): void => {
   res.status(204).send();
 });
 
-// DELETE /sessions - remove ALL inspection session records
-router.delete('/', (_req: Request, res: Response): void => {
+// DELETE /sessions - Owner only: remove ALL inspection session records
+router.delete('/', requireRole('owner'), (_req: Request, res: Response): void => {
   const count = sessionStore.pruneWhere(() => true);
   console.log(`[SIB] Deleted all ${count} inspection session(s)`);
   res.json({ deleted: count, timestamp: new Date().toISOString() });

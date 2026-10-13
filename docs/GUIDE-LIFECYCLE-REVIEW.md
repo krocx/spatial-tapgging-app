@@ -1,8 +1,13 @@
 # Guide lifecycle review - removal, data integrity, access
 
-Proprietary & Confidential · Applied Materials. Status: **findings and
-proposal for approval** (2026.4.50, backlog #1). Nothing in this note is
-implemented yet.
+Proprietary & Confidential · Applied Materials. Status: **decided and the
+server + portal stage implemented** (2026.4.50, backlog #1). Decisions
+(Karthik, 2026-10-13): only a Manager (or Owner) publishes; the word is
+**archive**, not retire; sessions and usage are live data, present by
+default, deleted only by an Owner from their own pages; an Owner may delete a
+guide that has runs, and the runs stay; deleted guides sit in a **30-day
+trash** with restore. A separate "Admin" role for sessions management is on
+the backlog (see §3).
 
 ## 1. What happens today
 
@@ -63,41 +68,44 @@ A guide has a lifecycle; "remove" means different things at different times:
 |---|---|---|---|
 | **draft** | authored, not visible to technicians | engineer+ | - |
 | **published** | runnable; needs a chamber configuration (#5) | manager+ (or the author if engineer, policy choice) | unpublish |
-| **retired** (new) | hidden from Operator and the library's default view, runs and evidence kept, map kept read-only; the use-case still references it as history | manager+ | restore |
-| **deleted** | gone, with its cascade; only allowed when **no run has ever been recorded** against it (otherwise: retire) | owner | no |
+| **archived** | hidden from Operator and the library's default view, unpublished; runs, evidence, usage, steps, placements and map kept | manager+ | restore |
+| **deleted** | the guide, its steps, its cone-training tags and its Roadmap map move to the trash for 30 days; runs, evidence and the usage log stay in place; an Owner restores or deletes for good; expired items purge hourly | owner | for 30 days |
 
-The Roadmap home's X becomes "Remove from the Roadmap" (map only, guide
-untouched, said so in the confirm) and never deletes a guide. A retired or
-deleted guide's map is removed with it.
+The Roadmap home's X is "Remove from the Roadmap" (map only, guide untouched,
+said so in the confirm) and never deletes a guide. A deleted guide's map goes
+to the trash with it and comes back on restore.
 
-### 2.2 Cascade and integrity (server)
-- `DELETE /guides/:id` refuses with 409 when sessions, live sessions or usage
-  rows reference the guide ("12 runs recorded - retire it instead").
-- When it proceeds it also removes: validation tags + pass states of the
-  guide's steps, the linked map (+ versions + access), the guide's world map,
-  hints and learnings keyed by the guide, the step-image files; and it
-  **detaches** (never deletes) portfolio `guideIds` and scorecard evidence
-  links, writing a note on the use-case ("guide removed on <date> by <who>").
-- Retire sets `retiredAt/retiredBy`; every list that serves technicians or
-  Operator filters retired out; the library shows a "Retired" filter;
-  sessions and insights keep showing the name.
+### 2.2 Cascade and integrity (server) - implemented
+- `DELETE /guides/:id` (Owner) moves the guide, its steps, its cone-training
+  tags and its linked map (+ versions + access) into `guide-trash` with
+  `expiresAt = +30 days`, and tells the caller how many runs were kept. The
+  confirm in the portal reads `GET /guides/:id/runs-count` first and says it
+  in words. Step images and pass-state files stay on disk until purge.
+- Restore puts everything back; purge (Owner, or the hourly scheduler after
+  30 days) deletes the item and the files only it referenced.
+- Portfolio `guideIds` and scorecard evidence links are left in place (ids);
+  the integrity report lists what points at a missing guide and whether it
+  is in the trash. Hints and the guide's world map are left for a later pass.
+- Archive sets `archivedAt/archivedBy` and unpublishes; technicians never
+  see archived guides; the library hides them unless "Show archived" is on.
 - One audit line per transition in the ops log (who, what, when), the same
   log the admin page already shows.
 - Backups already cover the stores; add the daily check that no map's
   `guideSync.guideId` and no session's `guideId` points at a missing guide
   (reported on /admin/ops, not auto-fixed).
 
-### 2.3 Access (UAM) for guides
-Roles exist (technician · engineer · manager · owner); apply them per action:
+### 2.3 Access (UAM) for guides - implemented on the server
+Roles exist (technician · engineer · manager · owner); applied per action:
 
 | Action | technician | engineer | manager | owner |
 |---|---|---|---|---|
 | run (Operator / XR kit) | if published and shared | ✓ | ✓ | ✓ |
 | create, author steps, edit map | - | ✓ | ✓ | ✓ |
-| publish / unpublish | - | own guides (policy choice) | ✓ | ✓ |
+| publish / unpublish | - | - | ✓ | ✓ (publish also needs a chamber configuration) |
 | share / sharing list | - | own guides | ✓ | ✓ |
-| retire / restore | - | - | ✓ | ✓ |
-| delete (no runs) | - | - | - | ✓ |
+| archive / restore | - | - | ✓ | ✓ |
+| delete (to the trash; runs stay) | - | - | - | ✓ |
+| delete sessions / usage (their own pages) | - | - | - | ✓ |
 | remove the designer map from the Roadmap | - | ✓ | ✓ | ✓ |
 
 "Own" = `createdBy`/author email, already stored. The same table governs the
@@ -120,16 +128,24 @@ roadmaps that are not guides.
   into the newest" (steps compared, sessions re-pointed) as a manager action.
 
 ### 2.5 Order of work
-1. Server gates: role table, 409 on delete with runs, full cascade, retire
-   state, audit lines, orphan check. (Data safety first; no UI change needed
-   for it to protect data.)
-2. Portal library menu + confirms; Roadmap home card and X wording.
-3. iOS: hide delete below manager; retire visible to managers; Operator
-   filters retired.
+1. ✅ Server gates: role table, archive state, delete to the 30-day trash
+   with restore and purge, publish needs Manager + configuration, session
+   deletion Owner only, audit lines, integrity report.
+2. ✅ Portal: row menu (Archive / Restore / Delete with the honest confirm),
+   "Show archived", Admin › Guide trash card with Restore / Delete now and
+   the integrity line; Roadmap home X reads "Remove from the Roadmap".
+3. iOS: swipe-delete hidden below Owner, Archive for Managers, Operator
+   filters archived (the server already hides them from technicians).
 4. Import de-duplication ("update existing guide") - backlog #2.
-5. Publish precondition (configuration) - backlog #5, same gate.
+5. Roadmap home cards: anchor, configuration, date, guide link state.
 
-Open decisions for Karthik: may an engineer publish their own guide, or is
-publish manager-only; is "retire" the right word on the floor (alternatives:
-archive, withdraw); and whether a guide with runs may ever be deleted by an
-owner with an explicit "I understand the runs will lose their guide" step.
+## 3. The Admin role (backlog)
+Industry practice separates **data stewardship** (retention, deletion of
+records, exports, audit) from **product ownership** (publishing, roles). SIB
+today folds both into Owner, which is right for one PO and a small team; the
+moment a second person must delete sessions without being able to change
+roles or keys, an `admin` role (sessions, usage, trash, backups, audit; no
+UAM or key changes) is the clean split. The gates above are written per
+action (`requireRole('owner')` on each), so adding `admin` to the allowed
+roles of the session and trash routes is a one-line change per route when
+it is wanted - recommended at the next UAM pass, not now.
