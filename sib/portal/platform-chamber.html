@@ -29,7 +29,7 @@
   #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   #stage canvas:active { cursor: grabbing; }
   /* captions - left column, never over the model */
-  .pc-cap { position: fixed; left: var(--ax-s5); bottom: 112px; z-index: 3; max-width: 440px; pointer-events: none; }
+  .pc-cap { position: fixed; left: var(--ax-s5); bottom: 140px; z-index: 3; max-width: 440px; pointer-events: none; }
   .pc-cap .ax-eyebrow { color: var(--ax-pc, var(--ax-blue)); }
   .pc-cap h2 { margin: 2px 0 6px; font: var(--ax-h1); }
   .pc-cap p { margin: 0; color: var(--ax-ink-2); font: var(--ax-label-r); }
@@ -63,7 +63,7 @@
   .pc-eye .tag .ax-chip { background: var(--ax-solid); border: 1px solid var(--ax-pc); color: var(--ax-ink); text-transform: none; letter-spacing: 0; font: var(--ax-label-s); }
   .pc-eye .ipad-frame { border-width: 8px; border-color: var(--ax-ink-3); }
   /* live numbers, beat 7 */
-  .pc-live { position: fixed; right: var(--ax-s5); bottom: 112px; z-index: 3; display: none; }
+  .pc-live { position: fixed; right: var(--ax-s5); bottom: 140px; z-index: 3; display: none; }
   .pc-live.on { display: block; }
   .pc-live .ax-tile { min-width: 130px; padding: 10px 14px; }
   .pc-live .ax-tile .ax-value { font-size: 26px; line-height: 30px; }
@@ -92,6 +92,8 @@
   .pc-rail .pc-beat.on { color: var(--ax-ink); }
   .pc-rail .pc-beat .ax-mark { font-size: 10px; margin-right: 6px; }
   .pc-rail .pc-hint { flex: none; font: var(--ax-label-s); color: var(--ax-ink-3); white-space: nowrap; }
+  /* The rail owns the bottom band, so the Compass crumb and buttons and the Ask button sit above it on this page. */
+  .sibc-crumb { bottom: 98px !important; } .sibc-btn { bottom: 98px !important; } .sib-ask-btn { bottom: 150px !important; }
   /* storyboard fallback */
   .pc-board { display: none; position: fixed; inset: 0; z-index: 6; overflow: auto; padding: 80px var(--ax-s5) var(--ax-s6); }
   .pc-board.on { display: block; }
@@ -102,7 +104,7 @@
   .pc-board .ax-card p { margin: 0; color: var(--ax-ink-2); font: var(--ax-label-r); }
   body.board #stage, body.board .pc-cap, body.board .pc-rail, body.board .pc-pin, body.board .pc-eye, body.board .pc-live { display: none !important; }
   @media (max-width: 760px) {
-    .pc-cap { left: var(--ax-s4); right: var(--ax-s4); bottom: 140px; max-width: none; }
+    .pc-cap { left: var(--ax-s4); right: var(--ax-s4); bottom: 150px; max-width: none; }
     .pc-cap h2 { font: var(--ax-h2); }
     .pc-rail .pc-beat span.n { display: none; }
     .pc-insets { display: none !important; }
