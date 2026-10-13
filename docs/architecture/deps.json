@@ -53,6 +53,21 @@
   "ask/ask-core.ts": [
    "catalog/catalog-core.ts"
   ],
+  "ask/ask-docs.ts": [
+   "ask/ask-core.ts",
+   "routes/devices.ts"
+  ],
+  "ask/facts.ts": [
+   "guides/store.ts",
+   "oms/usage-log.ts",
+   "portfolio/portfolio-core.ts",
+   "routes/anchors.ts",
+   "routes/devices.ts",
+   "routes/portfolio.ts",
+   "routes/scorecard.ts",
+   "scorecard/scorecard-core.ts",
+   "sse/presence.ts"
+  ],
   "ask/llm.ts": [],
   "catalog/catalog-core.ts": [],
   "controllers/mindmap.controller.ts": [
@@ -268,6 +283,8 @@
   ],
   "routes/ask.ts": [
    "ask/ask-core.ts",
+   "ask/ask-docs.ts",
+   "ask/facts.ts",
    "ask/llm.ts",
    "middleware/auth.ts",
    "routes/catalog.ts"

@@ -734,8 +734,13 @@ document.getElementById('w').addEventListener('submit', async function(ev){
   // GET    /loto/certifications        - cert records, newest first
   app.use('/loto', lotoRouter);
 
-  // --- 404 fallback ---
-  app.use((_req, res) => {
+  // --- 404 fallback: a page for browsers (with the Compass and Ask SIB), JSON for everything else ---
+  app.use((req, res) => {
+    if (req.method === 'GET' && /text\/html/.test(req.headers.accept ?? '') && !req.path.includes('.')) {
+      res.status(404).setHeader('Cache-Control', 'no-cache');
+      res.sendFile(path.join(__dirname, '../portal/not-found.html'));
+      return;
+    }
     res.status(404).json({
       error: 'Route not found',
       timestamp: new Date().toISOString(),

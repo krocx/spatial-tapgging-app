@@ -3,7 +3,7 @@ flowchart LR
   %% sib/src - relative imports between folders (edge label = number of imports)
   F__["(root) · 8 files"]
   F_adapters["adapters · 5 files"]
-  F_ask["ask · 2 files"]
+  F_ask["ask · 4 files"]
   F_catalog["catalog · 1 files"]
   F_controllers["controllers · 1 files"]
   F_gemba["gemba · 3 files"]
@@ -38,6 +38,12 @@ flowchart LR
   F_adapters -->|1| F_models
   F_adapters -->|2| F_routes
   F_ask -->|1| F_catalog
+  F_ask -->|1| F_guides
+  F_ask -->|1| F_oms
+  F_ask -->|1| F_portfolio
+  F_ask -->|5| F_routes
+  F_ask -->|1| F_scorecard
+  F_ask -->|1| F_sse
   F_controllers -->|1| F_adapters
   F_controllers -->|1| F_models
   F_guides -->|1| F_models
@@ -62,7 +68,7 @@ flowchart LR
   F_procedure -->|3| F_guides
   F_routes -->|13| F__
   F_routes -->|3| F_adapters
-  F_routes -->|2| F_ask
+  F_routes -->|4| F_ask
   F_routes -->|3| F_catalog
   F_routes -->|1| F_controllers
   F_routes -->|5| F_gemba

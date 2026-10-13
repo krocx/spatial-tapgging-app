@@ -60,7 +60,7 @@ const bad = (res: Response, msg: string) => res.status(400).json({ error: msg, t
 const gone = (res: Response, what: string) => res.status(404).json({ error: `${what} not found`, timestamp: now() });
 
 /** First use: the programme's use-cases, so the page never opens empty. */
-function ensureSeeded(): void {
+export function ensureSeeded(): void {
   if (useCaseStore.findAll().length) return;
   for (const u of seedUseCases(now(), 'seed')) useCaseStore.save(u);
   console.log('[SIB] POC Portfolio seeded with the programme\'s use-cases');

@@ -4,6 +4,38 @@ One section per platform version (see [docs/VERSIONING.md](docs/VERSIONING.md)),
 newest first. Written in the same PR as the change - if a teammate would notice
 it, it gets a line.
 
+## 2026.4.50 - 2026-10-13
+
+### Added
+- **Ask SIB on every page.** One drawer, injected by `brand.js` beside the
+  Compass on every SIB web surface (`/` focuses it, Esc closes, presets that
+  change with the page), replacing the separate drawers on the Catalogue and
+  the explain pages. Answers come in three layers: facts first, answered
+  exactly on the server from live data (how many POCs are active and which,
+  POCs by business unit, use-cases at risk, decisions waiting on leadership,
+  a device's readiness this quarter or its card, the live numbers, the latest
+  on the AR glasses landscape, which device categories deliver a capability),
+  each as a card with health chips and a link into the page that owns the
+  item; then the documents (catalogue features as chips, the explain pages,
+  the device profiles, the fit page and the landscape entries, with
+  excerpts, and the dictionary); then, wherever a local model is configured,
+  a sentence written over exactly that context. Access follows the reader:
+  the site key admits the live data (the same audience that can open the
+  Portfolio), the IP key admits the restricted documents; without them a
+  fact says where the answer lives and what unlocks it. `sib/src/ask/facts.ts`,
+  `sib/src/ask/ask-docs.ts`, `sib/portal/ask.js`.
+- **The gaps on the happy path.** The Compass knows every page that exists
+  now (Play the chamber, The devices, Fit for the cleanroom, AR glasses
+  landscape under Platform, with "the platform in one picture" as its hint)
+  and locates you on each. One header order on the leadership pages (Home ·
+  Platform map · Devices · POC Portfolio · Catalogue, the current page lit).
+  The home page's "Also" line reaches Play the chamber, the devices, Fit and
+  the landscape, and "Ask SIB" opens the drawer in place. A zero on the
+  platform drawing reads as "none yet" (quieter ink), not a fault. Unknown
+  URLs show a brand 404 page with the Compass and Ask SIB instead of a JSON
+  error. (Unlocking a restricted page already returns to that page: the
+  locked page is served at the URL asked for and reloads it.)
+
 ## 2026.4.46 - 2026-09-08
 
 ### Added

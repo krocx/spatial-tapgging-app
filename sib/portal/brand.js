@@ -87,4 +87,8 @@
   if (!document.querySelector('script[src="/portal/compass.js"]')) {
     const s = document.createElement('script'); s.src = '/portal/compass.js'; s.defer = true; document.head.appendChild(s);
   }
+  // Ask SIB - the same assistant on every surface, beside the Compass (ask.js).
+  if (!document.querySelector('script[src="/portal/ask.js"]')) {
+    const s = document.createElement('script'); s.src = '/portal/ask.js'; s.defer = true; document.head.appendChild(s);
+  }
 })();

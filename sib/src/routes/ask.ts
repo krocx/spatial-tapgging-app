@@ -14,15 +14,21 @@
  *     ASK_LLM_MODEL  model name the runtime expects
  *     ASK_LLM_KEY    optional bearer token
  *
- * Public (no API key): grounding is docs/catalog + glossary ONLY - no site
- * data flows through here. A small in-memory rate limit keeps it polite.
+ * Access follows the reader (2026.4.50): the catalogue + glossary are always
+ * the grounding; the facts layer (POC Portfolio, readiness, live numbers) and
+ * the wider documents join when the request carries the site key (header or
+ * sib_key cookie - the same audience that can open those pages), and the
+ * IP-restricted documents only with the IP key. A small in-memory rate limit
+ * keeps it polite.
  * If the LLM call fails, the response degrades to the retrieval tier with
  * a note - the assistant never hard-fails because a model is down.
  */
 import { Router } from 'express';
 import { retrieve, buildAskContext, buildMessages } from '../ask/ask-core.js';
 import { readCatalog } from './catalog.js';
-import { canViewRestricted } from '../middleware/auth.js';
+import { canViewRestricted, hasValidApiKey } from '../middleware/auth.js';
+import { answerFacts } from '../ask/facts.js';
+import { retrieveDocs } from '../ask/ask-docs.js';
 import { llmConfig, chatCompletion, type ChatMessage } from '../ask/llm.js';
 
 const LLM_TIMEOUT_MS = 90_000;
@@ -63,22 +69,33 @@ router.post('/', async (req, res) => {
     ? cat.data
     : { ...cat.data, features: cat.data.features.filter(f => f.sensitivity !== 'restricted') };
 
+  const access = { site: hasValidApiKey(req), ip: canViewRestricted(req) };
   const retrieval = retrieve(visible, question);
+  let facts: ReturnType<typeof answerFacts> = [];
+  try { facts = answerFacts(question, access); } catch (err) { console.warn('[ask] facts failed:', err instanceof Error ? err.message : err); }
+  const docs = retrieveDocs(question, access.ip);
   const base = {
     question,
-    sources: retrieval.sources,
+    facts,
+    sources: retrieval.sources.map(s => ({ ...s, kind: 'feature' as const, href: `/catalog#${s.id}` })),
+    docs,
     glossary: retrieval.glossary,
+    access,
   };
 
   const cfg = llmConfig();
-  if (!cfg || retrieval.sources.length === 0) {
+  if (!cfg || (retrieval.sources.length === 0 && docs.length === 0 && facts.length === 0)) {
     // Retrieval-only deployments - and questions that matched nothing get an
     // honest empty result rather than an LLM guessing with no context.
     return res.json({ ...base, tier: 'retrieval' });
   }
 
   try {
-    const context = buildAskContext(visible, retrieval);
+    const extra = [
+      ...facts.map(f => `FACT ${f.title}\n${f.lines.map(l => `- ${l.text}${l.tag ? ` [${l.tag}]` : ''}`).join('\n')}`),
+      ...docs.map(d => `DOC ${d.title} (${d.href})\n${d.excerpt}`),
+    ].join('\n\n');
+    const context = buildAskContext(visible, retrieval) + (extra ? `\n\n${extra}` : '');
     const answer = await chatCompletion(buildMessages(context, question) as ChatMessage[], { timeoutMs: LLM_TIMEOUT_MS });
     return res.json({ ...base, tier: 'generation', model: cfg.model, answer });
   } catch (err) {

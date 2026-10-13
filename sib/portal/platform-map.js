@@ -67,7 +67,7 @@
     if (!compact) s += `<text class="pm-core-s2" x="${cx}" y="${cy - h / 2 + 72}" text-anchor="middle">one origin per chamber · perception · evidence</text>`;
     if (nums.length) {
       const step = (w - 20) / nums.length, nx = cx - w / 2 + 10;
-      nums.forEach(([v, l], i) => { const x = nx + step * i + step / 2; s += `<text class="pm-num" x="${x}" y="${cy + h / 2 - 26}" text-anchor="middle">${esc(v)}</text><text class="pm-num-l" x="${x}" y="${cy + h / 2 - 12}" text-anchor="middle">${esc(l)}</text>`; });
+      nums.forEach(([v, l], i) => { const x = nx + step * i + step / 2; s += `<text class="pm-num${Number(v) === 0 ? ' pm-zero' : ''}" x="${x}" y="${cy + h / 2 - 26}" text-anchor="middle">${esc(v)}</text><text class="pm-num-l" x="${x}" y="${cy + h / 2 - 12}" text-anchor="middle">${esc(l)}</text>`; });
     }
     return s + '</g>';
   }
@@ -173,6 +173,7 @@
     .pm .pm-cls:hover text { fill:var(--ax-ink); }
     .pm .pm-num { font:600 18px var(--ax-mono); fill:var(--ax-ink); }
     .pm .pm-num-l { font-size:9.5px; fill:var(--ax-ink-3); }
+    .pm .pm-num.pm-zero { fill:var(--ax-ink-4); }  /* a zero is 'none yet', not a fault */
     .pm .pm-foot { font-size:11px; fill:var(--ax-ink-3); }
     .pm [data-go] { cursor:pointer; }
     .pm [data-go]:hover rect { fill:var(--ax-paper-3); }

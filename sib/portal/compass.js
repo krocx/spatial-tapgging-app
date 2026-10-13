@@ -46,12 +46,16 @@
           { id: 'ops',     label: 'Ops Log',         href: '/portal#admin/ops' },
           { id: 'backup',  label: 'Backups',         href: '/portal#admin/backup' },
         ] },
-      { id: 'platform', label: 'Platform', href: '/platform', color: 'var(--ax-p-platform)', key: 'm', hint: 'The Chamber - what SIB is',
+      { id: 'platform', label: 'Platform', href: '/platform', color: 'var(--ax-p-platform)', key: 'm', hint: 'The platform in one picture',
         children: [
-          { id: 'assess', label: 'Assessment',   href: '/platform#assess' },
-          { id: 'long',   label: 'Long version', href: '/platform/long' },
-          { id: 'scorecard', label: 'Scorecard', href: '/scorecard' },
-          { id: 'portfolio', label: 'POC Portfolio', href: '/portfolio' },
+          { id: 'chamber',   label: 'Play the chamber',      href: '/platform/chamber' },
+          { id: 'devices',   label: 'The devices',           href: '/devices/gallery' },
+          { id: 'fit',       label: 'Fit for the cleanroom', href: '/devices/fit' },
+          { id: 'landscape', label: 'AR glasses landscape',  href: '/devices/landscape' },
+          { id: 'scorecard', label: 'Scorecard',             href: '/scorecard' },
+          { id: 'portfolio', label: 'POC Portfolio',         href: '/portfolio' },
+          { id: 'assess',    label: 'Assessment',            href: '/platform#assess' },
+          { id: 'long',      label: 'Long version',          href: '/platform/long' },
         ] },
       { id: 'roadmap', label: 'Roadmap', href: '/roadmap', color: 'var(--ax-p-designer)', key: 'r', hint: 'Roadmaps & Procedure Designer',
         children: [
@@ -74,6 +78,10 @@
     const h = location.hash.replace(/^#/, '');
     if (p === '/') return ['sib'];
     if (p.startsWith('/platform/long')) return ['sib', 'platform', 'long'];
+    if (p.startsWith('/platform/chamber')) return ['sib', 'platform', 'chamber'];
+    if (p.startsWith('/devices/fit')) return ['sib', 'platform', 'fit'];
+    if (p.startsWith('/devices/landscape')) return ['sib', 'platform', 'landscape'];
+    if (p.startsWith('/devices')) return ['sib', 'platform', 'devices'];
     if (p.startsWith('/platform')) return h.startsWith('assess') ? ['sib', 'platform', 'assess'] : ['sib', 'platform'];
     if (p.startsWith('/roadmap')) return ['sib', 'roadmap'];
     if (p.startsWith('/learn')) return ['sib', 'catalog', 'learn'];
