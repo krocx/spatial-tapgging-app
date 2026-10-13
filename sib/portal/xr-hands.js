@@ -78,7 +78,7 @@ export class XRHands {
       JOINTS.forEach((name, i) => { const js = src.hand.get(name); const p = js && frame.getJointPose(js, refSpace); if (p) { h.pos[i].set(p.transform.position.x, p.transform.position.y, p.transform.position.z); ok++; } });
       h.tracked = ok >= 20;
     }
-    this.enabled = Object.values(this.hands).some(h => h.tracked) || !!this.sim;
+    this.enabled = Object.values(this.hands).some(h => h.tracked);
     for (const h of Object.values(this.hands)) { this._draw(h); this._recognise(h, camPos, fwd, dt); }
     if (this.grab) this._followGrab();
   }
@@ -135,9 +135,10 @@ export class XRHands {
    */
   proximity(targets, dt) {
     let on = null, nearest = null; const near = [];
-    const tips = Object.values(this.hands).filter(h => h.tracked).map(h => h.pos[TIPS.index]);
+    // the hand is "at" a part by its index tip, its thumb tip, or its palm (a closed hand on the part still counts)
+    const probes = Object.values(this.hands).filter(h => h.tracked).flatMap(h => [[h.pos[TIPS.index], 0], [h.pos[TIPS.thumb], 0], [h.pos[10], -0.04]]);
     for (const t of targets) {
-      let d = Infinity; for (const tip of tips) d = Math.min(d, tip.distanceTo(t.center));
+      let d = Infinity; for (const [p, bias] of probes) d = Math.min(d, p.distanceTo(t.center) + bias);
       if (d < NEAR_M) near.push({ name: t.name, strength: 1 - d / NEAR_M });
       if (d < ON_M && (on === null || d < nearest)) on = t.name;
       if (nearest === null || d < nearest) nearest = d;
@@ -178,24 +179,37 @@ export class XRHands {
   focus(side) { return this.hands[side].focus; }
 
   // ── Simulator (desktop review) ────────────────────────────────────────────
-  /** Drive the right hand from a world point (the pointer on the model) and a held gesture name. */
-  simulate(point, gesture, camera) { this.sim = { point: point ? point.clone() : null, gesture }; }
+  /** Drive one hand from a world point (the pointer on the model) and a held gesture; `side` picks the hand. */
+  simulate(point, gesture, camera, side = 'right') { this.sim = { point: point ? point.clone() : null, gesture, side }; }
   _readSim(camera) {
-    const h = this.hands.right; const s = this.sim; if (!s.point) { h.tracked = false; return; }
-    const { THREE } = this; const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
-    const toCam = new THREE.Vector3().subVectors(camPos, s.point).normalize(); const right = new THREE.Vector3().crossVectors(toCam, new THREE.Vector3(0, 1, 0)).normalize();
-    // a schematic hand: wrist 15 cm toward the viewer and below, tips laid out by the gesture
-    const wrist = s.point.clone().addScaledVector(toCam, 0.12).add(new THREE.Vector3(0, -0.05, 0));
-    const size = 0.085; h.pos[0].copy(wrist); h.pos[10].copy(wrist).addScaledVector(toCam, -size);
-    h.pos[5].copy(wrist).addScaledVector(toCam, -size).addScaledVector(right, 0.02); h.pos[20].copy(wrist).addScaledVector(toCam, -size).addScaledVector(right, -0.03);
-    const ext = f => h.pos[TIPS[f]].copy(wrist).addScaledVector(toCam, -size * 2.1).addScaledVector(right, { thumb: 0.04, index: 0.02, middle: 0, ring: -0.02, pinky: -0.04 }[f]);
-    const curl = f => h.pos[TIPS[f]].copy(wrist).addScaledVector(toCam, -size * 1.2).addScaledVector(right, { thumb: 0.03, index: 0.02, middle: 0, ring: -0.02, pinky: -0.04 }[f]);
-    for (const f of ['thumb', 'index', 'middle', 'ring', 'pinky']) ext(f);
-    if (s.gesture === 'pinch') { h.pos[TIPS.index].copy(s.point); h.pos[TIPS.thumb].copy(s.point).addScaledVector(right, 0.01); }
-    else if (s.gesture === 'point') { for (const f of ['middle', 'ring', 'pinky']) curl(f); h.pos[TIPS.index].copy(s.point); curl('thumb'); }
-    else if (s.gesture === 'thumbs-up') { for (const f of ['index', 'middle', 'ring', 'pinky']) curl(f); h.pos[TIPS.thumb].copy(wrist).add(new THREE.Vector3(0, size * 1.5, 0)); }
-    else if (s.gesture === 'open-palm') { /* all extended, palm toward the model */ }
-    else { h.pos[TIPS.index].copy(s.point); }
+    const s = this.sim; const { THREE } = this;
+    for (const k of ['left', 'right']) if (k !== s.side) this.hands[k].tracked = false;
+    const h = this.hands[s.side]; if (!s.point) { h.tracked = false; return; }
+    // a hand laid out in camera space: the pointer is the index fingertip, the hand rises from below it
+    const q = camera.getWorldQuaternion(new THREE.Quaternion());
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q), up = new THREE.Vector3(0, 1, 0).applyQuaternion(q), toCam = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    const m = s.side === 'right' ? -1 : 1;                       // the other fingers sit to this side of the index
+    const g = s.gesture;
+    const oy = g === 'thumbs-up' ? 0.11 : 0;                     // a thumbs-up is a fist on the part: the palm sits at the pointer
+    const P = (dx, dy, dz) => s.point.clone().addScaledVector(right, dx).addScaledVector(up, dy + oy).addScaledVector(toCam, dz);
+    const curled = f => (g === 'pinch' && (f === 'middle' || f === 'ring' || f === 'pinky')) || (g === 'point' && f !== 'index') || (g === 'thumbs-up' && f !== 'thumb');
+    const L = { thumb: 0, index: 0, middle: m * 0.022, ring: m * 0.044, pinky: m * 0.064 };   // lateral offset per finger
+    const wristX = m * 0.03;
+    h.pos[0].copy(P(wristX, -0.17, 0.03));                                          // wrist
+    for (const [f, base] of [['index', 5], ['middle', 10], ['ring', 15], ['pinky', 20]]) {
+      const x = L[f], len = f === 'middle' ? 1.03 : f === 'index' ? 1 : f === 'ring' ? 0.96 : 0.86;
+      h.pos[base].copy(P(x * 0.7 + wristX * 0.5, -0.13, 0.025));                     // metacarpal
+      h.pos[base + 1].copy(P(x, -0.085 * len, 0.02));                                // knuckle
+      if (curled(f)) { h.pos[base + 2].copy(P(x, -0.05 * len, -0.01)); h.pos[base + 3].copy(P(x, -0.045 * len, -0.04)); h.pos[base + 4].copy(P(x, -0.07 * len, -0.05)); }
+      else { h.pos[base + 2].copy(P(x, -0.05 * len, 0.012)); h.pos[base + 3].copy(P(x, -0.022 * len, 0.006)); h.pos[base + 4].copy(P(x, 0.0, 0)); }
+    }
+    // thumb: to the index side; up for thumbs-up; meeting the index tip for a pinch
+    const tx = -m;
+    h.pos[1].copy(P(tx * 0.02 + wristX, -0.15, 0.03)); h.pos[2].copy(P(tx * 0.045, -0.115, 0.03));
+    if (g === 'thumbs-up') { h.pos[3].copy(P(tx * 0.03, -0.06, 0.03)); h.pos[4].copy(P(tx * 0.02, -0.01, 0.03)); }
+    else if (g === 'pinch') { h.pos[3].copy(P(tx * 0.03, -0.045, 0.02)); h.pos[4].copy(P(tx * 0.008, -0.004, 0.004)); }
+    else if (g === 'point' || curled('thumb')) { h.pos[3].copy(P(tx * 0.02, -0.09, 0.0)); h.pos[4].copy(P(0, -0.085, -0.02)); }
+    else { h.pos[3].copy(P(tx * 0.065, -0.085, 0.025)); h.pos[4].copy(P(tx * 0.08, -0.06, 0.02)); }
     h.tracked = true;
   }
 }

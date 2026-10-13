@@ -8,7 +8,7 @@ depends: [guide-bundle, live-telemetry, contextual-intelligence, evidence-signof
 terms: [Assembly Model, Anchor, Operator Mode]
 spec: ar-ojt/UNITY-RUNTIME.md
 api: |
-  GET /xr - the kit page; open as /xr?guide=<guideId>; ?hands=sim drives the hand pipeline from the mouse on the desktop preview (browser · same gate as the portal)
+  GET /xr - the kit page; open as /xr?guide=<guideId>; ?hands=sim adds virtual hands to the desktop preview: the pointer is the fingertip, Left / Right Shift picks the hand, Space grabs, Enter is thumbs up, M marks, H calls for help, V toggles the hands (browser · same gate as the portal)
   POST /guide-sessions/live/:id/events - hands:gesture { gesture, part, did } for a held pinch / point / thumbs-up / open palm; perception:result carries the hands-at-the-part fact; step completions carry hands { tracked, inZoneSeconds, share, onPartAtCheck } (any client · API key / token)
   GET /guides/:id/bundle - everything the page loads (any client · API key / token)
   POST /guide-sessions/live - the kit opens a live session like the iPad (any client · API key / token)
@@ -67,5 +67,8 @@ cm of the step's parts, the share of the step spent there, and whether a hand
 was on the part at the check - a fact about the run, never a recording. A
 device with `hands: pinch` (Vision Pro) keeps pinch-as-select; devices
 without hand tracking keep the kit as it was. Own code on the WebXR Hand
-Input API; a desktop simulator (`?hands=sim`) runs the same pipeline from
-the mouse for reviewing the look.
+Input API; virtual hands on the desktop preview (`?hands=sim`, keyboard and
+trackpad the way MRTK and the Meta XR Simulator do it: the pointer is the
+fingertip, Left / Right Shift picks the hand, Space grabs, Enter is thumbs
+up, M marks, H calls for help, V toggles the hands; a palette does the same
+by click) run the same pipeline for reviewing the look.

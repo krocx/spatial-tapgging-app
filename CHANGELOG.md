@@ -25,10 +25,15 @@ it, it gets a line.
   run, never a recording. Vision Pro keeps pinch-as-select (`hands: pinch`);
   devices without hand tracking keep the kit as it was; the readiness matrix
   scores hands-busy steps as adapted on tracked-hands devices ("a held
-  gesture between actions - nothing touched"). `?hands=sim` on the desktop
-  preview drives the same pipeline from the mouse (P pinch · I point · T
-  thumbs up · O open palm) for reviewing the look; the real test is the
-  Quest 3 with cleanroom gloves on, recorded on the scorecard.
+  gesture between actions - nothing touched"). Virtual hands on the desktop
+  preview (`?hands=sim`) run the same pipeline for reviewing the look, with
+  keyboard and trackpad the way MRTK and the Meta XR Simulator do it: the
+  pointer is the fingertip, Left / Right Shift picks the hand, Space grabs,
+  Enter is thumbs up, M marks, H calls for help, V toggles the hands on and
+  off (a palette does the same by click, and shows the hold filling); the
+  hand is drawn as a hand, rising from below the fingertip, fingers curling
+  with the gesture. The real test is the Quest 3 with cleanroom gloves on,
+  recorded on the scorecard.
 - **Ask SIB on every page.** One drawer, injected by `brand.js` beside the
   Compass on every SIB web surface (`/` focuses it, Esc closes, presets that
   change with the page), replacing the separate drawers on the Catalogue and
