@@ -891,6 +891,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .kind-badge.procedure { background: var(--ax-teal-fill);  color: var(--ax-teal); }
 .home-v2 .map-title { font-size: 15px; font-weight: 700; color: var(--ax-ink); }
 .home-v2 .map-meta  { font-size: 11.5px; color: var(--ax-ink-3); }
+.opening-map { min-height: 60vh; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--ax-ink-2); font-size: 15px; }
 .home-v2 .map-guide { display: block; margin-top: 4px; }
 .home-v2 .map-guide.missing { color: var(--ax-orange); }
 .gallery-delete { position: absolute; top: 8px; right: 8px; }

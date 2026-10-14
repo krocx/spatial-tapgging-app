@@ -48,7 +48,10 @@ const API_KEY_STORAGE = 'sib-api-key';
 const DRAFT_KEYS_STORAGE = 'roadmap-draft-keys';   // { [mapId]: draftKey }
 
 export function getApiKey(): string {
-  return localStorage.getItem(API_KEY_STORAGE) ?? '';
+  // Same origin as the portal: when the Roadmap has no key of its own, use
+  // the one the portal signed in with, so "Open in Designer" lands in the
+  // map instead of on the home with an auth error.
+  return localStorage.getItem(API_KEY_STORAGE) || localStorage.getItem('sib_api_key') || '';
 }
 
 export function setApiKey(key: string): void {

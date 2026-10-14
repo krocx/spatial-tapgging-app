@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **Content Library → Designer lands in the map.** "Designer" on a guide
+  used to stop on the Roadmap home on Render: the Roadmap kept its own
+  API key under a different name, so the deep link failed with an auth
+  error on the gallery, and the tab opened after the server call was often
+  blocked as a popup. The Roadmap now falls back to the portal's key on the
+  same origin, shows "Opening the Designer…" instead of the gallery while a
+  `?map=` link loads, and the portal opens the tab at click time and points
+  it at the map once the server answers (a cancelled sync choice closes it).
 - **Import de-duplication: one guide per publication.** Every re-import of
   the same Cortona publication or JSON used to create another guide with the
   same name, and each then got its own designer map - the nine "Bee

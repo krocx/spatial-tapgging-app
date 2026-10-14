@@ -6397,14 +6397,19 @@ function askSyncChoice() {
   document.getElementById('sync-modal').classList.add('open');
   return new Promise(res => { _syncResolve = res; });
 }
-async function editGuideInDesigner(guideId, mode) {
+// The Designer tab is opened at click time (before any await) so the browser
+// treats it as user-initiated and does not block it; it lands straight in the
+// map (/roadmap?map=…), never on the Roadmap home. Cancelling closes it again.
+async function editGuideInDesigner(guideId, mode, tab) {
+  if (!tab) { tab = window.open('', '_blank'); if (tab) tab.document.title = 'Opening the Designer…'; }
+  const closeTab = () => { try { tab?.close(); } catch { /* already gone */ } };
   try {
     const q = mode ? `?mode=${mode}` : '';
     const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/edit-map${q}`, { method: 'POST' });
     const d = r.data;
     if (d.conflict) {
       const choice = await askSyncChoice();
-      if (!choice) return;
+      if (!choice) { closeTab(); return; }
       if (choice === 'send-first') {
         try {
           await apiFetch(`/mindmap/${encodeURIComponent(d.mapId)}/procedure/export`, {
@@ -6412,10 +6417,10 @@ async function editGuideInDesigner(guideId, mode) {
             body: JSON.stringify({ guideId, createdBy: (typeof UAM_USER !== 'undefined' && UAM_USER?.name) || 'portal', confirmUnpublish: true }),
           });
           toast('Designer edits sent to the Guide Library.');
-        } catch (e) { toast('Send failed: ' + e.message, 4000); return; }
-        return editGuideInDesigner(guideId, 'refresh');
+        } catch (e) { toast('Send failed: ' + e.message, 4000); closeTab(); return; }
+        return editGuideInDesigner(guideId, 'refresh', tab);
       }
-      return editGuideInDesigner(guideId, choice);   // 'refresh' | 'asis'
+      return editGuideInDesigner(guideId, choice, tab);   // 'refresh' | 'asis'
     }
     if (d.merged) {
       const sm = d.summary || {};
@@ -6426,8 +6431,10 @@ async function editGuideInDesigner(guideId, mode) {
     } else {
       toast(d.created ? `Created "${d.mapName}" - opening the Designer…` : (d.stale ? 'Opening as-is - the guide has newer edits.' : 'Opening the linked procedure map…'));
     }
-    window.open(`/roadmap?map=${encodeURIComponent(d.mapId)}`, '_blank');
+    const url = `/roadmap?map=${encodeURIComponent(d.mapId)}`;
+    if (tab && !tab.closed) tab.location.href = url; else window.open(url, '_blank');
   } catch (e) {
+    closeTab();
     toast('Edit in Designer failed: ' + e.message);
   }
 }

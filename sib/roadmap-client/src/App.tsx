@@ -27,13 +27,18 @@ export default function App(): JSX.Element {
   // Deep link: /roadmap?map=<id> opens straight into that map - the portal's
   // "Edit in Designer" button lands here. Runs once; a bad id surfaces through
   // the store's normal error banner on the list view.
+  // While it loads the home is not shown at all (the Content Library's
+  // "Open in Designer" should land in the map, not on the gallery); only a
+  // failure falls back to the home with the error banner.
+  const [opening, setOpening] = useState(() => !!new URLSearchParams(window.location.search).get('map'));
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('map');
     if (id) {
-      void useStore.getState().openMap(id, localStorage.getItem('roadmap-name') ?? 'Anonymous');
+      void useStore.getState().openMap(id, localStorage.getItem('roadmap-name') ?? 'Anonymous').finally(() => setOpening(false));
     }
   }, []);
 
+  if (view === 'list' && opening) return <div className="opening-map"><span className="ax-mark" aria-hidden="true"><i></i><em></em></span> Opening the Designer…</div>;
   if (view === 'list') return <ErrorBoundary><MapList /></ErrorBoundary>;
 
   return (
