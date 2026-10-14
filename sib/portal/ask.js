@@ -66,6 +66,8 @@
 
   const btn = document.createElement('button'); btn.className = 'sib-ask-btn'; btn.type = 'button'; btn.title = 'Ask SIB (/)';
   btn.innerHTML = `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg><span>Ask SIB</span>`;
+  // The roadmap canvas keeps a hint bar along the bottom and the Compass sits 40px higher there (compass.js) - keep the same gap above it.
+  if (here.startsWith('/roadmap')) btn.style.bottom = '116px';
   const drawer = document.createElement('aside'); drawer.className = 'sib-ask'; drawer.setAttribute('aria-label', 'Ask SIB');
   drawer.innerHTML = `
     <div class="sib-ask-top"><svg class="ax-icon" style="width:16px;height:16px;color:var(--ax-blue)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg><b>Ask SIB</b><span class="tier" id="sibAskTier">live data + docs</span><button type="button" class="sib-ask-x" aria-label="Close"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button></div>
