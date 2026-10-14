@@ -88,6 +88,14 @@ function carrySpatial(target: GuideStep, existing: GuideStep, importSetsModel: b
   target.isPlaced       = existing.isPlaced;
   target.positionSource = existing.positionSource;
 
+  // Validation training (K4/V1) is server-stamped from the author's photos
+  // or cone sweep; like placement, no import or re-sync can supply it, so an
+  // update keeps it on the step it re-uses.
+  if (existing.validationTrainedAt) target.validationTrainedAt = existing.validationTrainedAt;
+  if (existing.validationMode)      target.validationMode      = existing.validationMode;
+  if (existing.validationTagId)     target.validationTagId     = existing.validationTagId;
+  if (target.validationRequired === undefined && existing.validationRequired !== undefined) target.validationRequired = existing.validationRequired;
+
   if (!importSetsModel) {
     // Import silent on models → the device's assignment stands untouched.
     target.modelId      = existing.modelId;

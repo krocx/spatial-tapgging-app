@@ -204,6 +204,18 @@ export function MapList(): JSX.Element {
                 <span className="map-meta">
                   {m.nodeCount} nodes · {m.edgeCount} edges · {fmtWhen(m.updatedAt)}
                 </span>
+                {/* Procedure cards name the guide they draw (anchor, configuration,
+                    import date) so two cards with the same title can be told apart,
+                    and say when the guide is gone. */}
+                {m.guide && (
+                  <span className={`map-meta map-guide ${m.guide.exists ? '' : 'missing'}`}>
+                    {m.guide.exists
+                      ? [m.guide.anchorName ?? 'no anchor', m.guide.configName ?? 'no configuration',
+                         m.guide.createdAt ? `guide from ${new Date(m.guide.createdAt).toLocaleDateString()}` : null,
+                         m.guide.archived ? 'archived' : m.guide.published ? 'published' : 'draft'].filter(Boolean).join(' · ')
+                      : 'Guide missing - deleted from the Content Library (restore it from the trash, or remove this card)'}
+                  </span>
+                )}
               </button>
               <button
                 className="btn ghost danger gallery-delete"

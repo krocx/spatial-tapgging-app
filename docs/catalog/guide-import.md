@@ -8,7 +8,7 @@ depends: [guide-ingestion, adapter-architecture]
 terms: [Instruction Import, Adapter]
 spec: SERVER-REFERENCE.md
 api: |
-  POST /guides/import - adapter-based instruction import, manual JSON today (portal · API key)
+  POST /guides/import - adapter-based instruction import, manual JSON today; body.mode ask|update|new - ask answers 409 code exists when a guide with the same name is in the library, update refreshes that guide and keeps what the floor owns (portal · API key)
   GET /guides/step-image/:filename - imported step image (app, portal · API key)
 wireframe: portal
 arch: |

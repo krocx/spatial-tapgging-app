@@ -73,7 +73,11 @@
   "catalog/catalog-core.ts": [],
   "controllers/mindmap.controller.ts": [
    "adapters/mindmap-sib-adapter.ts",
-   "models/mindmap.model.ts"
+   "guides/store.ts",
+   "models/mindmap.model.ts",
+   "procedure/export.ts",
+   "routes/anchors.ts",
+   "routes/chamber-configs.ts"
   ],
   "data-dir.ts": [],
   "gemba/finding-core.ts": [
@@ -94,6 +98,10 @@
    "guides/store.ts",
    "routes/anchors.ts",
    "routes/chamber-configs.ts"
+  ],
+  "guides/dedup.ts": [
+   "guides/lifecycle.ts",
+   "guides/store.ts"
   ],
   "guides/ingest.ts": [
    "guides/assembly.ts",
@@ -350,6 +358,7 @@
    "guides/assembly.ts",
    "guides/bundle.ts",
    "guides/copy.ts",
+   "guides/dedup.ts",
    "guides/ingest.ts",
    "guides/lifecycle.ts",
    "guides/readiness.ts",
@@ -361,6 +370,7 @@
    "middleware/device-link.ts",
    "models/assembled-pose.ts",
    "models/mindmap.model.ts",
+   "models/variants.ts",
    "oms/step-validation.ts",
    "perception/image-comparator.ts",
    "procedure/designer-images.ts",

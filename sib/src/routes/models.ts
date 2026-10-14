@@ -671,11 +671,11 @@ router.post('/:id/kit', (req: Request, res: Response): void => {
 });
 
 // ── DELETE /models/:id ────────────────────────────────────────────────────────
-router.delete('/:id', (req: Request, res: Response): void => {
-  const model = model3DStore.findById(req.params.id);
-  if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
-
-  // Remove stored files
+/** Remove a model's record and every file written for it. Also used by the
+ *  guide importer to drop an assembly that was parsed but never applied. */
+export function deleteModel3D(id: string): boolean {
+  const model = model3DStore.findById(id);
+  if (!model) return false;
   const tryUnlink = (p: string) => { try { fs.unlinkSync(p); } catch { /* already gone */ } };
   tryUnlink(path.join(MODELS_DIR, `${model.id}.glb`));
   tryUnlink(path.join(MODELS_DIR, `${model.id}.usdz`));
@@ -683,9 +683,13 @@ router.delete('/:id', (req: Request, res: Response): void => {
   deleteVariants(MODELS_DIR, model.id);
   for (const v of model.variants ?? []) tryUnlink(variantPath(MODELS_DIR, model.id, v.budget));
   tryUnlink(origPath(model.id));
-
   model3DStore.delete(model.id);
   console.log(`[SIB/models] Deleted model ${model.id} ("${model.name}")`);
+  return true;
+}
+
+router.delete('/:id', (req: Request, res: Response): void => {
+  if (!deleteModel3D(req.params.id)) { res.status(404).json({ error: 'Model not found' }); return; }
   res.status(204).send();
 });
 

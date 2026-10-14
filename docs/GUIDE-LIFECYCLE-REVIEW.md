@@ -136,8 +136,11 @@ roadmaps that are not guides.
    the integrity line; Roadmap home X reads "Remove from the Roadmap".
 3. iOS: swipe-delete hidden below Owner, Archive for Managers, Operator
    filters archived (the server already hides them from technicians).
-4. Import de-duplication ("update existing guide") - backlog #2.
-5. Roadmap home cards: anchor, configuration, date, guide link state.
+4. ✅ Import de-duplication ("update existing guide") - backlog #2:
+   `sib/src/guides/dedup.ts`, `?mode=` / `body.mode`, the held Cortona job
+   with `/apply` and `/discard`, the choice panel in the import modal.
+5. ✅ Roadmap home cards: anchor, configuration, date, guide link state
+   (`MindmapSummary.guide`; needs the Roadmap bundle rebuilt).
 
 ## 3. The Admin role (backlog)
 Industry practice separates **data stewardship** (retention, deletion of

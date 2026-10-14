@@ -27,7 +27,9 @@ import { recordVariants } from './models.js';
 import { requireRole } from '../middleware/auth.js';
 import { memoryLimitBytes, importNeedBytes, checkWorkerMemory } from '../memory.js';
 
-import { registerGeneratedGlb, MODELS_DIR } from './models.js';
+import { registerGeneratedGlb, deleteModel3D, MODELS_DIR } from './models.js';
+import type { LadderResult } from '../models/variants.js';
+import { findExistingGuide, existingStepIdsBySeq } from '../guides/dedup.js';
 import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
 import fs   from 'fs';
@@ -126,6 +128,52 @@ function withEffectiveModels(step: GuideStep): GuideStep {
 
 export { guideStore, guideStepStore };
 
+// ── Import de-duplication (backlog #2) ──────────────────────────────────────
+// A Cortona import that finds a guide with the same name stops after the
+// parse (the heavy part) and keeps what it parsed here until the caller
+// says update / new / discard. Held for an hour, like the job itself.
+type ImportMode = 'ask' | 'update' | 'new';
+type CortonaLog = { procedure: { commands?: Record<string, number> }; warnings: string[]; units?: { factor: number; chosen: string; publishedExtentM: number } };
+interface PendingCortona {
+  imported: ImportedGuide; model: Model3D; log: CortonaLog; glbBytes: number; ladder: LadderResult;
+  anchorId: string; createdBy: string; opts: Record<string, unknown>; sourceFilename?: string; heldAt: number;
+}
+const pendingCortona = new Map<string, PendingCortona>();
+setInterval(() => {
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  for (const [id, h] of pendingCortona) if (h.heldAt < cutoff) { pendingCortona.delete(id); deleteModel3D(h.model.id); }
+}, 10 * 60 * 1000).unref();
+
+/** Persist a parsed Cortona import as a new guide, or into `guideId` (update). */
+async function applyCortona(h: PendingCortona, guideId?: string) {
+  const { imported, model, log } = h;
+  const prevModelId = guideId ? guideStore.findById(guideId)?.assembly?.modelId : undefined;
+  const applied = await applyImportedGuide(imported, {
+    anchorId: h.anchorId, createdBy: h.createdBy,
+    ...(guideId ? { guideId, existingStepIdBySeq: existingStepIdsBySeq(guideId, imported.steps.map(s => s.sequenceNumber)) } : {}),
+  });
+  // An update replaces the assembly; the previous one goes unless something else still uses it.
+  if (prevModelId && prevModelId !== model.id && !modelInUse(prevModelId)) deleteModel3D(prevModelId);
+  const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: h.glbBytes,
+                    variants: h.ladder.variants.map(v => ({ budget: v.budget, triangles: v.triangles, bytes: v.bytes })), triangles: h.ladder.triangles,
+                    ...(guideId ? { updated: true, stepsUpdated: applied.updated, stepsCreated: applied.created, stepsRemoved: applied.removed } : {}) };
+  console.log(`[SIB] Guide ${guideId ? 'updated' : 'imported'} (cortona): ${applied.guide.id} - ${applied.steps.length} steps, model ${model.id}, ` +
+    `${log.procedure.commands ? Object.values(log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
+    (log.warnings.length ? `, ${log.warnings.length} warning(s)` : ''));
+  saveImportLog({
+    guideId: applied.guide.id, guideName: applied.guide.name, importedAt: new Date().toISOString(), importedBy: h.createdBy, anchorId: h.anchorId,
+    source: 'cortona', sourceFilename: h.sourceFilename, options: { ...h.opts, ...(guideId ? { updatedExisting: true } : {}) },
+    modelId: model.id, steps: applied.steps.length, glbBytes: h.glbBytes, triangles: h.ladder.triangles, variants: summary.variants, log,
+  });
+  const data: { guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; summary: typeof summary } =
+    { guide: applied.guide, steps: applied.steps, model, log, summary };
+  return data;
+}
+function modelInUse(modelId: string): boolean {
+  return guideStore.findAll().some(g => g.assembly?.modelId === modelId)
+    || guideStepStore.findAll().some(s => s.modelId === modelId || (s.models ?? []).some(m => m.modelId === modelId));
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 const router = Router();
@@ -187,6 +235,17 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  // De-duplication (backlog #2): body.mode is ask (default) | update | new.
+  // On "ask" a same-name guide answers 409 { code: 'exists', existing } and
+  // the caller sends the same body again with its choice.
+  const mode: ImportMode = body.mode === 'update' || body.mode === 'new' ? body.mode : 'ask';
+  const existing = mode === 'new' ? null : findExistingGuide(imported.name, body.anchorId);
+  if (existing && mode === 'ask') {
+    res.status(409).json({ error: `A guide named "${existing.name}" already exists`, code: 'exists', existing, timestamp: new Date().toISOString() });
+    return;
+  }
+  const target = existing && mode === 'update' ? existing.guideId : undefined;
+
   // Persistence, image download and seq→UUID resolution all live in the shared
   // ingestion service, which the Procedure Designer export also calls. Keeping
   // one implementation matters most for the rule that a write must never
@@ -194,14 +253,16 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
   const applied = await applyImportedGuide(imported, {
     anchorId:  body.anchorId,
     createdBy: body.createdBy,
+    ...(target ? { guideId: target, existingStepIdBySeq: existingStepIdsBySeq(target, imported.steps.map(s => s.sequenceNumber)) } : {}),
   });
 
-  console.log(`[SIB] Guide imported (${adapter.name}): ${applied.guide.id} ("${applied.guide.name}") - ${applied.steps.length} steps`);
+  console.log(`[SIB] Guide ${target ? 'updated' : 'imported'} (${adapter.name}): ${applied.guide.id} ("${applied.guide.name}") - ${applied.steps.length} steps`);
 
   const result: ImportGuideResult = {
     guide:       applied.guide,
     steps:       applied.steps,
     imageErrors: applied.imageErrors,
+    ...(target ? { updated: true } : {}),
   };
   const resp: ApiResponse<ImportGuideResult> = { data: result, timestamp: new Date().toISOString() };
   res.status(201).json(resp);
@@ -245,12 +306,16 @@ router.post(
     const restPose: 'auto' | 'published' | 'final' = q.restPose === 'published' || q.restPose === 'final' ? q.restPose : 'auto';
     const units: 'auto' | 'm' | 'mm' | 'cm' | 'in' = q.units === 'm' || q.units === 'mm' || q.units === 'cm' || q.units === 'in' ? q.units : 'auto';
     const opts = { strict: q.strict === '1' || q.strict === 'true', name: q.name?.trim() || undefined, restPose, units };
-    const originalFilename = (req.headers['x-filename'] as string | undefined)?.replace(/\.[^.]+$/, '') + '.glb';
+    // mode: ask (default) - stop and report when a guide with this name exists;
+    // update - refresh that guide; new - create another one on purpose.
+    const mode: ImportMode = q.mode === 'update' || q.mode === 'new' ? q.mode : 'ask';
+    const sourceFilename = (req.headers['x-filename'] as string | undefined) || undefined;
+    const originalFilename = sourceFilename?.replace(/\.[^.]+$/, '') + '.glb';
     const ab = new Uint8Array(body).slice().buffer as ArrayBuffer;   // own, transferable copy; the request body is released
     const modelId = uuidv4();   // decided now so the worker can write the variants beside the GLB
     const job = enqueueCortonaImport(ab, opts, modelId, MODELS_DIR, async (r) => {
       const imported = r.imported as ImportedGuide;
-      const log = r.log as { procedure: { commands?: Record<string, number> }; warnings: string[]; units?: { factor: number; chosen: string; publishedExtentM: number } };
+      const log = r.log as CortonaLog;
       const model = registerGeneratedGlb({
         id: modelId, ladder: r.ladder,
         ...(log.units ? { importUnits: { factor: log.units.factor, chosen: log.units.chosen, publishedExtentM: log.units.publishedExtentM } } : {}),
@@ -263,20 +328,16 @@ router.post(
         ...(r.bounds ? { bounds: r.bounds as { min: [number, number, number]; max: [number, number, number] } } : {}),
         ...(r.assembledPose ? { assembledPose: r.assembledPose } : {}),
       };
-      const applied = await applyImportedGuide(imported, { anchorId, createdBy });
-      const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: r.glb.length,
-                        variants: r.ladder.variants.map(v => ({ budget: v.budget, triangles: v.triangles, bytes: v.bytes })), triangles: r.ladder.triangles };
-      console.log(`[SIB] Guide imported (cortona): ${applied.guide.id} - ${applied.steps.length} steps, model ${model.id}, ` +
-        `${log.procedure.commands ? Object.values(log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
-        (log.warnings.length ? `, ${log.warnings.length} warning(s)` : ''));
-      saveImportLog({
-        guideId: applied.guide.id, guideName: applied.guide.name, importedAt: new Date().toISOString(), importedBy: createdBy, anchorId,
-        source: 'cortona', sourceFilename: (req.headers['x-filename'] as string | undefined) || undefined, options: opts,
-        modelId: model.id, steps: applied.steps.length, glbBytes: r.glb.length, triangles: r.ladder.triangles, variants: summary.variants, log,
-      });
-      const data: { guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; summary: typeof summary } =
-        { guide: applied.guide, steps: applied.steps, model, log, summary };
-      return data;
+      const held: PendingCortona = { imported, model, log, glbBytes: r.glb.length, ladder: r.ladder, anchorId, createdBy, opts, sourceFilename, heldAt: Date.now() };
+      const existing = mode === 'new' ? null : findExistingGuide(imported.name, anchorId);
+      if (existing && mode === 'ask') {
+        // Parsed and the model written; the guide waits for the caller's
+        // choice (POST /guides/import/jobs/:id/apply or /discard).
+        pendingCortona.set(job.id, held);
+        console.log(`[SIB] Cortona import ${job.id} waiting: "${imported.name}" already exists as guide ${existing.guideId} (${existing.matches} match(es))`);
+        return { exists: existing, summary: { pendingApply: true, modelId: model.id, steps: imported.steps.length } };
+      }
+      return applyCortona(held, existing && mode === 'update' ? existing.guideId : undefined);
     }, memoryLimitBytes());
     console.log(`[SIB] Cortona import queued: job ${job.id}, ${(body.length / 1048576).toFixed(1)} MB, queue depth ${importQueueDepth()}`);
     res.status(202).json({ data: { jobId: job.id, status: job.status, position: job.position ?? 0 }, timestamp: new Date().toISOString() });
@@ -285,11 +346,36 @@ router.post(
 
 // GET /guides/import/jobs/:id - poll an import. `status` is queued |
 // processing | done | failed; `result` (done) has guide, steps, model, log,
-// summary; `error` (failed) is a plain sentence. Jobs are kept for an hour.
+// summary - or `exists` when a guide with the same name is already in the
+// library and the import waits for /apply; `error` (failed) is a plain
+// sentence. Jobs are kept for an hour.
 router.get('/import/jobs/:id', (req: Request, res: Response): void => {
   const job = getImportJob(req.params.id);
   if (!job) { res.status(404).json({ error: 'Import job not found (jobs are kept for an hour)', timestamp: new Date().toISOString() }); return; }
   res.json({ data: job, timestamp: new Date().toISOString() });
+});
+
+// POST /guides/import/jobs/:id/apply { mode: 'update' | 'new' } - finish a
+// Cortona import that stopped on an existing guide: update that guide
+// (steps refreshed by position; id, anchor, configuration, sharing, sessions,
+// map, placement and validation training kept) or create a new one.
+router.post('/import/jobs/:id/apply', async (req: Request, res: Response): Promise<void> => {
+  const held = pendingCortona.get(req.params.id);
+  if (!held) { res.status(404).json({ error: 'Nothing is waiting for this import (choices are kept for an hour)', timestamp: new Date().toISOString() }); return; }
+  const mode = (req.body as { mode?: string } | undefined)?.mode;
+  if (mode !== 'update' && mode !== 'new') { res.status(400).json({ error: 'mode must be "update" or "new"', timestamp: new Date().toISOString() }); return; }
+  const existing = mode === 'update' ? findExistingGuide(held.imported.name, held.anchorId) : null;
+  if (mode === 'update' && !existing) { res.status(409).json({ error: 'The guide to update is no longer in the library - choose "new"', code: 'gone', timestamp: new Date().toISOString() }); return; }
+  pendingCortona.delete(req.params.id);
+  const data = await applyCortona(held, existing?.guideId);
+  res.status(201).json({ data, timestamp: new Date().toISOString() });
+});
+// POST /guides/import/jobs/:id/discard - the caller cancelled; drop the
+// parsed guide and the assembly model it registered.
+router.post('/import/jobs/:id/discard', (req: Request, res: Response): void => {
+  const held = pendingCortona.get(req.params.id);
+  if (held) { pendingCortona.delete(req.params.id); deleteModel3D(held.model.id); }
+  res.status(204).send();
 });
 
 // GET /guides/step-image/:filename - serve a step media image

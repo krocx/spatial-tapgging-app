@@ -27,6 +27,10 @@ import {
   sanitizeGraphArrays,
 } from '../models/mindmap.model.js';
 import { importSibGraph, buildSibDraft } from '../adapters/mindmap-sib-adapter.js';
+import { guideStore } from '../guides/store.js';
+import { anchorStore } from '../routes/anchors.js';
+import { chamberConfigStore } from '../routes/chamber-configs.js';
+import { boundGuideId } from '../procedure/export.js';
 
 export class MindmapError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -124,10 +128,22 @@ export function loadMindmap(id: string): Mindmap {
  * key (draftKeys: mapId → key, parsed from the X-Draft-Keys header).
  */
 export function listMindmaps(draftKeys?: Map<string, string>): MindmapSummary[] {
+  const anchors = new Map(anchorStore.findAll().map(a => [a.id, a]));
   return mindmapStore.findAll()
     .filter(m => canAccess(m.id, draftKeys?.get(m.id)))
     .sort((a, b) => b.updatedAt - a.updatedAt)
-    .map(summarize);
+    .map(m => {
+      const s = summarize(m);
+      // Procedure cards say which guide they draw, on which anchor and
+      // configuration, so twins and orphans can be told apart on the home.
+      const gid = m.guideSync?.guideId ?? boundGuideId(m);
+      if (!gid) return s;
+      const g = guideStore.findById(gid);
+      if (!g) return { ...s, guide: { id: gid, exists: false } };
+      const a = anchors.get(g.anchorId);
+      const cfg = a?.configId ? chamberConfigStore.findById(a.configId) : undefined;
+      return { ...s, guide: { id: gid, exists: true, name: g.name, anchorName: a ? String(a.metadata?.name ?? a.assetId) : undefined, configName: cfg?.name, published: !!g.published, archived: !!g.archivedAt, createdAt: g.createdAt } };
+    });
 }
 
 export function deleteMindmap(id: string, draftKey?: string): void {

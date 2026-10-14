@@ -1954,6 +1954,14 @@ export interface ImportGuideRequest {
   sourceType?:  'manual' | 'mes' | 'rapidmanual';
   /** Full ImportedGuide payload - passed through to the active adapter. */
   payload:      ImportedGuide;
+  /**
+   * What to do when a guide with the same name already exists (2026.4.50):
+   * 'ask' (default) answers 409 { code: 'exists', existing }; 'update'
+   * refreshes that guide's steps and keeps its id, anchor, configuration,
+   * sharing, sessions, map, placement and validation training; 'new'
+   * creates another guide on purpose.
+   */
+  mode?:        'ask' | 'update' | 'new';
 }
 
 /**
@@ -1965,6 +1973,8 @@ export interface ImportGuideResult {
   guide:        Guide;
   steps:        GuideStep[];
   imageErrors:  string[];
+  /** True when an existing guide was updated (mode 'update') rather than created. */
+  updated?:     boolean;
 }
 
 // ============================================================

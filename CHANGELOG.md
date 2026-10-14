@@ -7,6 +7,24 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **Import de-duplication: one guide per publication.** Every re-import of
+  the same Cortona publication or JSON used to create another guide with the
+  same name, and each then got its own designer map - the nine "Bee
+  Assembly" cards on the Roadmap home. An import now looks for a guide with
+  the same name first (trash excluded, newest wins) and stops to ask:
+  **Update the existing guide** refreshes its steps by position and keeps
+  its id, anchor, configuration, sharing, sessions, Roadmap map, AR
+  placement and validation training (the previous assembly model goes when
+  nothing else uses it); **Create a new guide** adds another one on purpose;
+  Cancel discards what was parsed. The Cortona job answers `exists` and
+  waits for `POST /guides/import/jobs/:id/apply { mode }` (or `/discard`),
+  so the file is parsed once; `POST /guides/import` answers `409 code:
+  exists` and takes `mode` in the body. The import modal shows the choice
+  with the guide's step and run counts in words. Roadmap home procedure
+  cards now name the guide's anchor, configuration, date and state, and say
+  so when the guide is gone. Validation training also survives a designer
+  re-sync of a step from now on. Ask SIB sits above the Compass on the
+  Roadmap pages.
 - **Guide lifecycle: archive, a 30-day trash, and who may do what
   (docs/GUIDE-LIFECYCLE-REVIEW.md).** A guide is draft → published →
   archived → deleted → purged. Publishing is a Manager's decision and needs

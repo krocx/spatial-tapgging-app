@@ -1286,6 +1286,15 @@
       <button class="btn btn-sm" id="import-guide-submit" onclick="submitImportGuide()" disabled style="background:var(--accent);color:var(--ax-ink);font-weight:600;opacity:.5">Import</button>
     </div>
     <p id="import-guide-error" style="display:none;color:var(--red);font-size:0.78rem;margin-top:12px"></p>
+    <!-- Same-name guide found (import de-duplication): the import waits for a choice. -->
+    <div id="import-exists" style="display:none;margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:0.8rem;line-height:1.45">
+      <div id="import-exists-text" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="importExistsAnswer(null)">Cancel</button>
+        <button class="btn btn-ghost btn-sm" onclick="importExistsAnswer('new')">Create a new guide</button>
+        <button class="btn btn-sm" onclick="importExistsAnswer('update')" style="background:var(--accent);color:var(--ax-ink);font-weight:600">Update the existing guide</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5401,6 +5410,26 @@ function filterGuideLibrary(qstr) {
 
 function closeImportGuideModal() {
   document.getElementById('import-guide-modal').style.display = 'none';
+  importExistsAnswer(null);
+}
+
+// ── Import de-duplication: a guide with this name is already in the library ──
+// Resolves 'update' | 'new' | null (cancel). Says in words what each choice keeps.
+let importExistsResolve = null;
+function importExistsChoice(ex) {
+  const box = document.getElementById('import-exists'); const txt = document.getElementById('import-exists-text');
+  const when = ex.updatedAt ? new Date(ex.updatedAt).toLocaleDateString() : '';
+  const runs = ex.runs === 1 ? '1 run recorded' : `${ex.runs} runs recorded`;
+  txt.innerHTML = `<b>"${esc(ex.name)}" is already in the library</b> - ${ex.steps} step${ex.steps === 1 ? '' : 's'}, ${runs}${when ? `, last changed ${when}` : ''}` +
+    `${ex.archived ? ', archived' : ex.published ? ', published' : ', draft'}${ex.matches > 1 ? ` (${ex.matches} guides share this name; the newest is shown)` : ''}.<br>` +
+    `<b>Update</b> refreshes its steps and keeps its id, anchor, configuration, sharing, sessions, Roadmap map, AR placement and validation training.<br>` +
+    `<b>Create a new guide</b> adds another one with the same name, on purpose.`;
+  box.style.display = 'block';
+  return new Promise(resolve => { importExistsResolve = resolve; });
+}
+function importExistsAnswer(choice) {
+  const box = document.getElementById('import-exists'); if (box) box.style.display = 'none';
+  const r = importExistsResolve; importExistsResolve = null; if (r) r(choice);
 }
 
 // ── Parse state: the payload waiting to be imported (from file or paste) ─────
@@ -5620,16 +5649,29 @@ async function submitImportCortona(anchorId, createdBy) {
     // it is done. (An older server answers 201 with the result directly.)
     let data = (await res.json()).data;
     if (res.status === 202 && data.jobId) {
+      const jobId = data.jobId;
       const t0 = Date.now();
       for (;;) {
         await new Promise(r => setTimeout(r, 1500));
-        const jr = await fetch(`/guides/import/jobs/${data.jobId}`, { headers: { 'X-API-Key': apiKey() } });
+        const jr = await fetch(`/guides/import/jobs/${jobId}`, { headers: { 'X-API-Key': apiKey() } });
         if (!jr.ok) { const err = await jr.json().catch(() => ({ error: jr.statusText })); throw new Error(err.error || `HTTP ${jr.status}`); }
         const job = (await jr.json()).data;
         const secs = Math.round((Date.now() - t0) / 1000);
         btn.textContent = job.status === 'queued' ? `Waiting (${job.position} ahead)…` : `Importing… ${secs}s`;
         if (job.status === 'done')   { data = job.result; break; }
         if (job.status === 'failed') throw new Error(job.error || 'import failed');
+      }
+      // A guide with this name is already in the library: the server parsed
+      // the file and waits for update / new / cancel.
+      if (data && data.exists) {
+        btn.textContent = 'Waiting for your choice…';
+        const choice = await importExistsChoice(data.exists);
+        const hdr = { 'Content-Type': 'application/json', 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() };
+        if (!choice) { await fetch(`/guides/import/jobs/${jobId}/discard`, { method: 'POST', headers: hdr }).catch(() => {}); return; }
+        btn.textContent = choice === 'update' ? 'Updating…' : 'Importing…';
+        const ar = await fetch(`/guides/import/jobs/${jobId}/apply`, { method: 'POST', headers: hdr, body: JSON.stringify({ mode: choice }) });
+        if (!ar.ok) { const err = await ar.json().catch(() => ({ error: ar.statusText })); throw new Error(err.error || `HTTP ${ar.status}`); }
+        data = (await ar.json()).data;
       }
     }
     if (!data || !data.guide) {
@@ -5645,7 +5687,7 @@ async function submitImportCortona(anchorId, createdBy) {
     closeImportGuideModal();
     importCortonaFile = null;
     const cmds = Object.values(log.procedure.commands || {}).reduce((a, b) => a + b, 0);
-    toast(`Imported "${guide.name}" - ${steps.length} steps, ${cmds} presentation commands, ${log.scene.meshes} meshes. ` +
+    toast(`${summary?.updated ? 'Updated' : 'Imported'} "${guide.name}" - ${steps.length} steps${summary?.updated ? ` (${summary.stepsUpdated} refreshed, ${summary.stepsCreated} added, ${summary.stepsRemoved} removed; placement and training kept)` : ''}, ${cmds} presentation commands, ${log.scene.meshes} meshes. ` +
           (log.warnings.length ? `${log.warnings.length} warning(s) - see log.` : 'No warnings.'), 5000);
     showCortonaImportLog();
     location.hash = '#content/guides';
@@ -5903,15 +5945,25 @@ async function submitImportGuide() {
   localStorage.setItem('sibAuthorName', createdBy);
 
   try {
-    const result = await apiFetch('/guides/import', {
+    const post = (mode) => fetch('/guides/import', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ anchorId, createdBy, payload: importParsedPayload }),
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() },
+      body:    JSON.stringify({ anchorId, createdBy, payload: importParsedPayload, ...(mode ? { mode } : {}) }),
     });
-    const { guide, steps, imageErrors } = result.data;
+    let res = await post();
+    let body = await res.json().catch(() => ({}));
+    if (res.status === 409 && body.code === 'exists') {
+      // Same-name guide in the library: update it, create another, or stop.
+      const choice = await importExistsChoice(body.existing);
+      if (!choice) return;
+      res = await post(choice); body = await res.json().catch(() => ({}));
+    }
+    if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    const { guide, steps, imageErrors } = body.data;
+    const updated = body.data.updated;
     closeImportGuideModal();
     importParsedPayload = null;
-    let msg = `Imported "${guide.name}" - ${steps.length} step${steps.length !== 1 ? 's' : ''}.`;
+    let msg = `${updated ? 'Updated' : 'Imported'} "${guide.name}" - ${steps.length} step${steps.length !== 1 ? 's' : ''}${updated ? ' (placement and training kept)' : ''}.`;
     if (imageErrors.length) msg += ` (${imageErrors.length} image(s) failed to download)`;
     toast(msg, imageErrors.length ? 4000 : 2500);
     // The fix for "imported it, can't see it": go straight to the guide.

@@ -242,6 +242,12 @@ export interface MindmapSummary {
   published: boolean;
   /** Map kind for list badges. Absent = 'roadmap' (pre-Procedure maps). */
   kind?: MindmapKind;
+  /** Procedure maps (2026.4.50): the guide this map draws, so the home can
+   *  show its anchor, configuration and date and flag a missing guide. */
+  guide?: {
+    id: string; exists: boolean; name?: string; anchorName?: string; configName?: string;
+    published?: boolean; archived?: boolean; createdAt?: string;
+  };
 }
 
 // --- Versioning ---
