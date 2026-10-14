@@ -338,7 +338,8 @@ compiler now folds the success spine into **sections**, one row lane per
 section, read left to right then top to bottom: the section is the step's
 `section` field (xlsx "Section" column, JSON), else the leading top-level
 index the Cortona importer writes into titles ("3. Lift the lid - …"), else
-chunks of 12 named "Steps 1-12". A failure branch sits in a sub-row under
+chunks of 10 named "Steps 1-10"; inside a section the steps wrap every
+10, so a 30-step section is three rows under one band. A failure branch sits in a sub-row under
 the step it leaves; the row-to-row `next` edge is drawn as a short
 down-and-back connector. An **Outline** panel on the left lists the sections
 with step counts, centres a row on click, highlights the row of the selected

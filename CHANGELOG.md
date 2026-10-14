@@ -10,8 +10,8 @@ it, it gets a line.
 - **Designer: long procedures read in sections.** A 150-step guide was one
   36,000 px line. New procedure maps are laid out one row per section
   (the xlsx "Section" column, the Cortona title index "3. Lift the lid -
-  …", or chunks of 12 named "Steps 1-12"), read left to right then top to
-  bottom, with failure branches in a sub-row under the step they leave and
+  …", or chunks of 10 named "Steps 1-10"), wrapping every 10 steps inside a
+  section, read left to right then top to bottom, with failure branches in a sub-row under the step they leave and
   a short down-and-back connector between rows. An Outline panel on the
   left lists the sections with step counts, centres a row on click, shows
   which section the selected step is in, and lets an engineer rename a

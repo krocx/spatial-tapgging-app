@@ -170,9 +170,19 @@ test('sections: titles with a leading index fold into one row lane each; a retry
   assert.deepEqual(compiled.guide!.steps.map(s => s.title), ['1. Prepare - Gloves', '1. Prepare - Tools', '2. Lift the lid - Bolts', '2. Lift the lid - Lift', '3. Clean - Wipe', '3. Clean - Done', 'Retry: re-seat']);
 });
 
-test('sections: no markers → chunks of 12 named "Steps a-b"; explicit section wins over the title', () => {
-  const plain = Array.from({ length: 30 }, (_, i) => step(`p${i + 1}`, i + 1, { title: `Do ${i + 1}` }));
-  assert.deepEqual(guideToProcedureMap(GUIDE, plain).lanes.map(l => l.name), ['Steps 1-12', 'Steps 13-24', 'Steps 25-30']);
+test('sections: no markers → chunks of 10 named "Steps a-b"; explicit section wins over the title; 30 steps in one section wrap into three rows under one band', () => {
+  const plain = Array.from({ length: 25 }, (_, i) => step(`p${i + 1}`, i + 1, { title: `Do ${i + 1}` }));
+  assert.deepEqual(guideToProcedureMap(GUIDE, plain).lanes.map(l => l.name), ['Steps 1-10', 'Steps 11-20', 'Steps 21-25']);
+  const long = Array.from({ length: 30 }, (_, i) => step(`l${i + 1}`, i + 1, { title: `7. Big section - part ${i + 1}` }));
+  const rl = guideToProcedureMap(GUIDE, long);
+  assert.equal(rl.lanes.length, 1); assert.equal(rl.lanes[0].name, '7. Big section');
+  const ys = new Set(rl.nodes.map(n => n.y)); assert.equal(ys.size, 3);
+  const xs = new Set(rl.nodes.map(n => n.x)); assert.equal(xs.size, 10);
+  assert.equal(rl.lanes[0].width, 3 * 170);
   const explicit = [step('e1', 1, { title: '1. A', section: 'Setup' }), step('e2', 2, { title: '2. B', section: 'Setup' }), step('e3', 3, { title: '3. C', section: 'Teardown' })];
   assert.deepEqual(guideToProcedureMap(GUIDE, explicit).lanes.map(l => l.name), ['Setup', 'Teardown']);
+  // Cortona headings that carry their own index, and a heading that comes back later under another index.
+  const dbl = [step('d1', 1, { title: '1. 1. Top Fuselage - Bolts' }), step('d2', 2, { title: '1. 1. Top Fuselage - Lift' }),
+               step('d3', 3, { title: '2. 2. Bottom Fuselage - Seat' }), step('d4', 4, { title: '3. 1. Top Fuselage - Close' })];
+  assert.deepEqual(guideToProcedureMap(GUIDE, dbl).lanes.map(l => l.name), ['1. Top Fuselage', '2. Bottom Fuselage', '3. Top Fuselage (cont.)']);
 });

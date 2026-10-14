@@ -6,7 +6,7 @@
 
 import type { Mindmap, MindmapNode, MindmapLane } from '@spatial/shared';
 import { NODE_W, nodeHeight } from './geometry.js';
-import { groupIntoSections } from '../../../src/procedure/sections.js';
+import { groupIntoSections, SECTION_WRAP } from '../../../src/procedure/sections.js';
 
 const H_GAP = 100;
 const V_GAP = 36;
@@ -21,8 +21,8 @@ export function autoLayout(map: Mindmap, mode: LayoutMode): MindmapNode[] {
 // ── Sections (2026.4.50) ──────────────────────────────────────────────────────
 // A long procedure folded into rows: the success spine (start → next → …) is
 // grouped by section (sib/src/procedure/sections.ts - title index, explicit
-// section, or chunks of 12), one row per section, read left to right then top
-// to bottom. A failure branch sits in a sub-row under the step it leaves.
+// section, or chunks of 10), one band per section with the steps wrapping
+// every 10, read left to right then top to bottom. A failure branch sits in a sub-row under the step it leaves.
 // Mirrors the server's reverse compiler so a re-flowed map looks like a fresh
 // one. Order is edges only - this never changes what compiles.
 const SEC_COL_W = 240, SEC_LANE_H = 170, SEC_X0 = 140, SEC_Y0 = 220, SEC_ROW_PAD = 50;
@@ -53,9 +53,10 @@ export function sectionsLayout(map: Mindmap): { nodes: MindmapNode[]; lanes: Min
   const rowOfNode = new Map<string, number>();
   let lane = 0;
   sections.forEach((sec, r) => {
-    rows.push({ name: sec.name, lane, lanes: 1 });
-    sec.members.forEach((m, col) => { pos.set(spine[m], { col, lane }); rowOfNode.set(spine[m], r); });
-    lane++;
+    const wrapRows = Math.max(1, Math.ceil(sec.members.length / SECTION_WRAP));
+    rows.push({ name: sec.name, lane, lanes: wrapRows });
+    sec.members.forEach((m, i) => { pos.set(spine[m], { col: i % SECTION_WRAP, lane: lane + Math.floor(i / SECTION_WRAP) }); rowOfNode.set(spine[m], r); });
+    lane += wrapRows;
   });
   const walk = (startId: string, atLane: number) => {
     let id: string | undefined = startId; let col = 0;

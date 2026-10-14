@@ -21,7 +21,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Guide, GuideStep, Mindmap, MindmapNode, MindmapEdge, MindmapSettings, MindmapLane } from '@spatial/shared';
-import { groupIntoSections } from './sections.js';
+import { groupIntoSections, SECTION_WRAP } from './sections.js';
 import { effectiveStepModels } from '../guides/step-models.js';
 
 const COL_W  = 240;   // horizontal spacing along a chain
@@ -77,9 +77,11 @@ function layoutLanes(steps: GuideStep[]): { pos: Map<string, { col: number; lane
   const rowOfStep = new Map<string, number>();
   let lane = 0;
   sections.forEach((sec, r) => {
-    rows.push({ name: sec.name, lane, lanes: 1 });
-    sec.members.forEach((m, col) => { const id = spine[m]; pos.set(id, { col, lane }); rowOfStep.set(id, r); });
-    lane++;
+    // Wrap every SECTION_WRAP steps: the band grows by one lane per row.
+    const wrapRows = Math.max(1, Math.ceil(sec.members.length / SECTION_WRAP));
+    rows.push({ name: sec.name, lane, lanes: wrapRows });
+    sec.members.forEach((m, i) => { const id = spine[m]; pos.set(id, { col: i % SECTION_WRAP, lane: lane + Math.floor(i / SECTION_WRAP) }); rowOfStep.set(id, r); });
+    lane += wrapRows;
   });
 
   // 3. Branches: a chain not on the spine, placed under its first referrer's row.
