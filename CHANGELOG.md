@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **Publish needs a chamber configuration, in the library too.** The server
+  has refused since the lifecycle change; the portal now says so before the
+  click: Publish is greyed with the reason when the chamber has no
+  configuration (with a "Needs a configuration" chip that opens Chambers),
+  when the signed-in role is below Manager, or when the guide is archived.
+  A refusal the server still sends is shown in its own words. The iOS half
+  (the Operator-mode warning) follows with the app's lifecycle work.
 - **Designer: long procedures read in sections.** A 150-step guide was one
   36,000 px line. New procedure maps are laid out one row per section
   (the xlsx "Section" column, the Cortona title index "3. Lift the lid -

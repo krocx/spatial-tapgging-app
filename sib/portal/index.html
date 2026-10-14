@@ -6650,6 +6650,12 @@ function renderGuideLibrary() {
 
       const pubLabel   = guide.published ? 'Unpublish' : 'Publish';
       const pubColor   = guide.published ? 'color:var(--red)' : 'color:var(--ax-green)';
+      // Publish gates (2026.4.50): a Manager's decision, and only once the
+      // chamber has a configuration (the server refuses otherwise, 409
+      // needs-config). The button stays visible, greyed, with the reason.
+      const canPublishRole = !UAM_USER || UAM_USER.role === 'owner' || UAM_USER.role === 'manager';
+      const pubBlock = guide.published ? '' : !canPublishRole ? 'Only a Manager or Owner publishes a guide'
+        : gk === '__none' ? 'Needs a chamber configuration - assign one under Chambers, then publish' : guide.archivedAt ? 'Archived guides cannot be published - restore it first' : '';
 
       const sx = glExtras.summary.get(guide.id), rx = glExtras.runs.get(guide.id);
       const devBadge = sx?.devices
@@ -6670,7 +6676,8 @@ function renderGuideLibrary() {
               ? `<button class="ax-btn ax-btn--quiet ax-btn--sm" title="Open the real player on this screen: orbit the assembly, play every step, click parts - nothing is recorded" onclick="previewGuide('${guide.id}', true)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Preview 3D</button>`
               : `<button class="ax-btn ax-btn--quiet ax-btn--sm" title="Walk the step sequence as the operator will see it on the phone - no headset needed" onclick="previewGuide('${guide.id}', false)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-play"/></svg> Preview</button>`}
             <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Runs, completion, every step's heat and every device's readiness" onclick="location.hash='#analytics/guide/${guide.id}'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Analytics</button>
-            <button class="ax-btn ${guide.published ? 'ax-btn--quiet' : 'ax-btn--tint'} ax-btn--sm" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
+            <button class="ax-btn ${guide.published ? 'ax-btn--quiet' : 'ax-btn--tint'} ax-btn--sm" ${pubBlock ? `disabled title="${esc(pubBlock)}" style="opacity:.5;cursor:not-allowed"` : ''} onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
+            ${pubBlock && gk === '__none' ? `<a class="ax-chip" href="#anchors" title="${esc(pubBlock)}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg> Needs a configuration</a>` : ''}
             <button class="ax-btn ax-btn--quiet ax-btn--sm" aria-label="More" title="Steps, graph, share, headset, readiness, copy, move" onclick="openGuideMenu(event,'${guide.id}','${anchorId}','${cfg ? cfg.id : ''}',${siblings.length},'${guide.ciMode || 'normal'}')">⋯</button>
             <span id="gl-toggle-${guide.id}" hidden></span><span id="gl-graph-toggle-${guide.id}" hidden></span>
           </div>
@@ -7262,7 +7269,10 @@ async function togglePublishGuide(guideId, anchorId, currentlyPublished) {
       document.getElementById(`gl-toggle-${guideId}`).textContent = '▾ Steps';
       renderStepsInCard(guideId, anchorId);
     }
-  } catch (e) { toast(`Failed: ${e.message}`, 4000); }
+  } catch (e) {
+    // The server says why in a sentence (needs-config, role, archived); show it as is.
+    toast(e.message.replace(/^Failed: /, ''), 6000);
+  }
 }
 
 async function deleteGuideFromLibrary(guideId, anchorId) {
