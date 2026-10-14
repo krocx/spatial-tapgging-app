@@ -331,6 +331,25 @@ settles on the state after the step. Pure functions (`timeline`,
 the server; the Designer bundle must be rebuilt (`npm run build:roadmap`)
 and committed.
 
+### Slice 3.7 - sections for long procedures (shipped 2026.4.50)
+
+A 150-step Cortona guide used to come out as one 36,000 px line. The reverse
+compiler now folds the success spine into **sections**, one row lane per
+section, read left to right then top to bottom: the section is the step's
+`section` field (xlsx "Section" column, JSON), else the leading top-level
+index the Cortona importer writes into titles ("3. Lift the lid - …"), else
+chunks of 12 named "Steps 1-12". A failure branch sits in a sub-row under
+the step it leaves; the row-to-row `next` edge is drawn as a short
+down-and-back connector. An **Outline** panel on the left lists the sections
+with step counts, centres a row on click, highlights the row of the selected
+step and lets an engineer rename a section (it is a lane name; nothing on the
+floor reads it). Existing maps are untouched until **Layout › Sections** is
+chosen, which re-flows the map and rebuilds the row lanes, keeping renamed
+section names when the count is unchanged. Sections are layout only: the
+compiler still reads edges and nothing else (`sib/src/procedure/sections.ts`,
+imported relatively by the client because `@spatial/shared` stays types-only
+at runtime).
+
 ### Slice 4 - shared sequencing
 
 Extract the lane/sequence algorithm into one module consumed by the designer, the

@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **Designer: long procedures read in sections.** A 150-step guide was one
+  36,000 px line. New procedure maps are laid out one row per section
+  (the xlsx "Section" column, the Cortona title index "3. Lift the lid -
+  …", or chunks of 12 named "Steps 1-12"), read left to right then top to
+  bottom, with failure branches in a sub-row under the step they leave and
+  a short down-and-back connector between rows. An Outline panel on the
+  left lists the sections with step counts, centres a row on click, shows
+  which section the selected step is in, and lets an engineer rename a
+  section. Existing maps change only when Layout › Sections is chosen.
+  Sections are layout only; the compiler reads edges as before. The xlsx
+  template gains a Section column and `GuideStep.section` is kept across
+  imports and re-syncs.
 - **Content Library → Designer lands in the map.** "Designer" on a guide
   used to stop on the Roadmap home on Render: the Roadmap kept its own
   API key under a different name, so the deep link failed with an auth

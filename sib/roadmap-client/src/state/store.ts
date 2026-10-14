@@ -14,7 +14,7 @@ import type {
 } from '@spatial/shared';
 import { mindmapApi } from '../api/mindmap-api.js';
 import { CollabClient, type CollabStatus } from '../ws/collab.js';
-import { autoLayout, type LayoutMode } from '../utils/layout.js';
+import { autoLayout, sectionsLayout, type LayoutMode } from '../utils/layout.js';
 import { NODE_W, NODE_H, nodeHeight } from '../utils/geometry.js';
 import { computeSteps, stepBounds, type PresentationStep } from '../utils/presentation.js';
 import type { MindmapEdgePort, MindmapNodeShape, MindmapSettings } from '@spatial/shared';
@@ -98,7 +98,7 @@ interface State {
   defaultNodeType: MindmapNodeType;
   searchQuery: string;
   /** Last applied auto-layout; any manual node move resets to 'freeform'. */
-  layoutMode: 'freeform' | 'hierarchical' | 'grid';
+  layoutMode: 'freeform' | 'hierarchical' | 'grid' | 'sections';
   /** View filters - per-client, never synced or persisted. */
   filters: ViewFilters;
   showFilterPanel: boolean;
@@ -220,6 +220,7 @@ interface Actions {
   // Lanes
   selectLane(id: string | null): void;
   setLanes(lanes: MindmapLane[], withHistory?: boolean): void;
+  centreOnLane(laneId: string): void;
   addLanePreset(): void;
   addRowLanePreset(): void;
   addLane(): void;
@@ -1332,10 +1333,32 @@ export const useStore = create<State & Actions>((set, get) => {
       const { map } = get();
       if (!map) return;
       pushHistory();
+      if (mode === 'sections') {
+        // Rows per section: nodes move and the row lanes are rebuilt (names
+        // the engineer gave them survive when the section count is unchanged).
+        const r = sectionsLayout(map);
+        const laidOut = r.nodes.map(n => ({ ...n, updatedAt: Date.now() }));
+        mutateGraph(m => { m.nodes = laidOut; });
+        for (const n of laidOut) collab?.send('node:update', n);
+        get().setLanes(r.lanes, false);
+        set({ layoutMode: mode });
+        return;
+      }
       const laidOut = autoLayout(map, mode).map(n => ({ ...n, updatedAt: Date.now() }));
       mutateGraph(m => { m.nodes = laidOut; });
       for (const n of laidOut) collab?.send('node:update', n);
       set({ layoutMode: mode });
+    },
+
+    /** Outline click: scroll the canvas so a row lane sits in the middle of the view. */
+    centreOnLane(laneId) {
+      const { map, camera } = get();
+      const lane = map?.lanes?.find(l => l.id === laneId);
+      if (!lane) return;
+      const vh = window.innerHeight - 120;
+      const midY = lane.x + lane.width / 2;
+      const scale = Math.max(camera.scale, 0.5);
+      set({ camera: { ...camera, scale, y: vh / 2 - midY * scale + 60, x: Math.min(camera.x, 40) } });
     },
 
     undo() {

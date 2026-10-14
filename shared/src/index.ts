@@ -1106,6 +1106,7 @@ export interface GuideStep {
   anchorId:           string;      // denormalised for efficient anchor-scoped queries
   sequenceNumber:     number;
   title?:             string;      // short display title (pill header + card header); falls back to "Step N"
+  section?:           string;      // optional section name (2026.4.50) - designer layout only, never read on device
   text:               string;      // description shown in the expanded floating panel
   ttsText?:           string;      // override for voice synthesis - defaults to text
   mediaType?:         GuideStepMediaType;
@@ -1887,6 +1888,9 @@ export interface ImportedStepModel {
 export interface ImportedGuideStep {
   sequenceNumber:       number;
   title?:               string;
+  /** Section this step belongs to (xlsx / JSON column). Layout only: the
+   *  designer folds a long procedure into one row per section. */
+  section?:             string;
   text:                 string;
   ttsText?:             string;
   /** URL of the reference image - downloaded and stored locally at import time. */

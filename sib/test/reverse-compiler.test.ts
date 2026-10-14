@@ -148,3 +148,31 @@ test('U5: reverse-compiler surfaces every model slot (assignment only) and lifts
   const m2 = r.nodes[1].metadata.step as Record<string, unknown>;
   assert.deepEqual(m2.models, [{ slotId: 'slot-1', modelId: 'm9', modelScale: 2 }]);
 });
+
+// ── Sections (2026.4.50): long procedures fold into rows ─────────────────────
+test('sections: titles with a leading index fold into one row lane each; a retry sits under its row', () => {
+  const steps = [
+    step('s1', 1, { title: '1. Prepare - Gloves' }), step('s2', 2, { title: '1. Prepare - Tools', nextOnFailure: 's6' }),
+    step('s3', 3, { title: '2. Lift the lid - Bolts' }), step('s4', 4, { title: '2. Lift the lid - Lift' }),
+    step('s5', 5, { title: '3. Clean - Wipe', nextOnSuccess: 's7' }),
+    step('s6', 6, { title: 'Retry: re-seat', nextOnSuccess: 's3' }),
+    step('s7', 7, { title: '3. Clean - Done' }),
+  ];
+  const r = guideToProcedureMap(GUIDE, steps);
+  assert.deepEqual(r.lanes.map(l => l.name), ['1. Prepare', '2. Lift the lid', '3. Clean']);
+  assert.ok(r.lanes.every(l => l.orientation === 'row'));
+  const y = (id: string) => r.nodes.find(n => provenanceOf(n)?.stepId === id)!.y;
+  const x = (id: string) => r.nodes.find(n => provenanceOf(n)?.stepId === id)!.x;
+  assert.equal(y('s1'), y('s2')); assert.ok(y('s3') > y('s2')); assert.equal(x('s3'), x('s1'));   // rows restart at the left
+  assert.ok(y('s6') > y('s2') && y('s6') < y('s3'));                                              // retry under row 1, above row 2
+  // Still compiles to the same order.
+  const compiled = compileProcedure({ ...toMindmapRecord(r, GUIDE) } as Mindmap);
+  assert.deepEqual(compiled.guide!.steps.map(s => s.title), ['1. Prepare - Gloves', '1. Prepare - Tools', '2. Lift the lid - Bolts', '2. Lift the lid - Lift', '3. Clean - Wipe', '3. Clean - Done', 'Retry: re-seat']);
+});
+
+test('sections: no markers → chunks of 12 named "Steps a-b"; explicit section wins over the title', () => {
+  const plain = Array.from({ length: 30 }, (_, i) => step(`p${i + 1}`, i + 1, { title: `Do ${i + 1}` }));
+  assert.deepEqual(guideToProcedureMap(GUIDE, plain).lanes.map(l => l.name), ['Steps 1-12', 'Steps 13-24', 'Steps 25-30']);
+  const explicit = [step('e1', 1, { title: '1. A', section: 'Setup' }), step('e2', 2, { title: '2. B', section: 'Setup' }), step('e3', 3, { title: '3. C', section: 'Teardown' })];
+  assert.deepEqual(guideToProcedureMap(GUIDE, explicit).lanes.map(l => l.name), ['Setup', 'Teardown']);
+});

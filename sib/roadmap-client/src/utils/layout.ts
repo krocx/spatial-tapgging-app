@@ -4,17 +4,91 @@
 //               directed edges). Disconnected components stack vertically.
 // grid:         tidy grid for freeform maps with no meaningful hierarchy.
 
-import type { Mindmap, MindmapNode } from '@spatial/shared';
+import type { Mindmap, MindmapNode, MindmapLane } from '@spatial/shared';
 import { NODE_W, nodeHeight } from './geometry.js';
+import { groupIntoSections } from '../../../src/procedure/sections.js';
 
 const H_GAP = 100;
 const V_GAP = 36;
 
-export type LayoutMode = 'hierarchical' | 'grid';
+export type LayoutMode = 'hierarchical' | 'grid' | 'sections';
 
 /** Returns a new node array with updated x/y (updatedAt bumped by caller). */
 export function autoLayout(map: Mindmap, mode: LayoutMode): MindmapNode[] {
-  return mode === 'hierarchical' ? layeredLayout(map) : gridLayout(map.nodes);
+  return mode === 'hierarchical' ? layeredLayout(map) : mode === 'sections' ? sectionsLayout(map).nodes : gridLayout(map.nodes);
+}
+
+// ── Sections (2026.4.50) ──────────────────────────────────────────────────────
+// A long procedure folded into rows: the success spine (start → next → …) is
+// grouped by section (sib/src/procedure/sections.ts - title index, explicit
+// section, or chunks of 12), one row per section, read left to right then top
+// to bottom. A failure branch sits in a sub-row under the step it leaves.
+// Mirrors the server's reverse compiler so a re-flowed map looks like a fresh
+// one. Order is edges only - this never changes what compiles.
+const SEC_COL_W = 240, SEC_LANE_H = 170, SEC_X0 = 140, SEC_Y0 = 220, SEC_ROW_PAD = 50;
+
+export function sectionsLayout(map: Mindmap): { nodes: MindmapNode[]; lanes: MindmapLane[] } {
+  const nodes = map.nodes;
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  const nextOf = new Map<string, string>(); const failOf = new Map<string, string>();
+  const incoming = new Set<string>();
+  for (const e of map.edges) {
+    if (!byId.has(e.from) || !byId.has(e.to)) continue;
+    if (e.role === 'next' && !nextOf.has(e.from)) nextOf.set(e.from, e.to);
+    if (e.role === 'failure' && !failOf.has(e.from)) failOf.set(e.from, e.to);
+    if (e.role === 'next' || e.role === 'failure') incoming.add(e.to);
+  }
+  const stepNodes = nodes.filter(n => !!(n.metadata as { guide?: unknown } | undefined)?.guide || nextOf.has(n.id) || incoming.has(n.id));
+  if (stepNodes.length === 0) return { nodes, lanes: map.lanes ?? [] };
+  const start = stepNodes.find(n => !incoming.has(n.id)) ?? [...stepNodes].sort((a, b) => a.x - b.x || a.y - b.y)[0];
+
+  const pos = new Map<string, { col: number; lane: number }>();
+  const spine: string[] = [];
+  { let id: string | undefined = start.id; const seen = new Set<string>();
+    while (id && byId.has(id) && !seen.has(id)) { seen.add(id); spine.push(id); id = nextOf.get(id); } }
+
+  const sectionOfNode = (n: MindmapNode) => ({ title: n.text, section: (n.metadata as { step?: { section?: string } } | undefined)?.step?.section });
+  const sections = groupIntoSections(spine.map(id => sectionOfNode(byId.get(id)!)));
+  const rows: { name: string; lane: number; lanes: number }[] = [];
+  const rowOfNode = new Map<string, number>();
+  let lane = 0;
+  sections.forEach((sec, r) => {
+    rows.push({ name: sec.name, lane, lanes: 1 });
+    sec.members.forEach((m, col) => { pos.set(spine[m], { col, lane }); rowOfNode.set(spine[m], r); });
+    lane++;
+  });
+  const walk = (startId: string, atLane: number) => {
+    let id: string | undefined = startId; let col = 0;
+    while (id && byId.has(id) && !pos.has(id)) { pos.set(id, { col, lane: atLane }); id = nextOf.get(id); col++; }
+  };
+  const placeBranch = (target: string, from: string) => {
+    if (pos.has(target)) return;
+    const r = rowOfNode.get(from) ?? rows.length - 1;
+    const row = rows[r]; const newLane = row.lane + row.lanes; row.lanes++;
+    for (const p of pos.values()) if (p.lane >= newLane) p.lane++;
+    for (let k = r + 1; k < rows.length; k++) rows[k].lane++;
+    walk(target, newLane);
+    for (const [id, p] of pos) if (p.lane === newLane) rowOfNode.set(id, r);
+  };
+  for (const [from, to] of failOf) placeBranch(to, from);
+  for (const n of stepNodes) if (!pos.has(n.id)) {
+    const top = rows.length ? rows[rows.length - 1].lane + rows[rows.length - 1].lanes : 0;
+    rows.push({ name: 'Unreached', lane: top, lanes: 1 }); walk(n.id, top);
+  }
+  // Existing row lanes keep their (possibly renamed) names by position.
+  const oldRows = (map.lanes ?? []).filter(l => l.orientation === 'row');
+  const lanes: MindmapLane[] = rows.map((r, i) => ({
+    id: oldRows[i]?.id ?? crypto.randomUUID(),
+    name: oldRows[i] && oldRows.length === rows.length ? oldRows[i].name : r.name,
+    orientation: 'row' as const,
+    x: SEC_Y0 + r.lane * SEC_LANE_H - SEC_ROW_PAD, width: r.lanes * SEC_LANE_H,
+  }));
+  const columns = (map.lanes ?? []).filter(l => l.orientation !== 'row');
+  const laid = nodes.map(n => {
+    const p = pos.get(n.id); if (!p) return n;   // annotations stay where they are
+    return { ...n, x: SEC_X0 + p.col * SEC_COL_W, y: SEC_Y0 + p.lane * SEC_LANE_H };
+  });
+  return { nodes: laid, lanes: [...columns, ...lanes] };
 }
 
 function gridLayout(nodes: MindmapNode[]): MindmapNode[] {

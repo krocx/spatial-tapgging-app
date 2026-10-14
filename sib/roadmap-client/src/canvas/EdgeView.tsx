@@ -108,6 +108,15 @@ export function EdgeView({ edge, dimmed = false }: { edge: MindmapEdge; dimmed?:
   let d: string, mid: Point;
   if (a.id === b.id) {
     ({ d, mid } = selfLoopGeometry(a, edge.fromPort, edge.toPort));
+  } else if (role === 'next' && !edge.fromPort && !edge.toPort && b.y > a.y + 100 && b.x < a.x - 60) {
+    // Row to row (sections layout): the last step of one row continues at
+    // the first step of the next. Drawn as a short down-and-back connector
+    // along the gap between the rows, not a diagonal across the canvas.
+    const p1 = portPoint(a, 'right'), p2 = portPoint(b, 'top');
+    const gapY = (portPoint(a, 'bottom').y + p2.y) / 2;
+    const outX = p1.x + 24;
+    d = `M ${p1.x} ${p1.y} H ${outX} V ${gapY} H ${p2.x} V ${p2.y}`;
+    mid = { x: (outX + p2.x) / 2, y: gapY };
   } else {
     const p1 = edge.fromPort ? portPoint(a, edge.fromPort) : borderPoint(a, edge.toPort ? portPoint(b, edge.toPort) : nodeCenter(b));
     const p2 = edge.toPort ? portPoint(b, edge.toPort) : borderPoint(b, edge.fromPort ? portPoint(a, edge.fromPort) : nodeCenter(a));

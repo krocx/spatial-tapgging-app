@@ -277,8 +277,10 @@
    "procedure/reverse-compiler.ts"
   ],
   "procedure/reverse-compiler.ts": [
-   "guides/step-models.ts"
+   "guides/step-models.ts",
+   "procedure/sections.ts"
   ],
+  "procedure/sections.ts": [],
   "routes/admin.ts": [
    "ops-log.ts"
   ],

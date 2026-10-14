@@ -20,13 +20,15 @@
 //     same direction the forward compiler expects.
 
 import { v4 as uuidv4 } from 'uuid';
-import type { Guide, GuideStep, Mindmap, MindmapNode, MindmapEdge, MindmapSettings } from '@spatial/shared';
+import type { Guide, GuideStep, Mindmap, MindmapNode, MindmapEdge, MindmapSettings, MindmapLane } from '@spatial/shared';
+import { groupIntoSections } from './sections.js';
 import { effectiveStepModels } from '../guides/step-models.js';
 
 const COL_W  = 240;   // horizontal spacing along a chain
 const LANE_H = 170;   // vertical spacing between lanes
 const X0     = 140;
 const Y0     = 220;
+const ROW_PAD = 50;   // band above / below a section's lanes
 
 export interface ReverseCompileResult {
   name:     string;
@@ -34,6 +36,8 @@ export interface ReverseCompileResult {
   anchorId: string;
   nodes:    MindmapNode[];
   edges:    MindmapEdge[];
+  /** 2026.4.50: one row lane per section, so a long procedure reads top to bottom. */
+  lanes:    MindmapLane[];
   /** 2026.4.46: assembly binding (model + imported initial state) for the parts picker. */
   settings?: MindmapSettings;
 }
@@ -50,29 +54,65 @@ function effectiveNext(steps: GuideStep[], i: number): string | undefined {
  * lane 0 = the success spine from step 1; every step not reached that way
  * (typically failure-branch targets) starts a new lane, walked by its own
  * success chain. Guarantees every node gets exactly one position.
+ *
+ * 2026.4.50: the spine is folded into sections (shared/sections.ts), one row
+ * per section, read left to right then top to bottom. A branch lane sits
+ * under the row of the step that branches into it, so a retry stays beside
+ * the step it belongs to. `rows` describes the bands for the row lanes.
  */
-function layoutLanes(steps: GuideStep[]): Map<string, { col: number; lane: number }> {
+function layoutLanes(steps: GuideStep[]): { pos: Map<string, { col: number; lane: number }>; rows: { name: string; lane: number; lanes: number }[] } {
   const byId = new Map(steps.map(s => [s.id, s]));
   const index = new Map(steps.map((s, i) => [s.id, i]));
   const pos = new Map<string, { col: number; lane: number }>();
+
+  // 1. The spine, as a plain chain.
+  const spine: string[] = [];
+  { let id: string | undefined = steps[0]?.id; const seen = new Set<string>();
+    while (id && byId.has(id) && !seen.has(id)) { seen.add(id); spine.push(id); id = effectiveNext(steps, index.get(id)!); } }
+
+  // 2. Sections over the spine → rows. Each row owns lane `base` for the
+  //    spine and `base + k` for the branches that start from it.
+  const sections = groupIntoSections(spine.map(id => byId.get(id)!));
+  const rows: { name: string; lane: number; lanes: number }[] = [];
+  const rowOfStep = new Map<string, number>();
   let lane = 0;
+  sections.forEach((sec, r) => {
+    rows.push({ name: sec.name, lane, lanes: 1 });
+    sec.members.forEach((m, col) => { const id = spine[m]; pos.set(id, { col, lane }); rowOfStep.set(id, r); });
+    lane++;
+  });
 
-  const walk = (startId: string) => {
-    let id: string | undefined = startId;
-    let col = 0;
-    while (id && byId.has(id) && !pos.has(id)) {
-      pos.set(id, { col, lane });
-      const i: number = index.get(id)!;
-      id = effectiveNext(steps, i);
-      col++;
-    }
+  // 3. Branches: a chain not on the spine, placed under its first referrer's row.
+  const walk = (startId: string, atLane: number) => {
+    let id: string | undefined = startId; let col = 0;
+    while (id && byId.has(id) && !pos.has(id)) { pos.set(id, { col, lane: atLane }); id = effectiveNext(steps, index.get(id)!); col++; }
   };
-
-  if (steps.length > 0) { walk(steps[0].id); lane++; }
-  for (const s of steps) {
-    if (!pos.has(s.id)) { walk(s.id); lane++; }
+  const placeBranch = (target: string, from: string) => {
+    if (pos.has(target)) return;
+    const r = rowOfStep.get(from) ?? rows.length - 1;
+    if (r < 0) { walk(target, 0); return; }
+    // Insert a lane after this row's current last lane; shift later rows down.
+    const row = rows[r]; const newLane = row.lane + row.lanes; row.lanes++;
+    for (const p of pos.values()) if (p.lane >= newLane) p.lane++;
+    for (let k = r + 1; k < rows.length; k++) rows[k].lane++;
+    walk(target, newLane);
+    for (const id of [...pos.keys()]) if (pos.get(id)!.lane === newLane) rowOfStep.set(id, r);
+  };
+  for (const s of steps) if (s.nextOnFailure && byId.has(s.nextOnFailure)) placeBranch(s.nextOnFailure, s.id);
+  // 4. Leftovers (unreachable) - their own trailing row.
+  for (const s of steps) if (!pos.has(s.id)) {
+    const top = rows.length ? rows[rows.length - 1].lane + rows[rows.length - 1].lanes : 0;
+    rows.push({ name: 'Unreached', lane: top, lanes: 1 }); walk(s.id, top);
   }
-  return pos;
+  return { pos, rows };
+}
+
+/** Row lanes for the designer, one band per section. */
+function rowLanes(rows: { name: string; lane: number; lanes: number }[]): MindmapLane[] {
+  return rows.map(r => ({
+    id: uuidv4(), name: r.name, orientation: 'row' as const,
+    x: Y0 + r.lane * LANE_H - ROW_PAD, width: r.lanes * LANE_H,
+  }));
 }
 
 export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
@@ -81,7 +121,7 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
 ): ReverseCompileResult {
   const steps = [...rawSteps].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
   const now = Date.now();
-  const pos = layoutLanes(steps);
+  const { pos, rows } = layoutLanes(steps);
   const nodeIdByStepId = new Map<string, string>(steps.map(s => [s.id, uuidv4()]));
 
   const nodes: MindmapNode[] = steps.map((s, i) => {
@@ -165,6 +205,7 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
     anchorId: guide.anchorId,
     nodes,
     edges,
+    lanes: rowLanes(rows),
     ...(settings ? { settings } : {}),
   };
 }
@@ -179,6 +220,7 @@ export function toMindmapRecord(r: ReverseCompileResult, guide: Guide): Mindmap 
     updatedAt: now,
     nodes: r.nodes,
     edges: r.edges,
+    lanes: r.lanes,
     kind: r.kind,
     anchorId: r.anchorId,
     ...(r.settings ? { settings: r.settings } : {}),

@@ -18,6 +18,7 @@ flow: |
     VAL --> SEND[Send to Guide Library as draft]
     SEND --> EDIT[Edit map later]
     EDIT --> SYNC[Re-sync: steps update, placement untouched]
+    NUM --> SEC[Sections: one row per section, Outline panel]
 arch: |
   flowchart LR
     subgraph Canvas["Roadmap canvas (kind: procedure)"]

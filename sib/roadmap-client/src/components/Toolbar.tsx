@@ -41,6 +41,7 @@ export function Toolbar(): JSX.Element | null {
   const setLanes = useStore(s => s.setLanes);
   const importFromSib = useStore(s => s.importFromSib);
   const layoutMode = useStore(s => s.layoutMode);
+  const isProcedure = useStore(s => s.map?.kind === 'procedure');
   const fitView = useStore(s => s.fitView);
   const filters = useStore(s => s.filters);
   const showFilterPanel = useStore(s => s.showFilterPanel);
@@ -191,7 +192,7 @@ export function Toolbar(): JSX.Element | null {
       <div className="menu-wrap">
         <button className="btn" onClick={() => { const v = showLayout; closeMenus(); setShowLayout(!v); }}
                 title="Current layout mode - resets to Freeform when you move a node by hand">
-          Layout: {layoutMode === 'hierarchical' ? 'Hierarchical' : layoutMode === 'grid' ? 'Grid' : 'Freeform'} ▾
+          Layout: {layoutMode === 'hierarchical' ? 'Hierarchical' : layoutMode === 'grid' ? 'Grid' : layoutMode === 'sections' ? 'Sections' : 'Freeform'} ▾
         </button>
         {showLayout && (
           <div className="menu">
@@ -201,6 +202,12 @@ export function Toolbar(): JSX.Element | null {
             <button onClick={() => { applyAutoLayout('grid'); setShowLayout(false); }}>
               {layoutMode === 'grid' ? '✓ ' : ''}Grid
             </button>
+            {isProcedure && (
+              <button onClick={() => { applyAutoLayout('sections'); setShowLayout(false); }}
+                      title="One row per section, read left to right then top to bottom - for long procedures">
+                {layoutMode === 'sections' ? '✓ ' : ''}Sections
+              </button>
+            )}
           </div>
         )}
       </div>

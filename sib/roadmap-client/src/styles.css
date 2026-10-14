@@ -210,6 +210,29 @@ button { font: inherit; }
 .icon-btn:hover { background: var(--ax-paper-2); }
 .icon-btn.active { border-color: var(--accent); color: var(--accent); background: var(--ax-blue-fill); }
 
+/* ── Sections outline (long procedures) ───────────────────── */
+
+.sections-outline {
+  width: 200px; flex-shrink: 0;
+  background: var(--panel); border-right: 1px solid var(--border);
+  padding: 10px 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+}
+.sections-outline.collapsed { width: 36px; padding: 10px 4px; }
+.sections-head { display: flex; align-items: center; gap: 6px; }
+.sections-head h3 { flex: 1; margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); line-height: 1.3; }
+.sections-total { display: block; font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.sections-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.sections-list li { display: flex; align-items: center; gap: 2px; border-radius: 6px; }
+.sections-list li.current { background: var(--ax-blue-fill); }
+.sections-list li.current .sections-name { color: var(--accent); font-weight: 600; }
+.sections-jump { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 6px; border: 0; background: none; color: var(--text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; border-radius: 6px; }
+.sections-jump:hover { background: var(--ax-paper-2); }
+.sections-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sections-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sections-rename { padding: 2px 5px; font-size: 11px; opacity: 0; }
+.sections-list li:hover .sections-rename { opacity: 1; }
+.sections-list input { width: 100%; font-size: 12px; padding: 4px 6px; border: 1px solid var(--accent); border-radius: 6px; background: var(--bg); color: var(--text); }
+
 /* ── Filter panel ─────────────────────────────────────────── */
 
 .filter-panel {

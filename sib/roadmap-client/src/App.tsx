@@ -6,6 +6,7 @@ import { MapList } from './components/MapList.js';
 import { Toolbar } from './components/Toolbar.js';
 import { Inspector } from './components/Inspector.js';
 import { FilterPanel } from './components/FilterPanel.js';
+import { SectionsOutline } from './components/SectionsOutline.js';
 import { PresentationBar } from './components/PresentationBar.js';
 import { GlossaryPanel } from './components/GlossaryPanel.js';
 import { ProcedureBar } from './components/ProcedureBar.js';
@@ -53,6 +54,7 @@ export default function App(): JSX.Element {
       )}
       <div className={`editor-body ${canvasTheme}`}>
         {!presenting && <FilterPanel />}
+        {!presenting && <SectionsOutline />}
         <CanvasStage />
         {!presenting && <GlossaryPanel />}
         {/* Preview replaces the Inspector on the right while active - the

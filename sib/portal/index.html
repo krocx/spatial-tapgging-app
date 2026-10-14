@@ -5454,7 +5454,7 @@ function xlsxCol(headers, aliases) {
 }
 
 /** Excel rows → ImportedGuide. Columns (order-free, case-insensitive):
- *  Step | Title | Instruction | Voice | ImageURL | LinkURL | Optional |
+ *  Step | Section | Title | Instruction | Voice | ImageURL | LinkURL | Optional |
  *  OnSuccess | OnFailure | Requires */
 function parseGuideXlsx(arrayBuffer, fileName) {
   const wb    = XLSX.read(arrayBuffer, { type: 'array' });
@@ -5466,6 +5466,7 @@ function parseGuideXlsx(arrayBuffer, fileName) {
   const col = {
     seq:      xlsxCol(H, ['step', 'seq', '#']),
     title:    xlsxCol(H, ['title']),
+    section:  xlsxCol(H, ['section', 'phase', 'chapter']),
     text:     xlsxCol(H, ['instruction', 'text', 'description']),
     tts:      xlsxCol(H, ['voice', 'tts', 'speak']),
     image:    xlsxCol(H, ['image']),
@@ -5484,6 +5485,7 @@ function parseGuideXlsx(arrayBuffer, fileName) {
   const steps = rows.slice(1).map((r, i) => {
     const s = { sequenceNumber: num(r, col.seq) ?? (i + 1), text: cell(r, col.text) };
     const title = cell(r, col.title);   if (title) s.title   = title;
+    const sec   = cell(r, col.section); if (sec)   s.section = sec;
     const tts   = cell(r, col.tts);     if (tts)   s.ttsText = tts;
     const img   = cell(r, col.image);   if (/^https?:\/\//i.test(img))  s.imageUrl = img;
     const link  = cell(r, col.link);    if (/^https?:\/\//i.test(link)) s.linkUrl  = link;
@@ -5576,14 +5578,14 @@ function importGuideJsonTyped() {
 async function downloadGuideXlsxTemplate() {
   try { await ensureSheetJS(); } catch (e) { toast(e.message); return; }
   const rows = [
-    ['Step', 'Title', 'Instruction', 'Voice', 'ImageURL', 'LinkURL', 'Optional', 'OnSuccess', 'OnFailure', 'Requires'],
-    [1, 'Check oil', 'Verify the oil level is between MIN and MAX.', 'Check the oil level', 'https://example.com/oil.jpg', '', '', 2, '', ''],
-    [2, 'Warm-up',  'Run five dry cycles at low pressure.', '', '', 'https://example.com/sop.pdf', '', 3, 4, ''],
-    [3, 'Confirm ready', 'Confirm pressure holds 180–200 bar.', '', '', '', '', '', '', 1],
-    [4, 'Bleed & retry', 'Bleed the line, then repeat the warm-up.', '', '', '', 'yes', 2, '', ''],
+    ['Step', 'Section', 'Title', 'Instruction', 'Voice', 'ImageURL', 'LinkURL', 'Optional', 'OnSuccess', 'OnFailure', 'Requires'],
+    [1, 'Prepare', 'Check oil', 'Verify the oil level is between MIN and MAX.', 'Check the oil level', 'https://example.com/oil.jpg', '', '', 2, '', ''],
+    [2, 'Prepare', 'Warm-up',  'Run five dry cycles at low pressure.', '', '', 'https://example.com/sop.pdf', '', 3, 4, ''],
+    [3, 'Run', 'Confirm ready', 'Confirm pressure holds 180–200 bar.', '', '', '', '', '', '', 1],
+    [4, 'Run', 'Bleed & retry', 'Bleed the line, then repeat the warm-up.', '', '', '', 'yes', 2, '', ''],
   ];
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:5},{wch:16},{wch:46},{wch:24},{wch:28},{wch:28},{wch:9},{wch:10},{wch:10},{wch:9}];
+  ws['!cols'] = [{wch:5},{wch:12},{wch:16},{wch:46},{wch:24},{wch:28},{wch:28},{wch:9},{wch:10},{wch:10},{wch:9}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Guide');
   XLSX.writeFile(wb, 'guide-import-template.xlsx');

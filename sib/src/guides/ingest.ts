@@ -233,6 +233,7 @@ export async function applyImportedGuide(
       anchorId:           opts.anchorId,
       sequenceNumber:     s.sequenceNumber,
       title:              s.title?.trim()   || undefined,
+      ...(s.section?.trim() ? { section: s.section.trim() } : existing?.section ? { section: existing.section } : {}),
       text:               s.text.trim(),
       ttsText:            s.ttsText?.trim() || undefined,
       linkUrl:            s.linkUrl?.trim() || undefined,
