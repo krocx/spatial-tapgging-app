@@ -21,6 +21,7 @@
 
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useStore } from '../state/store.js';
+import { ResizeHandle } from './ResizeHandle.js';
 import { mindmapApi, type GlbPartNode, type GlbPartTree, type ModelColours } from '../api/mindmap-api.js';
 import { AssemblyPreview, type PartState } from './AssemblyPreview.js';
 import { ColoursPanel } from './ColoursPanel.js';
@@ -590,7 +591,7 @@ export function PartsStudio(): JSX.Element | null {
             <AssemblyPreview key={reload + pk.modelReload * 1000} modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focusList} spotlight={pk.spotlight} isolate={pk.isolate} focusLabel={pk.focusLabel} colourBy={pk.colourBy} onHover={pk.setHover} onFocusInfo={pk.setFocusInfo} fill />
           )}
         </div>
-        <aside className="st-side">
+        <aside className="st-side"><ResizeHandle cssVar="--studio-side-w" storageKey="sib.studio.side-w" min={380} max={720} />
           {coach && <StudioCoach pk={pk} stepTitle={cur?.title} onClose={() => setCoach(false)} />}
           {pk.focusBlock}
           <div className="ax-seg st-tabs" role="tablist">

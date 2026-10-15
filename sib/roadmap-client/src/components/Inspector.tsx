@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { MindmapNodeStatus, MindmapNodeReview, MindmapNodeShape, MindmapEdgeRole, Model3D } from '@spatial/shared';
 import { useStore } from '../state/store.js';
+import { ResizeHandle } from './ResizeHandle.js';
 import { ROLE_COLORS } from '../canvas/EdgeView.js';
 import { mindmapApi, fetchStepImageUrl } from '../api/mindmap-api.js';
 import {
@@ -54,7 +55,7 @@ export function Inspector(): JSX.Element | null {
   if (lane) return <LanePanel key={lane.id} laneId={lane.id} />;
   if (selectedNodeIds.length > 1) {
     return (
-      <aside className="inspector">
+      <aside className="inspector"><ResizeHandle cssVar="--inspector-w" storageKey="sib.designer.inspector-w" min={240} max={560} />
         <h3>{selectedNodeIds.length} nodes selected</h3>
         <p className="inspector-hint">Drag to move together · ⌘C copy · ⌘D duplicate · Del remove</p>
         <BulkTypeRow />
@@ -198,7 +199,7 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
   const sib = node.metadata?.sib as { kind?: string; id?: string } | undefined;
 
   return (
-    <aside className="inspector">
+    <aside className="inspector"><ResizeHandle cssVar="--inspector-w" storageKey="sib.designer.inspector-w" min={240} max={560} />
       <h3>Node</h3>
 
       <label className="inspector-field">Text
@@ -629,7 +630,7 @@ function EdgePanel({ edgeId }: { edgeId: string }): JSX.Element | null {
   if (!edge) return null;
 
   return (
-    <aside className="inspector">
+    <aside className="inspector"><ResizeHandle cssVar="--inspector-w" storageKey="sib.designer.inspector-w" min={240} max={560} />
       <h3>{isProcedure ? 'Connection' : 'Edge'}</h3>
       {/* Role switcher - the answer to "why can't I change Next → On failure?"
           Pick the wrong type in the drop dialog and you fix it here instead of
@@ -683,7 +684,7 @@ function LanePanel({ laneId }: { laneId: string }): JSX.Element | null {
   if (!lane) return null;
 
   return (
-    <aside className="inspector">
+    <aside className="inspector"><ResizeHandle cssVar="--inspector-w" storageKey="sib.designer.inspector-w" min={240} max={560} />
       <h3>Lane</h3>
       <label className="inspector-field">Name
         <input defaultValue={lane.name}

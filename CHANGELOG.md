@@ -23,6 +23,9 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-329: resizable Designer panels.** The property pane (Inspector)
+  and the Studio's parts panel have a drag edge on their inner side: 240 to
+  560 px and 380 to 720 px, double-click resets, remembered per browser.
 - **AROMS-327: portal dialogs on the design system.** `axAlert`,
   `axConfirm`, `axPrompt` and `axChoose` replace the browser's native boxes;
   the Guide Library's move, copy, rename, delete, archive, reset, trash and

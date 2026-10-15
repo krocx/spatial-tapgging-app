@@ -22,9 +22,9 @@
 .ax-studio .st-step-c { font: var(--ax-eyebrow); color: var(--ax-ink-3); }
 
 /* ── Body: the stage and the panel ───────────────────────────────────────── */
-.ax-studio .st-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+.ax-studio .st-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--studio-side-w, 380px); }
 .ax-studio .st-stage { min-width: 0; min-height: 0; padding: var(--ax-s3); display: flex; }
-.ax-studio .st-side { display: flex; flex-direction: column; gap: var(--ax-s3); padding: var(--ax-s3); border-left: var(--ax-hair); min-height: 0; overflow: auto; scrollbar-width: thin; }
+.ax-studio .st-side { position: relative; display: flex; flex-direction: column; gap: var(--ax-s3); padding: var(--ax-s3); border-left: var(--ax-hair); min-height: 0; overflow: auto; scrollbar-width: thin; }
 .ax-studio .st-side > * { flex-shrink: 0; }
 .ax-studio .st-side > .pt-card-grow { flex-shrink: 1; }
 .ax-studio .st-tabs { width: 100%; }
