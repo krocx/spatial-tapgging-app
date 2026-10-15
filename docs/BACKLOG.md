@@ -78,6 +78,11 @@ Newest at the bottom. `Updated` is the date the row last changed.
 | AROMS-326 | Anchor Lab rigs (anchorType LAB) hidden from the Guide Library and from the Move / Copy chamber pickers | portal | PO | doing | 2026.4.50 | 2026-10-16 | | awaiting Karthik's confirmation on the server |
 | AROMS-327 | Portal dialogs on the design system: axAlert / axConfirm / axPrompt / axChoose replace the browser's native boxes. Done: Guide Library (move, copy, copy to all, rename, delete, archive, reset map, trash, parts check). Open: the other 40 sites (anchors, tags, configs, models, admin, Gemba, iLOTO) | portal | PO | doing | 2026.4.50 | 2026-10-16 | | sweep the rest one page at a time |
 | AROMS-328 | Model check counts hose animation frames as present (they are playback nodes, not parts) and reports them in words | server, portal | PO | done | 2026.4.50 | 2026-10-16 | | |
+| AROMS-329 | Designer: resizable minimap and Studio panel (drag handle; minimum = today's size, maximum per design) | designer | PO | todo | | 2026-10-16 | | user request |
+| AROMS-330 | iOS: step navigator in AR OMS (and AR OJT): jump to any step from a pane that shows each step's completion and validation state | ios | PO | todo | | 2026-10-16 | | user request; design to agree |
+| AROMS-331 | iOS: validation training mode made explicit per step: Quick shot / Cone as a visible choice with state, not a tap on the "Trained" text | ios | PO | todo | | 2026-10-16 | | user request |
+| AROMS-332 | OCR on steps: read text from the camera (on-device Vision) as evidence and as a check against expected text; AR OMS steps and Spatial Inspection tags | ios, server, portal | PO | todo | | 2026-10-16 | | scope to agree: capture vs verify, where expected text is authored |
+| AROMS-333 | iOS Author mode: step tagging UI redesign (clipped titles and "…"), applied to Operator mode where the same cards appear | ios | PO | todo | | 2026-10-16 | | user request; UX review first |
 ## 3. June 2026 import (AROMS-1 … 99): close-out
 
 Mark in Jira, do not re-import. Where an item is superseded, the key above
