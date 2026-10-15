@@ -1260,6 +1260,8 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     // the validation-ref routes below, never by a PATCH body.
     validationRequired: 'validationRequired' in body ? (body.validationRequired || undefined) : step.validationRequired,
     evidenceRequired:   'evidenceRequired'   in body ? (body.evidenceRequired   || undefined) : step.evidenceRequired,
+    // AROMS-331: the planned training mode is authored; the trained mode stays server-owned.
+    validationPlan:     'validationPlan' in body ? (body.validationPlan === 'single' || body.validationPlan === 'cone' ? body.validationPlan : undefined) : step.validationPlan,
     updatedAt: now,
   };
   // W1: a validated step always yields an evidence photo - the validation

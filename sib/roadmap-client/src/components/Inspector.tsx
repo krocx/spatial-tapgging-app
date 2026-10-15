@@ -337,7 +337,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
   const isProcedure = useStore(s => s.map?.kind === 'procedure');
   const step = useStore(s =>
     (s.map?.nodes.find(n => n.id === nodeId)?.metadata?.step ?? {}) as {
-      ttsText?: string; optional?: boolean; evidenceRequired?: boolean; imageFile?: string; linkUrl?: string;
+      ttsText?: string; optional?: boolean; evidenceRequired?: boolean; validationPlan?: 'single' | 'cone'; imageFile?: string; linkUrl?: string;
       modelId?: string; modelScale?: number; modelOpacity?: number;
       models?: StepModelSlot[];
     });
@@ -460,6 +460,15 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
           onChange={e => patchStepMeta(nodeId, { evidenceRequired: e.target.checked ? true : null })}
         />
         Evidence photo required <span className="step-check-hint">- must be taken before completing</span>
+      </label>
+
+      <label className="inspector-field">Validation training
+        <select value={step.validationPlan ?? ''} onChange={e => patchStepMeta(nodeId, { validationPlan: e.target.value ? e.target.value : null })}
+                title="How the author will train this step's check on the iPad; the app offers this by default">
+          <option value="">Not planned</option>
+          <option value="single">Quick shot - one reference photo</option>
+          <option value="cone">Cone - multi-angle sweep (recommended for assembly steps)</option>
+        </select>
       </label>
 
       <div className="inspector-field">Reference image

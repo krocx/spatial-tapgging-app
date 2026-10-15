@@ -241,6 +241,7 @@ export async function applyImportedGuide(
       mediaPath,
       completionRequired: s.completionRequired ?? true,
       ...(s.evidenceRequired === true ? { evidenceRequired: true } : {}),
+      ...(s.validationPlan ? { validationPlan: s.validationPlan } : existing?.validationPlan ? { validationPlan: existing.validationPlan } : {}),
       // CAD-driven presentation (AR OJT): the import owns node deltas and the
       // suggested view outright - they are authoring data, not placement.
       // A source that knows nothing about the assembly (older designer maps,

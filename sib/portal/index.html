@@ -6916,13 +6916,21 @@ function renderStepsInCard(guideId, anchorId) {
       ? `<span class="gl-step-tag gl-step-img" title="Model orientation set in the app">${rotParts.join(' · ')}</span>` : '';
     const partsTag   = Array.isArray(step.nodes) && step.nodes.length
       ? `<span class="gl-step-tag gl-step-img" title="CAD-driven part presentation (show / hide / motion) on this step"> ${step.nodes.length} part${step.nodes.length !== 1 ? 's' : ''}</span>` : '';
+    // AROMS-331: the planned training mode is authored here (click cycles
+    // Not planned → Quick shot → Cone); what was actually trained is shown
+    // beside it and only the app changes that.
+    const planLabel = { single: 'Quick shot', cone: 'Cone' };
+    const plan = step.validationPlan;
+    const trainedTag = step.validationTrainedAt
+      ? `<span class="gl-step-tag gl-step-placed" title="Trained on the iPad ${esc(new Date(step.validationTrainedAt).toLocaleDateString())}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Trained · ${planLabel[step.validationMode] || 'quick shot'}</span>` : '';
+    const planTag = `<button type="button" class="gl-step-tag${plan ? ' gl-step-img' : ''}" style="cursor:pointer;border:0" title="Validation training planned for this step - click to change (the iPad offers it by default when training)" onclick="event.stopPropagation(); glCyclePlan('${guideId}','${anchorId}','${step.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-target"/></svg> ${plan ? `Plan: ${planLabel[plan]}` : 'No validation planned'}</button>`;
 
     html += `<div class="gl-step-row">
       <div class="gl-step-seq">${step.sequenceNumber}</div>
       <div class="gl-step-body">
         <div class="gl-step-title">${esc(title)}</div>
         <div class="gl-step-text">${esc(step.text)}</div>
-        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${modelsTag}${rotTag}${partsTag}${opacityCtl}</div>
+        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${modelsTag}${rotTag}${partsTag}${planTag}${trainedTag}${opacityCtl}</div>
       </div>
     </div>`;
   }
@@ -6931,6 +6939,20 @@ function renderStepsInCard(guideId, anchorId) {
 
 // A2: debounced ghost-opacity PATCH from the Guide Library step row.
 const glOpacityTimers = {};
+/** AROMS-331: cycle a step's planned validation mode and save it. */
+async function glCyclePlan(guideId, anchorId, stepId) {
+  const steps = guideLibraryData[anchorId]?.steps[guideId] || [];
+  const step = steps.find(s => s.id === stepId); if (!step) return;
+  const next = !step.validationPlan ? 'single' : step.validationPlan === 'single' ? 'cone' : null;
+  try {
+    const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/steps/${encodeURIComponent(stepId)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ validationPlan: next }),
+    });
+    Object.assign(step, r.data || {});
+    if (!r.data) step.validationPlan = next || undefined;
+    renderStepsInCard(guideId, anchorId);
+  } catch (e) { toast(`Could not save: ${e.message}`, 4000); }
+}
 function glOpacityInput(input, guideId, stepId) {
   const pct = parseInt(input.value, 10);
   input.parentElement.querySelector('.gl-opacity-val').textContent = pct + '%';

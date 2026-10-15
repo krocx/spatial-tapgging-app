@@ -132,6 +132,7 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
     if (s.ttsText?.trim())            stepMeta.ttsText      = s.ttsText.trim();
     if (s.completionRequired === false) stepMeta.optional   = true;
     if (s.evidenceRequired === true)    stepMeta.evidenceRequired = true;
+    if (s.validationPlan)               stepMeta.validationPlan   = s.validationPlan;
     if (imageFileByStepId[s.id])      stepMeta.imageFile    = imageFileByStepId[s.id];
     if (s.linkUrl?.trim())            stepMeta.linkUrl      = s.linkUrl.trim();
     if (s.modelId)                    stepMeta.modelId      = s.modelId;

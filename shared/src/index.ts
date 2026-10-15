@@ -1193,6 +1193,13 @@ export interface GuideStep {
   /** V1: id of the hidden step-validation tag holding the cone pass-state.
    *  SERVER-owned; set by POST validation-trained, cleared on DELETE. */
   validationTagId?:   string;
+  /**
+   * AROMS-331 (2026.4.50): how the author PLANS to train this step - the
+   * default the app offers when training, shown on the step page. Authored
+   * in the Designer or the Guide Library; `validationMode` above remains
+   * what was actually trained. 'single' = quick shot, 'cone' = dome sweep.
+   */
+  validationPlan?:    'single' | 'cone';
   /** K5: the operator must attach an evidence photo before completing. */
   evidenceRequired?:  boolean;
   createdAt:          string;
@@ -1247,6 +1254,8 @@ export type UpdateGuideStepRequest = {
   precondition?:       string | null;
   /** Step validation (K4). validationTrainedAt is server-owned - not here. */
   validationRequired?: boolean;
+  /** AROMS-331: planned training mode; null clears. */
+  validationPlan?:     'single' | 'cone' | null;
   /** K5: evidence photo mandatory before completion. */
   evidenceRequired?:   boolean;
 };
@@ -1907,6 +1916,8 @@ export interface ImportedGuideStep {
   completionRequired?:  boolean;   // defaults to true
   /** K5: evidence photo mandatory before this step can complete. */
   evidenceRequired?:    boolean;
+  /** AROMS-331: planned training mode (Designer / import). */
+  validationPlan?:      'single' | 'cone';
   // 3D ghost overlay ASSIGNMENT (which model, how big, how transparent).
   // Deliberately excludes offsets/rotation: those are AR placement, owned by
   // the device, and survive re-sync - see applyImportedGuide.

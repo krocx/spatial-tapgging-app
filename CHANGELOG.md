@@ -23,6 +23,12 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-331: validation training is planned on the step.** A step
+  carries `validationPlan` (Quick shot or Cone), set in the Designer's step
+  inspector or by clicking the plan chip in the Guide Library's step list;
+  what was actually trained stays beside it. The import, compiler and
+  re-sync carry it. The iPad will offer the plan as the default when
+  training (app half pending).
 - **AROMS-329: resizable Designer panels.** The property pane (Inspector)
   and the Studio's parts panel have a drag edge on their inner side: 240 to
   560 px and 380 to 720 px, double-click resets, remembered per browser.

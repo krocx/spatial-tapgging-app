@@ -67,6 +67,7 @@ interface StepMeta {
   ttsText?:      string;
   optional?:     boolean;
   evidenceRequired?: boolean;
+  validationPlan?: 'single' | 'cone';
   imageFile?:    string;
   linkUrl?:      string;
   modelId?:      string;
@@ -155,6 +156,7 @@ function stepMetaOf(node: MindmapNode): StepMeta {
     ttsText:      typeof m.ttsText === 'string' && m.ttsText.trim() ? m.ttsText.trim() : undefined,
     optional:     m.optional === true,
     evidenceRequired: m.evidenceRequired === true,
+    validationPlan: m.validationPlan === 'single' || m.validationPlan === 'cone' ? m.validationPlan : undefined,
     imageFile:    typeof m.imageFile === 'string' && m.imageFile ? m.imageFile : undefined,
     // Only http(s) survives - anything else would produce a dead button on device.
     linkUrl:      typeof m.linkUrl === 'string' && /^https?:\/\//i.test(m.linkUrl.trim())
@@ -398,6 +400,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
       // metadata.step.optional is what the Inspector writes now.
       completionRequired: (meta.optional || node.metadata?.optional === true) ? false : true,
       ...(meta.evidenceRequired === true ? { evidenceRequired: true } : {}),
+      ...(meta.validationPlan ? { validationPlan: meta.validationPlan } : {}),
     };
     if (meta.ttsText)      step.ttsText      = meta.ttsText;
     if (meta.imageFile)    step.imageFile    = meta.imageFile;
