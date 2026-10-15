@@ -15,3 +15,4 @@ whoever or whatever writes the code.
 - Code architecture lives in `docs/ARCHITECTURE.md` (C4; rendered at `/architecture`). Levels 1-3 are hand-written; when a file or import changes run `npm run arch:graph` and commit `docs/architecture/` - `npm run arch:check` fails on drift.
 
 Other standing rules for this repo live in `docs/` (versioning, catalogue checker, IP sensitivity). When in doubt, propose before changing.
+- Work is tracked by AROMS key (`docs/BACKLOG.md`): quote the key in commit messages and changelog entries; `npm run backlog:jira -- --since <date>` makes the Friday Jira delta.

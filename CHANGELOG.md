@@ -17,6 +17,11 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS backlog keys (AROMS-300 and up).** `docs/BACKLOG.md` is the one
+  list of work; `docs/catalog/` is the capability register (AROMS-100 to
+  299, keys kept in `docs/jira/keys.json`); `npm run backlog:jira` writes
+  the Jira CSV with Issue Keys, `--since` for the Friday delta. From here
+  on commits and changelog entries quote the key.
 - **XR kit: hands are a choice on the gate.** Two checkboxes, remembered
   per browser: hand tracking on the headset (off leaves the feature out of
   the session) and virtual hands in the desktop preview, which used to need
