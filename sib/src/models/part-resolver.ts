@@ -12,7 +12,7 @@
 // Proprietary & Confidential · Applied Materials.
 
 import type { GuideStepNode } from '@spatial/shared';
-import { partTreeOf, type GlbPartNode } from './glb-nodes.js';
+import { partTreeOf, isPlaybackNode, type GlbPartNode } from './glb-nodes.js';
 
 export interface PartIndex {
   names:        Set<string>;
@@ -39,6 +39,11 @@ export function buildPartIndex(gltf: Record<string, unknown>): PartIndex {
     for (const c of n.children) walk(c);
   };
   for (const r of partTreeOf(gltf).roots) walk(r);
+  // Playback nodes (hose flipbook frames, rest tubes) are not parts an author
+  // picks, so the part tree leaves them out - but a step's deltas do address
+  // them, so they count as present here or every hose reports as missing.
+  const nodesJ = Array.isArray(gltf.nodes) ? gltf.nodes as Array<Record<string, unknown>> : [];
+  nodesJ.forEach((nj, i) => { const name = typeof nj.name === 'string' && nj.name.trim() ? nj.name : `node${i}`; if (isPlaybackNode(name)) idx.names.add(name); });
   return idx;
 }
 

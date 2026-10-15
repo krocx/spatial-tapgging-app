@@ -1649,6 +1649,23 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
+     DIALOGS (AROMS-327): the portal's own alert / confirm / prompt / choose,
+     on the design system - never the browser's native boxes.
+══════════════════════════════════════════════════════════════ -->
+<div id="ax-dialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="ax-dialog-title">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px">
+    <h2 id="ax-dialog-title" style="display:flex;align-items:center;gap:8px"></h2>
+    <div id="ax-dialog-body" style="font-size:0.84rem;line-height:1.5;color:var(--text);white-space:pre-line;max-height:50vh;overflow:auto"></div>
+    <div id="ax-dialog-choices" style="display:none;flex-direction:column;gap:6px;margin-top:12px;max-height:40vh;overflow:auto"></div>
+    <input id="ax-dialog-input" class="ax-input" style="display:none;width:100%;margin-top:12px" autocomplete="off">
+    <div class="modal-actions">
+      <button class="ax-btn ax-btn--quiet" id="ax-dialog-cancel">Cancel</button>
+      <button class="ax-btn" id="ax-dialog-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
      3D MODEL KIT ASSIGNMENT MODAL
 ══════════════════════════════════════════════════════════════ -->
 <!-- Guide sharing - pick which technicians see this guide -->
@@ -5179,7 +5196,7 @@ async function saveDefaultScale() {
 /** Rename a model - display name only; files, kit assignments and ids untouched. */
 async function renameGuide(guideId, anchorId) {
   const guide = (guideLibraryData[anchorId]?.guides || []).find(g => g.id === guideId);
-  const input = prompt('New name for this guide:', guide?.name || '');
+  const input = await axPrompt('Rename guide', '', { value: guide?.name || '', ok: 'Rename' });
   if (input === null) return;
   const name = input.trim();
   if (!name || name === guide?.name) return;
@@ -6150,7 +6167,7 @@ async function loadGuideTrash() {
   } catch { ig.textContent = ''; }
 }
 async function restoreTrashedGuide(id, name) { try { await apiFetch(`/guides/trash/${encodeURIComponent(id)}/restore`, { method: 'POST' }); toast(`Restored "${name}"`); loadGuideTrash(); } catch (e) { toast(`Restore failed: ${e.message}`, 4000); } }
-async function purgeTrashedGuide(id, name) { if (!confirm(`Delete "${name}" now, for good?\n\nIts steps, images and cone training files are removed. Runs and evidence stay.`)) return; try { await _apiDelete(`/guides/trash/${encodeURIComponent(id)}`); toast('Deleted for good'); loadGuideTrash(); } catch (e) { toast(`Failed: ${e.message}`, 4000); } }
+async function purgeTrashedGuide(id, name) { if (!(await axConfirm(`Delete "${name}" now, for good?`, 'Its steps, images and cone training files are removed. Runs and evidence stay.', { ok: 'Delete for good', danger: true, icon: 'trash' }))) return; try { await _apiDelete(`/guides/trash/${encodeURIComponent(id)}`); toast('Deleted for good'); loadGuideTrash(); } catch (e) { toast(`Failed: ${e.message}`, 4000); } }
 async function loadOpsLog() {
   const el = document.getElementById('ops-log');
   el.textContent = 'Loading…';
@@ -6454,18 +6471,18 @@ async function editGuideInDesigner(guideId, mode, tab) {
 /** Move a guide (and its steps) to another anchor. Placement clears and a
  *  published guide unpublishes - the server explains why in its own docs. */
 async function moveGuideToAnchor(guideId, fromAnchorId) {
-  const others = (allAnchors || []).filter(a => a.id !== fromAnchorId);
-  if (!others.length) { toast('No other anchors to move to.'); return; }
-  const listing = others.map((a, i) => `${i + 1}. ${a.assetId || a.id}`).join('\n');
-  const pick = prompt(`Move guide to which anchor?\n\n${listing}\n\nEnter a number (1–${others.length}).\nNote: steps become UNPLACED and must be re-placed in AR; a published guide is unpublished.`);
-  const idx = parseInt(pick, 10) - 1;
-  if (!Number.isInteger(idx) || idx < 0 || idx >= others.length) return;
+  const others = (allAnchors || []).filter(a => a.id !== fromAnchorId && (!a.anchorType || a.anchorType === 'QR'));
+  if (!others.length) { toast('No other chambers to move to.'); return; }
+  const id = await axChoose('Move guide to which chamber?', 'Steps become unplaced and must be re-placed in AR on that chamber; a published guide is unpublished.',
+    others.map(a => ({ id: a.id, label: a.assetId || a.id, hint: configLabel(a.configId) || '' })));
+  if (!id) return;
+  const target = others.find(a => a.id === id);
   try {
     await apiFetch(`/guides/${guideId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ anchorId: others[idx].id }),
+      body: JSON.stringify({ anchorId: target.id }),
     });
-    toast(`Moved to ${others[idx].assetId || others[idx].id} - steps need AR placement.`);
+    toast(`Moved to ${target.assetId || target.id} - steps need AR placement.`);
     loadGuideLibrary();
   } catch (e) { toast(`Move failed: ${e.message}`); }
 }
@@ -6474,19 +6491,19 @@ async function moveGuideToAnchor(guideId, fromAnchorId) {
 // one). Same prompt-style picker as Move; the copy is a draft with unplaced
 // steps and no validation training - see sib/src/guides/copy.ts.
 async function copyGuideToAnchor(guideId, fromAnchorId) {
-  const list = (allAnchors || []).slice().sort((a, b) => (a.id === fromAnchorId ? -1 : b.id === fromAnchorId ? 1 : 0));
-  if (!list.length) { toast('No anchors available.'); return; }
-  const listing = list.map((a, i) => `${i + 1}. ${a.assetId || a.id}${a.id === fromAnchorId ? ' (this anchor - duplicate)' : ''}`).join('\n');
-  const pick = prompt(`Copy guide to which anchor?\n\n${listing}\n\nEnter a number (1–${list.length}).\nThe copy is a draft: steps must be placed in AR on that tool and validation retrained.`);
-  const idx = parseInt(pick, 10) - 1;
-  if (!Number.isInteger(idx) || idx < 0 || idx >= list.length) return;
+  const list = (allAnchors || []).filter(a => !a.anchorType || a.anchorType === 'QR').sort((a, b) => (a.id === fromAnchorId ? -1 : b.id === fromAnchorId ? 1 : 0));
+  if (!list.length) { toast('No chambers available.'); return; }
+  const id = await axChoose('Copy guide to which chamber?', 'The copy is a draft: its steps must be placed in AR on that chamber and validation retrained.',
+    list.map(a => ({ id: a.id, label: a.assetId || a.id, hint: a.id === fromAnchorId ? 'this chamber - duplicate' : (configLabel(a.configId) || '') })));
+  if (!id) return;
+  const target = list.find(a => a.id === id);
   try {
     const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/copy`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ anchorId: list[idx].id, createdBy: (UAM_USER && UAM_USER.name) || 'portal' }),
+      body: JSON.stringify({ anchorId: target.id, createdBy: (UAM_USER && UAM_USER.name) || 'portal' }),
     });
-    toast(`Copied "${r.data.name}" (${r.data.stepCount} steps) to ${list[idx].assetId || list[idx].id} - place its steps in AR.`);
+    toast(`Copied "${r.data.name}" (${r.data.stepCount} steps) to ${target.assetId || target.id} - place its steps in AR.`);
     loadGuideLibrary();
   } catch (e) { toast(`Copy failed: ${e.message}`); }
 }
@@ -6609,6 +6626,7 @@ function renderGuideLibrary() {
   const groups = new Map();   // key → { label, entries: [[anchorId, entry]] }
   const keyOf = a => (a.anchorType && a.anchorType !== 'QR') ? '__areas' : (a.configId || '__none');
   for (const [anchorId, entry] of Object.entries(guideLibraryData)) {
+    if (entry.anchor?.anchorType === 'LAB') continue;   // AROMS-326: Anchor Lab rigs are test fixtures, not chambers
     const k = keyOf(entry.anchor);
     if (!groups.has(k)) groups.set(k, { label: '', entries: [] });
     groups.get(k).entries.push([anchorId, entry]);
@@ -6778,11 +6796,16 @@ async function checkGuideParts(guideId) {
     const r = (await apiFetch(`/guides/${encodeURIComponent(guideId)}/model-check`)).data;
     if (r.note) { toast(r.note === 'no assembly' ? 'This guide has no assembly model - nothing to check.' : 'The model file is not on this server, so the parts cannot be checked here.', 4000); return; }
     if (!r.renamed.length && !r.unmatched.length) { toast(`All ${r.total} step parts are in the model.`, 3000); return; }
+    // Names as people read them: the part, not the exporter's handle; playback frames summarised.
+    const nice = n => n.replace(/^cmp:/, '').replace(/#s\d+f\d+$/, ' (animation frame)').replace(/#rest$/, ' (rest tube)');
+    const frames = r.unmatched.filter(n => /#(s\d+f\d+|rest)$/.test(n)).length;
     const lines = [`${r.matched} of ${r.total} step parts found in the model.`];
-    if (r.renamed.length) lines.push(`${r.renamed.length} renamed since the guide was written and found again by ${[...new Set(r.renamed.map(x => x.by))].join(' / ')}:\n  ` + r.renamed.slice(0, 8).map(x => `${x.from.replace(/^cmp:/, '')} → ${x.to.replace(/^cmp:/, '')}`).join('\n  ') + (r.renamed.length > 8 ? '\n  …' : ''));
-    if (r.unmatched.length) lines.push(`${r.unmatched.length} not found at all (the step will show nothing for them):\n  ` + r.unmatched.slice(0, 8).map(x => x.replace(/^cmp:/, '')).join('\n  ') + (r.unmatched.length > 8 ? '\n  …' : ''));
-    if (!r.renamed.length) { alert(lines.join('\n\n') + '\n\nRe-import the publication with "Update the existing guide" to refresh both the steps and the model.'); return; }
-    if (!confirm(lines.join('\n\n') + '\n\nRebind the guide to the current model now? Placement, sessions and training are not touched.')) return;
+    if (r.renamed.length) lines.push(`${r.renamed.length} renamed since the guide was written and found again by ${[...new Set(r.renamed.map(x => x.by))].join(' / ')}:\n  ` + r.renamed.slice(0, 8).map(x => `${nice(x.from)} → ${nice(x.to)}`).join('\n  ') + (r.renamed.length > 8 ? '\n  …' : ''));
+    const parts = r.unmatched.filter(n => !/#(s\d+f\d+|rest)$/.test(n));
+    if (parts.length) lines.push(`${parts.length} not found at all (the step will show nothing for them):\n  ` + parts.slice(0, 8).map(nice).join('\n  ') + (parts.length > 8 ? '\n  …' : ''));
+    if (frames) lines.push(`${frames} hose animation frame${frames === 1 ? '' : 's'} not in this model - the hose shows at rest.`);
+    if (!r.renamed.length) { await axAlert('Parts against the model', lines.join('\n\n') + '\n\nRe-import the publication with "Update the existing guide" to refresh both the steps and the model.', 'cube'); return; }
+    if (!(await axConfirm('Rebind the guide to the current model?', lines.join('\n\n') + '\n\nPlacement, sessions and training are not touched.', { ok: 'Rebind', icon: 'cube' }))) return;
     const b = (await apiFetch(`/guides/${encodeURIComponent(guideId)}/rebind-parts`, { method: 'POST' })).data;
     toast(`Rebound ${b.renamed.length} part reference${b.renamed.length === 1 ? '' : 's'}${b.unmatched.length ? ` · ${b.unmatched.length} still not in the model` : ''}.`, 5000);
   } catch (e) { toast(`Check failed: ${e.message}`, 5000); }
@@ -6800,7 +6823,7 @@ async function copyGuideToConfigChambers(guideId, fromAnchorId, configId) {
   const todo = targets.filter(a => !(guideLibraryData[a.id]?.guides || []).some(g => g.name === name));
   const skipped = targets.length - todo.length;
   if (!todo.length) { toast(`Every chamber already has "${name}".`); return; }
-  if (!confirm(`Copy "${name}" to ${todo.length} chamber(s)${skipped ? ` (${skipped} already have it)` : ''}?\nEach copy is a draft - place its steps in AR on that chamber.`)) return;
+  if (!(await axConfirm(`Copy "${name}" to ${todo.length} chamber${todo.length === 1 ? '' : 's'}?`, `${skipped ? `${skipped} already have it. ` : ''}Each copy is a draft - place its steps in AR on that chamber.`, { ok: 'Copy', icon: 'copy-all' }))) return;
   let ok = 0, fail = 0;
   for (const a of todo) {
     try {
@@ -7311,7 +7334,7 @@ async function deleteGuideFromLibrary(guideId, anchorId) {
   let runs = 0, steps = guide?.stepCount ?? guide?.steps?.length;
   try { runs = (await apiFetch(`/guides/${encodeURIComponent(guideId)}/runs-count`)).data.runs; } catch {}
   const what = `The guide${steps != null ? `, its ${steps} steps` : ', its steps'}, its images, its cone training and its Roadmap map go to the trash for 30 days; an Owner can restore them from Admin › Guide trash.\n\n${runs ? `${runs} run${runs === 1 ? '' : 's'} are recorded against it - they stay, with the evidence and the usage log.` : 'No runs are recorded against it.'}\n\nPrefer Archive if the guide may come back.`;
-  if (!confirm(`Delete "${guide?.name ?? guideId}"?\n\n${what}`)) return;
+  if (!(await axConfirm(`Delete "${guide?.name ?? guideId}"?`, what, { ok: 'Delete', danger: true, icon: 'trash' }))) return;
   try {
     const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}`, { method: 'DELETE' });
     if (entry) entry.guides = entry.guides.filter(g => g.id !== guideId);
@@ -7322,7 +7345,7 @@ async function deleteGuideFromLibrary(guideId, anchorId) {
 async function archiveGuide(guideId, anchorId, archive) {
   const entry = guideLibraryData[anchorId];
   const guide = entry?.guides.find(g => g.id === guideId);
-  if (archive && !confirm(`Archive "${guide?.name ?? guideId}"?\n\nIt disappears from Operator and from this list (tick "Show archived" to see it) and is unpublished. Steps, placements, runs, evidence and usage are kept. A Manager can restore it any time.`)) return;
+  if (archive && !(await axConfirm(`Archive "${guide?.name ?? guideId}"?`, 'It disappears from Operator and from this list (tick "Show archived" to see it) and is unpublished. Steps, placements, runs, evidence and usage are kept. A Manager can restore it any time.', { ok: 'Archive', icon: 'backup' }))) return;
   try {
     const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/${archive ? 'archive' : 'unarchive'}`, { method: 'POST' });
     if (entry) { const i = entry.guides.findIndex(g => g.id === guideId); if (i >= 0) { if (archive && !glShowArchived) entry.guides.splice(i, 1); else entry.guides[i] = r.data; } }
@@ -7336,7 +7359,7 @@ async function archiveGuide(guideId, anchorId, archive) {
 async function resetGuideMap(guideId, anchorId) {
   const entry = guideLibraryData[anchorId];
   const guide = entry?.guides.find(g => g.id === guideId);
-  if (!confirm(`Reset the world map of "${guide?.name ?? guideId}"?\n\nEvery step becomes unplaced and must be re-placed in AR on iOS. Training and 3D model assignments are kept.`)) return;
+  if (!(await axConfirm(`Reset the world map of "${guide?.name ?? guideId}"?`, 'Every step becomes unplaced and must be re-placed in AR on iOS. Training and 3D model assignments are kept.', { ok: 'Reset', danger: true, icon: 'map-reset' }))) return;
   try {
     const r = await _apiDelete(`/worldmap/guide/${encodeURIComponent(guideId)}`);
     toast(`Map reset · ${r?.data?.unplaced ?? 0} step(s) unplaced.`);
@@ -7966,6 +7989,42 @@ function exportAllGembaCSV() {
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────────
+// ── Dialogs on the design system (AROMS-327) ─────────────────────────────────
+// axAlert(title, body) · axConfirm(title, body, {ok, danger}) → bool ·
+// axPrompt(title, body, {value, placeholder}) → string|null ·
+// axChoose(title, body, [{id, label, hint}]) → id|null. Escape cancels.
+let _axDialogResolve = null;
+function _axDialog({ title, body, choices, input, ok = 'OK', cancel = 'Cancel', danger = false, icon }) {
+  const el = document.getElementById('ax-dialog'); if (!el) return Promise.resolve(null);
+  const t = document.getElementById('ax-dialog-title'), b = document.getElementById('ax-dialog-body');
+  const ch = document.getElementById('ax-dialog-choices'), inp = document.getElementById('ax-dialog-input');
+  const okB = document.getElementById('ax-dialog-ok'), cB = document.getElementById('ax-dialog-cancel');
+  t.innerHTML = (icon ? `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${icon}"/></svg>` : '') + esc(title || '');
+  if (typeof body === 'string' && /<[a-z][\s\S]*>/i.test(body)) b.innerHTML = body; else b.textContent = body || '';
+  b.style.display = body ? '' : 'none';
+  ch.style.display = choices ? 'flex' : 'none'; ch.innerHTML = '';
+  inp.style.display = input ? '' : 'none';
+  okB.textContent = ok; okB.className = 'ax-btn' + (danger ? ' ax-btn--danger' : ''); okB.style.display = choices ? 'none' : '';
+  cB.textContent = cancel; cB.style.display = cancel ? '' : 'none';
+  if (input) { inp.value = input.value ?? ''; inp.placeholder = input.placeholder ?? ''; }
+  if (choices) for (const c of choices) {
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'ax-btn ax-btn--quiet'; btn.style.cssText = 'justify-content:flex-start;text-align:left;gap:10px';
+    btn.innerHTML = `<span>${esc(c.label)}</span>${c.hint ? `<span class="ax-label-s ax-muted">${esc(c.hint)}</span>` : ''}`;
+    btn.onclick = () => finish(c.id); ch.appendChild(btn);
+  }
+  const finish = v => { el.classList.remove('open'); document.removeEventListener('keydown', onKey); el.onclick = null; const r = _axDialogResolve; _axDialogResolve = null; if (r) r(v); };
+  const onKey = e => { if (e.key === 'Escape') finish(null); if (e.key === 'Enter' && input && document.activeElement === inp) finish(inp.value); };
+  okB.onclick = () => finish(input ? inp.value : true); cB.onclick = () => finish(null); el.onclick = () => finish(null);
+  document.addEventListener('keydown', onKey);
+  el.classList.add('open');
+  setTimeout(() => (input ? inp : (choices ? ch.querySelector('button') : okB))?.focus(), 30);
+  return new Promise(res => { _axDialogResolve = res; });
+}
+const axAlert   = (title, body, icon) => _axDialog({ title, body, cancel: '', icon });
+const axConfirm = async (title, body, o = {}) => (await _axDialog({ title, body, ok: o.ok || 'OK', danger: !!o.danger, icon: o.icon })) === true;
+const axPrompt  = (title, body, o = {}) => _axDialog({ title, body, input: { value: o.value, placeholder: o.placeholder }, ok: o.ok || 'OK' });
+const axChoose  = (title, body, choices) => _axDialog({ title, body, choices });
+
 function toast(msg, duration=2200) {
   const el = document.getElementById('toast');
   el.textContent = msg;

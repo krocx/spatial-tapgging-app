@@ -75,6 +75,9 @@ Newest at the bottom. `Updated` is the date the row last changed.
 | AROMS-323 | FY27 use-cases 2 and 3 identified with WMO; TAM / SAM per component (June T-8) | programme | PO | todo | | 2026-10-16 | | |
 | AROMS-324 | Unity client reading the Guide Bundle; passthrough camera on Quest 3 (FY27 AR Dev row) | unity, research | AR Dev | todo | | 2026-10-16 | | |
 | AROMS-325 | Designer: Cortona section headings carry their own index ("1. 1."), stripped in sections; importer could carry `section` explicitly | server | PO | todo | | 2026-10-16 | | nice to have |
+| AROMS-326 | Anchor Lab rigs (anchorType LAB) hidden from the Guide Library and from the Move / Copy chamber pickers | portal | PO | doing | 2026.4.50 | 2026-10-16 | | awaiting Karthik's confirmation on the server |
+| AROMS-327 | Portal dialogs on the design system: axAlert / axConfirm / axPrompt / axChoose replace the browser's native boxes. Done: Guide Library (move, copy, copy to all, rename, delete, archive, reset map, trash, parts check). Open: the other 40 sites (anchors, tags, configs, models, admin, Gemba, iLOTO) | portal | PO | doing | 2026.4.50 | 2026-10-16 | | sweep the rest one page at a time |
+| AROMS-328 | Model check counts hose animation frames as present (they are playback nodes, not parts) and reports them in words | server, portal | PO | done | 2026.4.50 | 2026-10-16 | | |
 ## 3. June 2026 import (AROMS-1 … 99): close-out
 
 Mark in Jira, do not re-import. Where an item is superseded, the key above

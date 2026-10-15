@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Fixed
+- **AROMS-326: Anchor Lab rigs out of the Guide Library.** Test rigs
+  (anchorType LAB) no longer appear as chambers in the library or in the
+  Move / Copy chamber pickers.
+- **AROMS-328: parts check no longer reports hose animation frames as
+  missing.** They are playback nodes, counted as present, and any that a
+  reduced model lacks are said in words ("the hose shows at rest").
 - **Cortona import: unreferenced sub-steps at their place in the animation.**
   Sub-steps the document's work items never referenced were appended after
   every document step, so the Drill Driver publication (27 of them) ran
@@ -17,6 +23,11 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-327: portal dialogs on the design system.** `axAlert`,
+  `axConfirm`, `axPrompt` and `axChoose` replace the browser's native boxes;
+  the Guide Library's move, copy, rename, delete, archive, reset, trash and
+  parts-check dialogs use them (a chamber is picked from a list, not typed
+  as a number). The remaining pages follow.
 - **AROMS backlog keys (AROMS-300 and up).** `docs/BACKLOG.md` is the one
   list of work; `docs/catalog/` is the capability register (AROMS-100 to
   299, keys kept in `docs/jira/keys.json`); `npm run backlog:jira` writes
