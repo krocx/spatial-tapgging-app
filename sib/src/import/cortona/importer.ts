@@ -21,7 +21,7 @@ import { bakeHoseFrames, type HoseFrameStats } from './hose-frames.js';
 import { extractProcedure, classifyMotion, type ExtractedProcedure, type ExtractedSubStep } from './procedure.js';
 import { decideRestPose, applyRestPose, type RestPoseChoice, type RestPoseReport } from './rest-pose.js';
 import { collectWidgets } from './widgets.js';
-import { readInteractivity, readRwi, type InteractivityIndex, type RwiIndex } from './interactivity.js';
+import { readInteractivity, readRwi, type InteractivityIndex, type RwiIndex, type WorkItem } from './interactivity.js';
 
 export interface CortonaImportOptions {
   /** Refuse the import when the scene instantiates PROTO types we do not recognise. */
@@ -233,10 +233,25 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   };
 
   if (stepSource === 'workItems') {
+    // Emit the document's work items in document order, and the animation
+    // sub-steps the document never references AT THEIR PLACE in the
+    // animation (the Procedure's step/sub-step order), not after everything
+    // else: "Install the Motor" belongs inside Preparation, not after
+    // Inspection (2026.4.50; the Drill Driver publication had 27 such
+    // sub-steps and ran every section twice).
     const referenced = new Set<string>();
-    for (const wi of workItems) {
-      const subs = wi.actionIds.map(id => bySubId.get(id)).filter((x): x is ExtractedSubStep => !!x);
-      for (const ss of subs) referenced.add(ss.id!);
+    const subsOf = new Map<WorkItem, ExtractedSubStep[]>();
+    for (const wi of workItems) { const subs = wi.actionIds.map(id => bySubId.get(id)).filter((x): x is ExtractedSubStep => !!x); subsOf.set(wi, subs); for (const ss of subs) referenced.add(ss.id!); }
+    const posOf = (ss: ExtractedSubStep) => ss.stepIndex * 10_000 + ss.subIndex;
+    type Unit = { key: number; order: number; wi?: WorkItem; ss?: ExtractedSubStep };
+    const units: Unit[] = [];
+    let lastKey = 0;
+    workItems.forEach((wi, i) => { const subs = subsOf.get(wi)!; const key = subs.length ? Math.min(...subs.map(posOf)) : lastKey + 0.5; lastKey = key; units.push({ key, order: i, wi }); });
+    shown.forEach((ss, i) => { if (ss.id && !referenced.has(ss.id)) { unreferenced++; units.push({ key: posOf(ss), order: workItems.length + i, ss }); } });
+    units.sort((a, b) => a.key - b.key || a.order - b.order);
+    for (const u of units) {
+      if (u.ss) { finish(subStepTitle(u.ss, inter), subStepText(u.ss, inter), [u.ss]); continue; }
+      const wi = u.wi!; const subs = subsOf.get(wi)!;
       // Section title: the document's top-level Item, unless that is a bare number
       // (RWI numbers its steps) - then the Simulation Step's own title.
       const simStep = subs[0]?.stepId ? inter?.textById.get(subs[0].stepId)?.title : undefined;
@@ -253,8 +268,6 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
       if (top || leaf) withTitle++; fromInter++;
       finish(title, text, subs);
     }
-    // animation sub-steps the document never references: keep them, after the document steps, so nothing is lost
-    for (const ss of shown) if (ss.id && !referenced.has(ss.id)) { unreferenced++; finish(subStepTitle(ss, inter), subStepText(ss, inter), [ss]); }
   } else {
     for (const ss of shown) {
       const it = ss.id ? inter?.textById.get(ss.id) : undefined; if (it) fromInter++;

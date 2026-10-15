@@ -6,6 +6,16 @@ it, it gets a line.
 
 ## 2026.4.50 - 2026-10-13
 
+### Fixed
+- **Cortona import: unreferenced sub-steps at their place in the animation.**
+  Sub-steps the document's work items never referenced were appended after
+  every document step, so the Drill Driver publication (27 of them) ran
+  every section twice: Preparation, Gear box, …, Inspection, then
+  Preparation again with "Install the Motor". They now take their place in
+  the Procedure's own step order, so the motor is installed before its
+  flange washers and Inspection is last. Re-import with "Update the
+  existing guide" to refresh a guide imported before this.
+
 ### Added
 - **XR kit: hands are a choice on the gate.** Two checkboxes, remembered
   per browser: hand tracking on the headset (off leaves the feature out of
