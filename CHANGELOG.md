@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Fixed
+- **AROMS-334: "Wrong QR" after creating a guide in the app.** The Guide
+  editor's Place Steps in AR and Place assembly buttons opened the scan
+  gate without pointing it at the guide's chamber, so the gate compared the
+  scanned code with whichever chamber was active earlier in the shift and
+  refused it until the app restarted. Both now set the active chamber
+  first, as every other gate does.
 - **AROMS-326: Anchor Lab rigs out of the Guide Library.** Test rigs
   (anchorType LAB) no longer appear as chambers in the library or in the
   Move / Copy chamber pickers.

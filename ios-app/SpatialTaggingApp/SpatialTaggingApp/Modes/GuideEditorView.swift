@@ -170,6 +170,11 @@ struct GuideEditorView: View {
                     if let g = currentGuide, let asm = g.assembly, !isLoading {
                         Section {
                             Button {
+                                // AROMS-334: the gate checks the scanned QR against
+                                // appState.activeAnchor - point it at THIS guide's
+                                // chamber first, or a chamber chosen earlier in the
+                                // shift makes every scan here "Wrong QR".
+                                appState.activeAnchor = anchor
                                 gateOpensAssembly = true
                                 showScanGate = true
                             } label: {
@@ -206,6 +211,7 @@ struct GuideEditorView: View {
                     if !steps.isEmpty && !isLoading {
                         Section {
                             Button {
+                                appState.activeAnchor = anchor   // AROMS-334, as above
                                 gateOpensAssembly = false
                                 showScanGate = true
                             } label: {
