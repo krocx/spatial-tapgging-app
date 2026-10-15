@@ -31,7 +31,17 @@ SSL_CERT_PATH=C:\certs\dca-qa-330.crt
 SSL_KEY_PATH=C:\certs\dca-qa-330.key
 SIB_DATA_DIR=C:\sib-data
 SIB_API_KEY=<choose-a-strong-key>
+SIB_ADMIN_KEY=<a-second-key>        # destructive actions (optional once UAM roles are in use)
+SIB_DANGER_KEY=<a-third-key>        # the danger zone: wipe every chamber / session; leave unset to disable it
 ```
+
+> **Danger zone (AROMS-336).** The four wipe-everything actions in Admin
+> (all chambers, all inspection sessions, all AR guide sessions, all Gemba
+> completions) need `SIB_DANGER_KEY` on top of an Owner sign-in or the
+> admin key. The portal asks for it on every use and never stores it. Leave
+> the variable unset on any server that should not be wipeable from a
+> browser - the routes then refuse with "danger zone disabled". Set it on
+> Render in the service's environment the same way.
 
 > **Whiteboard / photo import (Roadmap → *From a photo*)** runs on this
 > server, not on the iPad. Set `SIB_VISION_URL` to an OpenAI-compatible

@@ -405,6 +405,7 @@
   "routes/loc-tags.ts": [
    "gemba/finding-core.ts",
    "gemba/library-core.ts",
+   "middleware/auth.ts",
    "perception/image-comparator.ts",
    "routes/gemba-library.ts",
    "stores/json-file-store.ts"
@@ -636,6 +637,9 @@
   "Components/ScanStatusBanner.swift": [
    "Models/AppState.swift"
   ],
+  "Components/StepNavigatorSheet.swift": [
+   "Models/AROMSModels.swift"
+  ],
   "Components/StepReadCard.swift": [
    "App/AppSettings.swift",
    "Models/AROMSModels.swift",
@@ -681,6 +685,7 @@
    "Components/ObjectShapeGhost.swift",
    "Components/OnboardingSheet.swift",
    "Components/PresenceLayer.swift",
+   "Components/StepNavigatorSheet.swift",
    "Models/AROMSModels.swift",
    "Models/AppState.swift",
    "Models/SIBTypes.swift",

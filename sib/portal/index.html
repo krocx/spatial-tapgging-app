@@ -609,6 +609,7 @@
     .gl-step-title { font: var(--ax-body-m); color: var(--ax-ink); margin-bottom:2px; }
     .gl-step-text  { color: var(--ax-ink-2); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
     .gl-step-tags  { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; align-items:center; }
+    .gl-empty-chamber { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding: 10px 14px 12px; }
     .gl-step-tag   { display:inline-flex; align-items:center; gap:4px; font: var(--ax-label-s); padding: 2px 8px; border-radius: var(--ax-r-pill); background: var(--ax-paper); color: var(--ax-ink-2); }
     .gl-step-placed   { background:var(--ax-ok-fill);  color:var(--ax-green); }
     .gl-step-unplaced { background:var(--ax-warn-fill); color:var(--ax-orange); }
@@ -1785,6 +1786,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cfg = await fetch('/config').then(r => r.json());
     authRequired = cfg.authRequired !== false;
     adminRequired = cfg.adminRequired === true;
+    dangerEnabled = cfg.dangerEnabled === true;   // AROMS-336
     uamActive = cfg.uamActive === true;
     applyAdminUI();
     // Platform version - single source of truth is PLATFORM_VERSION in
@@ -1894,6 +1896,7 @@ function adminLockedNow() {
 // and the SERVER also refuses destructive requests without X-Admin-Key - the
 // UI is convenience, the middleware is the guarantee.
 let adminRequired = false;
+let dangerEnabled = false;   // AROMS-336: SIB_DANGER_KEY set on the server
 function adminKeyStored() { return localStorage.getItem('sib_admin_key') || ''; }
 function applyAdminUI() {
   const locked = adminLockedNow();
@@ -2734,6 +2737,8 @@ async function submitCreateAnchor() {
     fleetSelectedId = newAnchor.id;     // open it - the next step is printing its code
     renderAnchors();
     closeCreateModal();
+    // AROMS-335: created from the Guide Library? Show it there at once, with its next step.
+    if (document.getElementById('guide-library-list')?.offsetParent) loadGuideLibrary();
     toast(`Chamber created: ${newAnchor.assetId}`);
     setTimeout(() => {
       document.getElementById(`card-${newAnchor.id}`)?.scrollIntoView({behavior:'smooth', block:'center'});
@@ -5345,9 +5350,17 @@ function onModelFileSelected(e) {
 
 // ── Session / Gemba / AR Guide delete helpers ─────────────────────────────────
 
-async function _apiDelete(url) {
+/** AROMS-336: the danger zone needs its own key, typed on every use and never stored.
+ *  Returns the key, or null when the user cancelled or the zone is disabled on this server. */
+async function dangerKeyFor(action) {
+  if (!dangerEnabled) { await axAlert('Danger zone disabled', 'This server has no danger key set, so nothing can be wiped from a browser. An administrator sets SIB_DANGER_KEY on the server to enable it.', 'lock-restricted'); return null; }
+  const k = await axPrompt('Danger key', `${action}\n\nThis removes data for every user and cannot be undone. Enter this server's danger key to continue. It is not remembered.`, { password: true, placeholder: 'Danger key', ok: 'Continue' });
+  return k && k.trim() ? k.trim() : null;
+}
+async function _apiDelete(url, dangerKey) {
   const headers = {};
   const key = apiKey(); if (key) headers['X-API-Key'] = key;
+  if (dangerKey) headers['X-Danger-Key'] = dangerKey;
   const resp = await fetch(url, { method: 'DELETE', headers });
   if (!resp.ok) {
     const j = await resp.json().catch(() => ({}));
@@ -5358,8 +5371,9 @@ async function _apiDelete(url) {
 
 async function deleteAllAnchors() {
   if (!(await axConfirm('Delete every chamber?', 'All their tags, trained pass-state images, QR images and world maps go with them. This cannot be undone.', { ok: 'Delete everything', danger: true, icon: 'trash' }))) return;
+  const dk = await dangerKeyFor('Delete every chamber.'); if (!dk) return;
   try {
-    const r = await _apiDelete('/anchors');
+    const r = await _apiDelete('/anchors', dk);
     toast(`Deleted ${r?.data?.deleted ?? '?'} anchor(s) (+${r?.data?.deletedTags ?? '?'} tags)`);
     await loadAnchors();
   } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
@@ -5374,8 +5388,9 @@ async function deleteSession(id) {
 
 async function deleteAllSessions() {
   if (!(await axConfirm('Delete every inspection session?', 'This cannot be undone.', { ok: 'Delete everything', danger: true, icon: 'trash' }))) return;
+  const dk = await dangerKeyFor('Delete every inspection session.'); if (!dk) return;
   try {
-    const r = await _apiDelete('/sessions');
+    const r = await _apiDelete('/sessions', dk);
     toast(`Deleted ${r?.deleted ?? '?'} session(s)`);
     await loadSessions();
   } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
@@ -5390,8 +5405,9 @@ async function deleteARGuideSession(id) {
 
 async function deleteAllARGuideSessions() {
   if (!(await axConfirm('Delete every AR guide session?', 'Evidence photos are removed with them. This cannot be undone.', { ok: 'Delete everything', danger: true, icon: 'trash' }))) return;
+  const dk = await dangerKeyFor('Delete every AR guide session.'); if (!dk) return;
   try {
-    const r = await _apiDelete('/guide-sessions');
+    const r = await _apiDelete('/guide-sessions', dk);
     toast(`Deleted ${r?.deleted ?? '?'} AR Guide session(s)`);
     await loadARGuideSessions();
   } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
@@ -5399,17 +5415,19 @@ async function deleteAllARGuideSessions() {
 
 // ── Import Guide ──────────────────────────────────────────────────────────────
 
-function openImportGuideModal() {
-  // Populate anchor dropdown from the already-loaded anchors list
+function openImportGuideModal(preselectAnchorId) {
+  // Populate the chamber dropdown from the already-loaded anchors list
+  // (QR chambers only - rigs, areas and panels do not carry guides).
   const sel = document.getElementById('import-anchor-select');
-  sel.innerHTML = '<option value="">- select anchor -</option>';
-  const anchors = allAnchors || [];
+  sel.innerHTML = '<option value="">- select chamber -</option>';
+  const anchors = (allAnchors || []).filter(a => !a.anchorType || a.anchorType === 'QR');
   for (const a of anchors) {
     const opt = document.createElement('option');
     opt.value       = a.id;
-    opt.textContent = `${a.assetId ?? a.id} (${a.id.slice(0,8)}…)`;
+    opt.textContent = `${a.assetId ?? a.id}${configLabel(a.configId) ? ` · ${configLabel(a.configId)}` : ''}`;
     sel.appendChild(opt);
   }
+  if (typeof preselectAnchorId === 'string' && anchors.some(a => a.id === preselectAnchorId)) sel.value = preselectAnchorId;
   // Pre-fill author name if available
   const storedName = localStorage.getItem('sibAuthorName') || '';
   document.getElementById('import-author-name').value = storedName;
@@ -6605,13 +6623,18 @@ async function loadGuideLibrary() {
     results.forEach((r, i) => {
       const anchor = allAnchors[i];
       const guides = r.status === 'fulfilled' ? (r.value.data || []) : [];
-      if (guides.length) {
+      // AROMS-335: every QR chamber is listed, with or without guides, so a
+      // chamber created a moment ago is where the author expects it, with
+      // the next step in its card. (Anchor Lab rigs, Gemba areas and iLOTO
+      // panels keep their own pages.)
+      const isChamber = !anchor.anchorType || anchor.anchorType === 'QR';
+      if (guides.length || isChamber) {
         guideLibraryData[anchor.id] = { anchor, guides, steps: {} };
         totalGuides += guides.length;
       }
     });
 
-    if (!totalGuides) {
+    if (!Object.keys(guideLibraryData).length) {
       list.innerHTML = guideEmptyState('guides') || '<p style="color:var(--muted);padding:40px 0;text-align:center">No guides yet. Import a publication or draw one in the Procedure Designer.</p>';
       return;
     }
@@ -6663,6 +6686,14 @@ function renderGuideLibrary() {
     const siblings = (cfg ? chambers.filter(([id]) => id !== anchorId) : []);
     html += `<div class="gl-anchor-section">
       <div class="gl-anchor-hdr"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-pin"/></svg> ${esc(anchorLabel)}</div>`;
+    if (!entry.guides.length) {
+      html += `<div class="gl-empty-chamber">
+        <span class="ax-label-s ax-muted">No guides on this chamber yet.</span>
+        <button class="ax-btn ax-btn--sm ax-btn--tint" onclick="openImportGuideModal('${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import a guide</button>
+        <a class="ax-btn ax-btn--sm ax-btn--quiet" href="/roadmap" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Draw one in the Designer</a>
+        ${gk === '__none' ? `<a class="ax-btn ax-btn--sm ax-btn--quiet" href="#anchors" title="A guide cannot be published until the chamber has a configuration">Assign a configuration</a>` : ''}
+      </div>`;
+    }
 
     for (const guide of entry.guides.sort((a, b) => guideTs(b) - guideTs(a) || a.name.localeCompare(b.name))) {
       const steps      = entry.steps[guide.id] || null;
@@ -7417,8 +7448,9 @@ async function deleteGembaCompletion(id) {
 
 async function deleteAllGembaCompletions() {
   if (!(await axConfirm('Delete every Gemba Walk completion record?', 'The loc-tag stops themselves are kept. This cannot be undone.', { ok: 'Delete everything', danger: true, icon: 'trash' }))) return;
+  const dk = await dangerKeyFor('Delete every Gemba Walk completion record.'); if (!dk) return;
   try {
-    const r = await _apiDelete('/loc-tags/completions');
+    const r = await _apiDelete('/loc-tags/completions', dk);
     toast(`Deleted ${r?.deleted ?? '?'} completion record(s)`);
     await loadGembaWalks();
   } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }

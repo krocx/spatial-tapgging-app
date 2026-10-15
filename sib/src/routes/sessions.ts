@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { requireRole } from '../middleware/auth.js';
+import { requireRole, dangerKeyAuth } from '../middleware/auth.js';
 import { Router, type Request, type Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import type {
@@ -232,7 +232,7 @@ router.delete('/:id', requireRole('owner'), (req: Request, res: Response): void 
 });
 
 // DELETE /sessions - Owner only: remove ALL inspection session records
-router.delete('/', requireRole('owner'), (_req: Request, res: Response): void => {
+router.delete('/', requireRole('owner'), dangerKeyAuth, (_req: Request, res: Response): void => {
   const count = sessionStore.pruneWhere(() => true);
   console.log(`[SIB] Deleted all ${count} inspection session(s)`);
   res.json({ deleted: count, timestamp: new Date().toISOString() });

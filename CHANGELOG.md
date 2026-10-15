@@ -29,6 +29,17 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-335: every chamber in the Guide Library.** A chamber with no
+  guides yet is listed in its configuration block with "No guides on this
+  chamber yet" and the next step: Import a guide (the chamber preselected),
+  draw one in the Designer, or assign a configuration. A chamber created
+  from the library appears there at once.
+- **AROMS-336: the danger zone has its own key.** Delete every chamber /
+  inspection session / AR guide session / Gemba completion now needs
+  `SIB_DANGER_KEY` on top of the Owner or admin gate; the portal asks for
+  it on every use and never stores it; a server without the variable
+  refuses the four routes ("danger zone disabled"). `/config` reports
+  `dangerEnabled`.
 - **AROMS-330 order rule and "Requires first".** In the step navigator a
   later step is locked ("After step N") while an earlier complete-required
   step is undone; optional steps can be passed over; going back is always

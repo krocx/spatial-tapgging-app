@@ -14,7 +14,7 @@ import { validatePresenceUpdate, updatePresence, listPresence, leavePresence } f
 import { model3DStore } from './models.js';
 import { guideStore } from '../guides/store.js';
 import { copyGuideToAnchor } from '../guides/copy.js';
-import { currentUamUser, uamIsActive } from '../middleware/auth.js';
+import { currentUamUser, uamIsActive, dangerKeyAuth } from '../middleware/auth.js';
 import { chamberConfigStore } from './chamber-configs.js';
 import { logOpsEvent } from '../ops-log.js';
 import { sanitizeLabRun, appendLabRun, listLabRuns, sanitizeAccuracySample, appendAccuracySample, listAccuracySamples, deleteAccuracySamples, summariseAccuracy } from '../oms/anchor-accuracy.js';
@@ -826,7 +826,7 @@ router.delete('/:id/accuracy', (req: Request, res: Response) => {
 });
 
 // ── DELETE /anchors - cascade-delete ALL anchors + tags + pass-states ────────
-router.delete('/', (_req: Request, res: Response) => {
+router.delete('/', dangerKeyAuth, (_req: Request, res: Response) => {
   const anchors = anchorStore.findAll();
   let deletedAnchors = 0;
   let deletedTags = 0;

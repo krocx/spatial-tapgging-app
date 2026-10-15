@@ -313,3 +313,27 @@ export function adminKeyAuth(req: Request, res: Response, next: NextFunction): v
   if (!quiet) logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip });
   next();
 }
+
+// ── Danger zone (AROMS-336) ───────────────────────────────────────────────────
+// The wipe-everything routes (all chambers, all sessions, all guide sessions,
+// all Gemba completions) are behind a THIRD secret, SIB_DANGER_KEY, on top of
+// the role / admin gate above: the portal asks for it on every use and never
+// stores it. When the variable is not set, those routes are disabled
+// outright - a server that has not opted in cannot be wiped from a browser.
+export function dangerKeyAuth(req: Request, res: Response, next: NextFunction): void {
+  const key = process.env.SIB_DANGER_KEY?.trim();
+  const who = currentUamUser(req)?.email ?? 'admin key';
+  if (!key) {
+    logOpsEvent({ method: req.method, path: req.path, outcome: 'denied', ip: req.ip, detail: `danger zone disabled (no SIB_DANGER_KEY) - ${who}` });
+    res.status(403).json({ error: 'The danger zone is disabled on this server. An administrator sets SIB_DANGER_KEY to enable it.', code: 'danger-disabled', timestamp: new Date().toISOString() });
+    return;
+  }
+  const provided = Array.isArray(req.headers['x-danger-key']) ? req.headers['x-danger-key'][0] : req.headers['x-danger-key'];
+  if (!provided || provided !== key) {
+    logOpsEvent({ method: req.method, path: req.path, outcome: 'denied', ip: req.ip, detail: `danger key wrong or missing - ${who}` });
+    res.status(403).json({ error: 'Danger key required: this wipes data for every user. Enter the danger key for this server.', code: 'danger-key', timestamp: new Date().toISOString() });
+    return;
+  }
+  logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip, detail: `DANGER ZONE - ${who}` });
+  next();
+}

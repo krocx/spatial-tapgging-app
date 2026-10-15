@@ -3,7 +3,7 @@ flowchart LR
   %% ios-app - type references between folders (edge label = number of references)
   F__["(root) · 2 files"]
   F_App["App · 3 files"]
-  F_Components["Components · 27 files"]
+  F_Components["Components · 28 files"]
   F_Models["Models · 6 files"]
   F_Modes["Modes · 48 files"]
   F_Services["Services · 20 files"]
@@ -15,12 +15,12 @@ flowchart LR
   F__ -->|1| F_Services
   F_App -->|1| F_Services
   F_Components -->|7| F_App
-  F_Components -->|9| F_Models
+  F_Components -->|10| F_Models
   F_Components -->|2| F_Modes
   F_Components -->|19| F_Services
   F_Models -->|3| F_Services
   F_Modes -->|58| F_App
-  F_Modes -->|66| F_Components
+  F_Modes -->|67| F_Components
   F_Modes -->|91| F_Models
   F_Modes -->|132| F_Services
   F_Services -->|5| F_App

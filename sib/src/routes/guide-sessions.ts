@@ -22,7 +22,7 @@
 //   GET  /guide-sessions/live/:id                 - current session snapshot (catch-up)
 //   GET  /guide-sessions/live/:id/hints           - AI hint poll; consume-once (Step 3)
 
-import { requireRole } from '../middleware/auth.js';
+import { requireRole, dangerKeyAuth } from '../middleware/auth.js';
 import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
 import { ingestObservations, guideBaselines } from '../oms/observations.js';
@@ -562,7 +562,7 @@ router.delete('/:id', requireRole('owner'), (req: Request, res: Response): void 
 });
 
 // DELETE /guide-sessions - Owner only: remove ALL guide sessions + all evidence folders
-router.delete('/', requireRole('owner'), (_req: Request, res: Response): void => {
+router.delete('/', requireRole('owner'), dangerKeyAuth, (_req: Request, res: Response): void => {
   const all = guideSessionStore.findAll();
   for (const s of all) {
     const dir = path.join(EVIDENCE_DIR, s.id);

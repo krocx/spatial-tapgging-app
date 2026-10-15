@@ -19,6 +19,7 @@
 // clients and the portal keep working unchanged.
 
 import { Router } from 'express';
+import { dangerKeyAuth } from '../middleware/auth.js';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
@@ -301,7 +302,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
 });
 
 // DELETE /loc-tags/completions - remove ALL Gemba Walk completion records
-router.delete('/completions', (_req: Request, res: Response): void => {
+router.delete('/completions', dangerKeyAuth, (_req: Request, res: Response): void => {
   const count = locTagCompletionStore.pruneWhere(() => true);
   console.log(`[SIB] Deleted all ${count} Gemba Walk completion(s)`);
   res.json({ deleted: count, timestamp: new Date().toISOString() });

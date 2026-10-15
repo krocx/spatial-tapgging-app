@@ -156,6 +156,8 @@ document.getElementById('w').addEventListener('submit', async function(ev){
       // adminRequired → SIB_ADMIN_KEY set: destructive actions (DELETE, quiz
       // admin) need X-Admin-Key. The portal uses this to lock destructive UI.
       adminRequired: !!(process.env.SIB_ADMIN_KEY?.trim()),
+      // AROMS-336: the danger zone (wipe-everything routes) is enabled only when SIB_DANGER_KEY is set.
+      dangerEnabled: !!(process.env.SIB_DANGER_KEY?.trim()),
       // uamActive → the allow-list has users: the portal shows the email
       // login before entering. An empty list keeps UAM dormant (bootstrap:
       // add the first Owner via the admin-unlocked UAM table).
