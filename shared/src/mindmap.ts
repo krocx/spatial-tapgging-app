@@ -182,6 +182,8 @@ export interface MindmapAssembly {
    * with the `start`-derived state at compile time.
    */
   initialNodes?: GuideStepNode[];
+    /** The guide's authored playback speed (GuideAssembly.animationSpeed), so the Studio plays at the operator's pace. */
+    animationSpeed?: number;
   /** Named part sets ("Bolt set A") an author reuses across steps. */
   groups?: MindmapPartGroup[];
 }

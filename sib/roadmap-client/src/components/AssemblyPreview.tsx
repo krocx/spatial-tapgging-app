@@ -39,7 +39,7 @@ interface Props {
   /** Runtime state after the selected step (imported guides): show + pose per part. Wins over `states` for visibility. */
   poses?: PartStateMap;
   /** This step on its own clock: the state it starts from and its deltas. Enables Play. */
-  play?: { base: PartStateMap; deltas: GuideStepNode[] };
+  play?: { base: PartStateMap; deltas: GuideStepNode[]; speed?: number };
   onPick?: (name: string) => void;
   /** Identify: a single click names the part (the Studio's focus card); double click = onPick. */
   onFocus?: (name: string) => void;
@@ -391,7 +391,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
     const st = s3.current;
     if (!st?.root || !play) return;
     if (st.playing) cancelAnimationFrame(st.playing.raf);
-    const tl = timeline(play.deltas);
+    const tl = timeline(play.deltas, play.speed);
     const length = Math.max(tl.length, 0.3);
     const t0 = performance.now();
     setPlaying(true);

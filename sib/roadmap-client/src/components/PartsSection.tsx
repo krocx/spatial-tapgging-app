@@ -160,7 +160,7 @@ export function usePartsPicker(nodeId: string | null) {
   // Runtime state (imported guides carry deltas): what the operator sees after
   // this step, and this step on its own clock for Play. Authored guides with
   // parts lists only keep the this/before/after view.
-  const { poses, play } = useMemo((): { poses?: PartStateMap; play?: { base: PartStateMap; deltas: GuideStepNode[] } } => {
+  const { poses, play } = useMemo((): { poses?: PartStateMap; play?: { base: PartStateMap; deltas: GuideStepNode[]; speed?: number } } => {
     if (!order || !mapNodes || !nodeId) return {};
     const seqd = mapNodes.filter(n => order[n.id] !== undefined).sort((a, b) => (order[a.id] ?? 0) - (order[b.id] ?? 0));
     const steps = seqd.map(n => deltasOf(n.metadata?.step as Record<string, unknown> | undefined));
@@ -169,8 +169,8 @@ export function usePartsPicker(nodeId: string | null) {
     if (!steps.some(d => d.some(real))) return {};
     const idx = seqd.findIndex(n => n.id === nodeId);
     if (idx < 0) return {};
-    return { poses: stateAfter(assembly?.initialNodes, steps, idx), play: { base: stateAfter(assembly?.initialNodes, steps, idx - 1), deltas: steps[idx] } };
-  }, [order, mapNodes, nodeId, assembly?.initialNodes]);
+    return { poses: stateAfter(assembly?.initialNodes, steps, idx), play: { base: stateAfter(assembly?.initialNodes, steps, idx - 1), deltas: steps[idx], speed: assembly?.animationSpeed } };
+  }, [order, mapNodes, nodeId, assembly?.initialNodes, assembly?.animationSpeed]);
   /** Colours authored per step (cumulative, last wins - the app's rule), for the preview tint. */
   const stepColours = useMemo(() => {
     const m = new Map<string, [number, number, number]>();

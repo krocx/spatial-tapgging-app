@@ -86,6 +86,60 @@ export function scheduleLength(schedule) {
   return end;
 }
 
+/**
+ * State at clock `t` (seconds) into a step that starts from `base`, as a
+ * pure map - the same picture the XR player's tweens paint (2026.4.50, one
+ * engine for the XR kit and the Designer's Studio):
+ *   · an entry applies once `t` reaches its start; a motion in flight is
+ *     interpolated (ease in-out) from `from` (or the current pose) to `to`;
+ *   · a `show` settles at the start, except hideAfterMotion: the part
+ *     travels visible and hides when the motion ends;
+ *   · a motion on a part that is hidden reveals it for the travel;
+ *   · flash-only entries change nothing.
+ * Pure, so a viewer can scrub as well as play.
+ */
+export function stateDuring(base, schedule, t) {
+  const st = new Map();
+  for (const [k, v] of base) st.set(k, { ...v });
+  for (const e of schedule) {
+    if (e.startSec > t) continue;
+    const d = e.delta;
+    const p = st.get(d.node) || { show: undefined, opacity: undefined, color: undefined, position: null, rotation: null };
+    if (e.flash && d.show === undefined && !e.motion && !d.color) continue;
+    const u = e.durationSec > 0 ? Math.min(1, (t - e.startSec) / e.durationSec) : 1;
+    const k = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+    if (Array.isArray(d.color)) p.color = d.color.slice(0, 3);
+    if (e.motion) {
+      if (Array.isArray(d.to)) {
+        const from = Array.isArray(d.from) ? d.from : (p.position || d.to);
+        p.position = [0, 1, 2].map(i => from[i] + (d.to[i] - from[i]) * k);
+      }
+      if (Array.isArray(d.rotationTo)) {
+        const from = Array.isArray(d.rotationFrom) ? d.rotationFrom : (p.rotation || d.rotationTo);
+        p.rotation = slerpAxisAngle(from, d.rotationTo, k);
+      }
+      if (e.hideAfterMotion) { p.show = u < 1 ? 'solid' : 'hidden'; if (u >= 1) p.opacity = undefined; }
+      else if (d.show !== undefined) { p.show = d.show; if (d.show === 'ghost') p.opacity = d.opacity ?? GHOST_OPACITY; }
+      else if (d.animate === 'insert' || p.show === 'hidden' || p.show === undefined) p.show = 'solid';
+    } else if (d.show !== undefined) { p.show = d.show; if (d.show === 'ghost') p.opacity = d.opacity ?? GHOST_OPACITY; }
+    else if (d.animate === 'insert') p.show = 'solid';
+    st.set(d.node, p);
+  }
+  return st;
+}
+
+function slerpAxisAngle(a, b, t) {
+  const q = r => { const l = Math.hypot(r[0], r[1], r[2]) || 1; const s = Math.sin(r[3] / 2); return [r[0] / l * s, r[1] / l * s, r[2] / l * s, Math.cos(r[3] / 2)]; };
+  const qa = q(a); let qb = q(b);
+  let d = qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3];
+  if (d < 0) { qb = qb.map(v => -v); d = -d; }
+  let w0 = 1 - t, w1 = t;
+  if (d < 0.9995) { const th = Math.acos(d), s = Math.sin(th); w0 = Math.sin((1 - t) * th) / s; w1 = Math.sin(t * th) / s; }
+  const x = qa[0] * w0 + qb[0] * w1, y = qa[1] * w0 + qb[1] * w1, z = qa[2] * w0 + qb[2] * w1, w = qa[3] * w0 + qb[3] * w1;
+  const l = Math.hypot(x, y, z); const ang = 2 * Math.atan2(l, w);
+  return l < 1e-9 ? [0, 0, 1, 0] : [x / l, y / l, z / l, ang];
+}
+
 /** Nodes a step is "about" (deltas that change state, not flash-only). */
 export function stepParts(step) {
   const seen = new Set();

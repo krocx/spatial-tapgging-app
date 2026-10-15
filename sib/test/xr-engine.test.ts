@@ -95,3 +95,32 @@ test('attentionFor buckets like the iOS sampler', () => {
   assert.equal(E.attentionFor({ placed: true, hitsAssembly: true }), 'assembly');
   assert.equal(E.attentionFor({ placed: true }), 'away');
 });
+
+// ── stateDuring (2026.4.50): the in-flight picture, shared by the Studio ──────
+test('stateDuring: a hidden part travels visible and settles at the end of its motion', () => {
+  const base = E.stateBefore(initial, steps, 0);          // A hidden at [0,1,0]? (rest), B ghost
+  const sched = E.scheduleStep(steps[0].nodes, 1);        // insert A: 2 s motion from [0,1,0] to [0,0,0]
+  const mid = E.stateDuring(base, sched, 1);              // halfway (ease in-out → y = 0.5)
+  assert.equal(mid.get('cmp:A').show, 'solid');
+  assert.ok(Math.abs(mid.get('cmp:A').position[1] - 0.5) < 1e-9);
+  const end = E.stateDuring(base, sched, 2);
+  assert.deepEqual(end.get('cmp:A').position, [0, 0, 0]);
+  assert.equal(end.get('cmp:A').show, 'solid');
+  assert.equal(end.get('cmp:B').show, 'ghost');            // untouched
+});
+
+test('stateDuring: a remove (motion + show hidden) stays visible while it moves and hides when the motion ends', () => {
+  const base = E.stateBefore(initial, steps, 2);
+  const sched = E.scheduleStep(steps[2].nodes, 1);
+  assert.equal(E.stateDuring(base, sched, 0.5).get('cmp:A').show, 'solid');
+  assert.equal(E.stateDuring(base, sched, 1).get('cmp:A').show, 'hidden');
+  assert.deepEqual(E.stateDuring(base, sched, 1).get('cmp:A').position, [0, 1, 0]);
+});
+
+test('stateDuring: entries before their start do nothing; a flash-only entry never changes state', () => {
+  const base = E.stateBefore(initial, steps, 1);
+  const sched = E.scheduleStep(steps[1].nodes, 1);        // B solid at 1 s; A flash at 0.5 s
+  assert.equal(E.stateDuring(base, sched, 0.6).get('cmp:B').show, 'ghost');
+  assert.equal(E.stateDuring(base, sched, 0.6).get('cmp:A').show, 'solid');
+  assert.equal(E.stateDuring(base, sched, 1.2).get('cmp:B').show, 'solid');
+});

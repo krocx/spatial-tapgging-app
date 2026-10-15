@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **Studio and XR player share one state engine.** The Designer's 3D
+  preview had its own port of the part-state rules; the XR kit had another;
+  the two previews could disagree on what is visible at a step. The Studio
+  now reads `portal/xr-engine.js` (settled state, schedule, and a new pure
+  in-flight state, `stateDuring`), plays at the guide's authored speed, and
+  the XR engine test is the single contract. Nothing changes for operators.
 - **Step parts survive a model rebuild.** A guide names its parts by node
   (`cmp:<DEF>`); a model regenerated from a later publication may rename
   them, and the XR kit then warned "N step nodes not found in the model"

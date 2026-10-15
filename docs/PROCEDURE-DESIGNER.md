@@ -351,6 +351,21 @@ compiler still reads edges and nothing else (`sib/src/procedure/sections.ts`,
 imported relatively by the client because `@spatial/shared` stays types-only
 at runtime).
 
+### Slice 3.8 - one engine for the Studio and the XR player (2026.4.50, slice 1 of backlog #7)
+
+The Studio's preview used to carry its own port of the app's state rules
+(`utils/assembly-state.ts`), and the XR kit another (`portal/xr-engine.js`);
+fixes landed in one and not the other, which is why the two previews
+disagreed on which fasteners were visible. `assembly-state.ts` is now an
+adapter over `xr-engine.js` (imported by relative path; a `.d.ts` beside the
+engine types it), and the engine gained `stateDuring` - the pure in-flight
+state the XR player's tweens paint (a hidden part travels visible and hides
+when the motion ends; flash-only entries change nothing). The Studio plays at
+the guide's authored speed (`settings.assembly.animationSpeed`, carried by
+the reverse compiler). `sib/test/xr-engine.test.ts` is the single contract
+test. Slice 2 (pending): "Open as operator" from the Studio, and the Models
+page preview on the same loader.
+
 ### Slice 4 - shared sequencing
 
 Extract the lane/sequence algorithm into one module consumed by the designer, the

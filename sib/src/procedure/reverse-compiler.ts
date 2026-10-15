@@ -198,6 +198,7 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
       modelId: guide.assembly.modelId,
       ...(guide.assembly.start === 'complete' ? { start: 'complete' as const } : {}),
       ...(guide.assembly.initialNodes?.length ? { initialNodes: guide.assembly.initialNodes } : {}),
+      ...(guide.assembly.animationSpeed !== undefined ? { animationSpeed: guide.assembly.animationSpeed } : {}),
     },
   } : undefined;
 
