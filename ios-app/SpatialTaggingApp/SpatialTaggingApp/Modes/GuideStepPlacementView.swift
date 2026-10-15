@@ -156,6 +156,7 @@ struct GuideStepPlacementView: View {
     // ── V1: cone training for validation steps ────────────────────────────────
     @State private var trainingTarget:      StepTrainingTarget? = nil
     @State private var isPreparingTraining  = false
+    @State private var trainingChoiceStep: GuideStep? = nil   // AROMS-331: which step the training sheet is for
     @State private var coneTrainedStepIds:  Set<String>         = []
     @State private var sessionTagIds:       [String: String]    = [:]  // stepId → hidden tag id (this session)
     @State private var anchorRecord:        Anchor?             = nil
@@ -870,6 +871,31 @@ struct GuideStepPlacementView: View {
                 guard idx < steps.count else { return }
                 withAnimation { proxy.scrollTo(steps[idx].id, anchor: .center) }
             }
+            // AROMS-331: one place to choose the training, with the author's
+            // plan first. Retrain is explicit and asks; nothing is hidden
+            // behind the word "Trained".
+            .confirmationDialog(
+                trainingChoiceStep.map { "Validation for \($0.displayTitle)" } ?? "Validation",
+                isPresented: Binding(get: { trainingChoiceStep != nil }, set: { if !$0 { trainingChoiceStep = nil } }),
+                titleVisibility: .visible,
+                presenting: trainingChoiceStep
+            ) { step in
+                let plan = step.validationPlan ?? "cone"
+                let trained = coneTrainedStepIds.contains(step.id) || step.validationTrained
+                if plan == "cone" {
+                    Button(trained ? "Retrain with the cone sweep" : "Train with the cone sweep · planned") { Task { await beginConeTraining(for: step) } }
+                    Button(trained ? "Retrain with a quick shot from here" : "Quick shot from here instead") { Task { await quickShotTrain(for: step) } }
+                } else {
+                    Button(trained ? "Retrain with a quick shot from here" : "Train with a quick shot from here · planned") { Task { await quickShotTrain(for: step) } }
+                    Button(trained ? "Retrain with the cone sweep" : "Cone sweep instead (multi-angle)") { Task { await beginConeTraining(for: step) } }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: { step in
+                let trained = coneTrainedStepIds.contains(step.id) || step.validationTrained
+                Text(trained
+                     ? "Trained with \(step.coneTrained || coneTrainedStepIds.contains(step.id) ? "the cone sweep" : "a quick shot"). Retraining replaces it."
+                     : "Plan: \((step.validationPlan ?? "cone") == "cone" ? "cone sweep, multi-angle (recommended for assembly steps)" : "quick shot, one photo from where the operator will stand"). Set in the Designer or the Guide Library.")
+            }
         }
     }
 
@@ -921,41 +947,33 @@ struct GuideStepPlacementView: View {
             .frame(width: 36, height: 36)
             .contentShape(Rectangle())
             .onLongPressGesture { readIndex = idx }   // H2: read the step
+            // AROMS-333: the title is readable, not a 9-pt ellipsis - two
+            // lines at 11 pt on a wider chip; the whole text is one long press away.
             Text(step.displayTitle)
-                .font(.system(size: 9))
-                .foregroundStyle(isActive ? .white : .white.opacity(0.55))
-                .lineLimit(2).multilineTextAlignment(.center).frame(width: 62)
+                .font(.system(size: 11, weight: isActive ? .semibold : .regular))
+                .foregroundStyle(isActive ? .white : .white.opacity(0.7))
+                .lineLimit(2).truncationMode(.tail).multilineTextAlignment(.center)
+                .frame(width: 96)
+                .fixedSize(horizontal: false, vertical: true)
 
             // V1: cone training for validation steps - tap the seal to train
             // this step with the Spatial Inspection dome sweep. Only shown
             // once the step has a pin (the cone anchors at the pin).
             if step.needsValidation && placed {
-                let trained = coneTrainedStepIds.contains(step.id) || step.coneTrained
-                HStack(spacing: 4) {
-                    // Multi-angle cone sweep (most robust)
-                    Button {
-                        Task { await beginConeTraining(for: step) }
-                    } label: {
-                        Label(trained ? "Trained" : "Cone",
-                              systemImage: trained ? "checkmark.seal.fill" : "seal")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(trained ? Color.green : Color.orange)
-                            .padding(.horizontal, 7).padding(.vertical, 3)
-                            .background(Color.black.opacity(0.35), in: Capsule())
-                    }
-                    // W2: quick-shot - one frame from where you stand now, with
-                    // the stance recorded so the operator is guided back to it.
-                    Button {
-                        Task { await quickShotTrain(for: step) }
-                    } label: {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(Color.cyan)
-                            .padding(.horizontal, 7).padding(.vertical, 3)
-                            .background(Color.black.opacity(0.35), in: Capsule())
-                    }
-                    .accessibilityLabel("Quick-shot train from here")
+                // AROMS-331: one control that says the state and opens the
+                // choice (plan first); the camera and cone no longer compete.
+                let cone    = coneTrainedStepIds.contains(step.id) || step.coneTrained
+                let trained = cone || step.validationTrained
+                let plan    = step.validationPlan ?? "cone"
+                Button { trainingChoiceStep = step } label: {
+                    Label(trained ? "Trained · \(cone ? "cone" : "quick shot")" : "Train · \(plan == "cone" ? "cone" : "quick shot")",
+                          systemImage: trained ? "checkmark.seal.fill" : (plan == "cone" ? "seal" : "camera"))
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(trained ? Color.green : Color.orange)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Color.black.opacity(0.35), in: Capsule())
                 }
+                .accessibilityLabel(trained ? "Validation trained - tap to retrain" : "Train the validation check")
                 .disabled(isPreparingTraining)
             }
 
@@ -1011,13 +1029,13 @@ struct GuideStepPlacementView: View {
                         let s = steps[activeStepIndex]
                         Text("Tap to place step \(s.sequenceNumber):")
                             .font(.caption2).foregroundStyle(.white.opacity(0.55))
-                        HStack(spacing: 4) {
+                        HStack(alignment: .top, spacing: 4) {
                             Text(s.displayTitle)
-                                .font(.caption.bold()).foregroundStyle(.white).lineLimit(1)
+                                .font(.subheadline.bold()).foregroundStyle(.white).lineLimit(2).truncationMode(.tail)
                             Image(systemName: "info.circle").font(.caption2).foregroundStyle(.white.opacity(0.6))
                         }
                         if s.title != nil {
-                            Text(s.text).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                            Text(s.text).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(2).truncationMode(.tail)
                         }
                     } else {
                         Text("All steps placed")

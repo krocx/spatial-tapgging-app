@@ -23,6 +23,15 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **iOS (next app build): AROMS-330 step navigator, AROMS-331 training
+  plan, AROMS-333 readable step tray, AROMS-311 lifecycle.** Tap the
+  progress ring in an AR session for a list of every step with its state
+  and jump to any of them (navigation only; completion stays with the
+  step). The step page plans the training (Cone or Quick shot) and the AR
+  tray shows one Train / Trained chip that opens the choice with the plan
+  first; retraining is explicit. Step tray chips are readable (11 pt, two
+  lines). Delete is an Owner's swipe, Archive a Manager's; archived guides
+  are hidden; the server's publish-gate sentence is shown as is.
 - **AROMS-331: validation training is planned on the step.** A step
   carries `validationPlan` (Quick shot or Cone), set in the Designer's step
   inspector or by clicking the plan chip in the Guide Library's step list;

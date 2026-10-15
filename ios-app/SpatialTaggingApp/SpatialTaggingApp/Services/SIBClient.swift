@@ -40,6 +40,12 @@ enum SIBClientError: LocalizedError {
             return "Server is having trouble right now. Try again in a moment."
         case .httpError(413, _):
             return "That upload was too large for the server to accept."
+        case .httpError(let c, let body) where c == 403 || c == 409:
+            // AROMS-311: the server says why in a sentence ("needs a chamber
+            // configuration", "only a Manager publishes") - show it as is.
+            // `perform` already unwrapped the server's `error` sentence into `body`.
+            if !body.isEmpty, !body.hasPrefix("HTTP ") { return body }
+            return c == 403 ? "You do not have permission for that." : "The server could not do that right now."
         case .httpError:
             return "The server rejected that request. Try again, and reach out if it keeps happening."
         case .decodingError:
@@ -608,6 +614,13 @@ final class SIBClient {
     /// Author: cascade-delete a Guide and all its Steps.
     func deleteGuide(id: String) async throws {
         try await delete(path: "/guides/\(id)")
+    }
+
+    /// AROMS-311: archive (Manager+) hides a guide from Operator and from the
+    /// lists; steps, placements, runs and training stay. Unarchive restores it.
+    func archiveGuide(id: String, archive: Bool) async throws -> ARGuide {
+        struct Empty: Encodable {}
+        return try await post(APIResponse<ARGuide>.self, path: "/guides/\(id)/\(archive ? "archive" : "unarchive")", body: Empty()).data
     }
 
     /// U2: copy a Guide onto another anchor (steps, media, model assignments

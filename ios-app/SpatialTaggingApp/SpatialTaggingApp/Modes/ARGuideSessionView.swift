@@ -246,6 +246,7 @@ struct ARGuideSessionView: View {
     /// hints recoverable instead of gone.
     @State private var hintHistory: [AIHint] = []
     @State private var showAssistTray = false
+    @State private var showStepNavigator = false   // AROMS-330: jump to a step (navigation only)
     /// Guardrail: after a dismissal, no new hint for the same step for 30 s.
     @State private var lastHintDismissedAt: Date? = nil
     @State private var lastDismissedStepId: String? = nil
@@ -1006,19 +1007,30 @@ struct ARGuideSessionView: View {
                 if case .navigating(let index) = phase {
                     // A4: progress ring - completed / total at a glance.
                     let doneCount = progresses.filter { $0.isCompleted }.count
-                    ZStack {
-                        Circle().stroke(Color.white.opacity(0.18), lineWidth: 3)
-                        Circle()
-                            .trim(from: 0, to: sortedSteps.isEmpty ? 0 : CGFloat(doneCount) / CGFloat(sortedSteps.count))
-                            .stroke(Color.green, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                            .animation(.easeOut(duration: 0.4), value: doneCount)
-                        Text("\(doneCount)")
-                            .font(.system(size: 10, weight: .bold).monospacedDigit())
-                            .foregroundStyle(.white)
+                    // AROMS-330: the ring is also the door to the step navigator.
+                    Button { stopSpeaking(); showStepNavigator = true } label: {
+                        ZStack {
+                            Circle().stroke(Color.white.opacity(0.18), lineWidth: 3)
+                            Circle()
+                                .trim(from: 0, to: sortedSteps.isEmpty ? 0 : CGFloat(doneCount) / CGFloat(sortedSteps.count))
+                                .stroke(Color.green, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                                .animation(.easeOut(duration: 0.4), value: doneCount)
+                            Text("\(doneCount)")
+                                .font(.system(size: 10, weight: .bold).monospacedDigit())
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 24, height: 24)
+                        .padding(6)
+                        .contentShape(Circle())
                     }
-                    .frame(width: 24, height: 24)
-                    .accessibilityLabel("\(doneCount) of \(sortedSteps.count) steps done")
+                    .accessibilityLabel("\(doneCount) of \(sortedSteps.count) steps done - open the step list")
+                    .sheet(isPresented: $showStepNavigator) {
+                        StepNavigatorSheet(steps: sortedSteps, progresses: progresses, activeIndex: index) { i in
+                            navigateTo(index: i)
+                        }
+                        .presentationDetents([.medium, .large])
+                    }
                     // (step "n / total" lives in the panel - "Step 2 of 18" - not here)
 
                     // C2 UX: hint state - sparkles = on, slashed = muted. Tap

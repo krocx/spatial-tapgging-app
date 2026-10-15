@@ -113,9 +113,12 @@ struct ARGuide: Codable, Identifiable, Equatable {
     let assembly:    GuideAssembly?
     let createdAt:   String
     let updatedAt:   String
+    /// AROMS-311: archived guides are hidden from Operator and from lists by default.
+    let archivedAt:  String?
 
     /// The guide renders from an assembly model (CAD-driven content).
     var hasAssembly: Bool { assembly != nil }
+    var isArchived: Bool { archivedAt?.isEmpty == false }
     /// The assembly still needs its single placement (tap / object / config).
     var assemblyUnplaced: Bool { assembly != nil && assembly?.pose == nil }
 }
@@ -320,6 +323,10 @@ struct GuideStep: Codable, Identifiable, Equatable {
     // Spatial Inspection sweep against the hidden validationTagId tag).
     let validationMode:      String?
     let validationTagId:     String?
+    /// AROMS-331: how the author PLANS to train this step ("single" = quick
+    /// shot, "cone" = dome sweep) - set in the Designer or the Guide Library;
+    /// the app offers it as the default when training.
+    let validationPlan:      String?
     // K5: evidence photo mandatory before completion
     let evidenceRequired:    Bool?
     let createdAt:          String
@@ -411,6 +418,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         validationTrainedAt = try c.decodeIfPresent(String.self, forKey: .validationTrainedAt)
         validationMode      = try c.decodeIfPresent(String.self, forKey: .validationMode)
         validationTagId     = try c.decodeIfPresent(String.self, forKey: .validationTagId)
+        validationPlan      = try c.decodeIfPresent(String.self, forKey: .validationPlan)
         evidenceRequired    = try c.decodeIfPresent(Bool.self,   forKey: .evidenceRequired)
         createdAt          = try c.decode(String.self,              forKey: .createdAt)
         updatedAt          = try c.decode(String.self,              forKey: .updatedAt)
@@ -464,6 +472,7 @@ struct UpdateGuideStepRequest: Codable {
     var text:               String?
     var ttsText:            String?
     var completionRequired: Bool?
+    var validationPlan:     String?    // AROMS-331: "single" | "cone"
     // Note: send mediaBase64 = nil (JSON null) to clear an existing image.
     var mediaBase64:        String?
     // Phase 2: spatial placement

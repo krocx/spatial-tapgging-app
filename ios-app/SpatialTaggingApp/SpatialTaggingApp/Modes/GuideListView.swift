@@ -89,10 +89,22 @@ struct GuideListView: View {
                             .onTapGesture { handleTap(guide) }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 if mode == .author {
-                                    Button(role: .destructive) {
-                                        Task { await deleteGuide(guide) }
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    // AROMS-311: delete is an Owner's action (to the
+                                    // 30-day trash); a Manager archives instead.
+                                    if settings.uamRole.isEmpty || settings.uamRole == "owner" {
+                                        Button(role: .destructive) {
+                                            Task { await deleteGuide(guide) }
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                    if settings.uamRole.isEmpty || settings.uamRole == "owner" || settings.uamRole == "manager" {
+                                        Button {
+                                            Task { await archiveGuide(guide) }
+                                        } label: {
+                                            Label("Archive", systemImage: "archivebox")
+                                        }
+                                        .tint(.orange)
                                     }
                                     // U2: copy this guide onto another anchor
                                     Button { copySource = guide } label: {
@@ -260,6 +272,17 @@ struct GuideListView: View {
         }
     }
 
+    /// AROMS-311: archive - hidden from Operator and this list; everything kept.
+    private func archiveGuide(_ guide: ARGuide) async {
+        let client = SIBClient(settings: settings)
+        do {
+            _ = try await client.archiveGuide(id: guide.id, archive: true)
+            guides.removeAll { $0.id == guide.id }
+        } catch {
+            loadError = "Archive failed: \(friendlyMessage(for: error))"
+        }
+    }
+
     private func deleteGuide(_ guide: ARGuide) async {
         let client = SIBClient(settings: settings)
         do {
@@ -282,7 +305,8 @@ struct GuideListView: View {
                 anchorId:           anchor.id,
                 includeUnpublished: mode == .author
             )
-            guides = loaded
+            // AROMS-311: archived guides are hidden here (the portal's "Show archived" is the way back).
+            guides = loaded.filter { !$0.isArchived }
 
             // Fetch steps for all guides in parallel so placement status is
             // known immediately - avoids a second round-trip when Operator taps.

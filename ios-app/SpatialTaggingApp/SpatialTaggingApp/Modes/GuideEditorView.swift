@@ -882,6 +882,8 @@ struct EditStepSheet: View {
     // K5: evidence photo mandatory
     @State private var evidenceOn        = false
     @State private var trainedAt:        String? = nil
+    @State private var validationPlan:   String  = "cone"    // AROMS-331: "single" | "cone"
+    @State private var trainedMode:      String? = nil
     @State private var validationBusy    = false
     @State private var validationNote:   String? = nil
     /// Camera purpose: capture a training reference vs a verify test shot.
@@ -944,21 +946,26 @@ struct EditStepSheet: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if validationOn {
+                        // AROMS-331: the training is PLANNED here, on the step,
+                        // and carried out in AR. The plan is what the AR tray
+                        // offers first; the trained state is shown beside it.
+                        Picker("Training", selection: $validationPlan) {
+                            Text("Cone sweep · multi-angle").tag("cone")
+                            Text("Quick shot · one photo").tag("single")
+                        }
+                        .pickerStyle(.segmented)
                         HStack {
                             Image(systemName: trainedAt != nil ? "checkmark.seal.fill" : "seal")
                                 .foregroundColor(trainedAt != nil ? .green : .secondary)
-                            Text(trainedAt != nil ? "Trained - system verdict active" : "Not trained - operator sees manual Pass/Fail")
+                            Text(trainedAt != nil
+                                 ? "Trained with \(trainedMode == "cone" ? "the cone sweep" : "a quick shot") - system verdict active"
+                                 : "Not trained yet - the operator sees a manual Pass / Fail")
                                 .font(.footnote)
                             Spacer()
                         }
-                        // W2: training happens IN AR - from "Place Steps in AR",
-                        // tap the step's 🛡 Cone (multi-angle sweep) or 📷 quick-shot
-                        // button. Both record where the Author stood, so the
-                        // operator is guided back to the same viewpoint. The old
-                        // form-camera training (no stance, unreliable) is retired.
                         Label(trainedAt != nil
-                              ? "Retrain from \"Place Steps in AR\" - 🛡 Cone (multi-angle) or 📷 quick-shot."
-                              : "Train from \"Place Steps in AR\" - 🛡 Cone (multi-angle) or 📷 quick-shot from where the operator should stand.",
+                              ? "Retrain from \"Place Steps in AR\": tap the step's Trained chip."
+                              : "Train from \"Place Steps in AR\": tap the step's Train chip where the operator will stand.",
                               systemImage: "arkit")
                             .font(.footnote).foregroundStyle(.secondary)
                         if trainedAt != nil {
@@ -1229,6 +1236,8 @@ struct EditStepSheet: View {
                 completionRequired = step.completionRequired
                 validationOn       = step.validationRequired == true
                 trainedAt          = step.validationTrainedAt
+                trainedMode        = step.validationMode
+                validationPlan     = step.validationPlan ?? "cone"
                 evidenceOn         = step.evidenceRequired == true
                 // 3D model: pre-populate from step
                 // U4: slot 1 drives the existing picker; the rest are extras.
@@ -1358,6 +1367,7 @@ struct EditStepSheet: View {
         // its own endpoints - only the requirement flag rides the PATCH.
         req.validationRequired = validationOn
         req.evidenceRequired   = evidenceOn   // K5
+        req.validationPlan     = validationOn ? validationPlan : nil   // AROMS-331
 
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)
