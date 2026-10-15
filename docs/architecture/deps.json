@@ -222,6 +222,9 @@
   "models/mindmap.model.ts": [
    "stores/json-file-store.ts"
   ],
+  "models/part-resolver.ts": [
+   "models/glb-nodes.ts"
+  ],
   "models/reduce-clustering.ts": [
    "models/glb-geometry.ts",
    "models/variants.ts"
@@ -371,7 +374,9 @@
    "middleware/auth.ts",
    "middleware/device-link.ts",
    "models/assembled-pose.ts",
+   "models/glb-nodes.ts",
    "models/mindmap.model.ts",
+   "models/part-resolver.ts",
    "models/variants.ts",
    "oms/step-validation.ts",
    "perception/image-comparator.ts",

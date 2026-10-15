@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **Step parts survive a model rebuild.** A guide names its parts by node
+  (`cmp:<DEF>`); a model regenerated from a later publication may rename
+  them, and the XR kit then warned "N step nodes not found in the model"
+  until the guide was re-imported. The GLB extras already carry objectID,
+  part number and display name per part, so the server now resolves a
+  reference by that cascade (name, then objectID, then part number, then
+  display name; a handle shared by several parts never matches).
+  `GET /guides/:id/model-check` says what the current model has, renamed
+  and lost; `POST /guides/:id/rebind-parts` (Engineer+) re-points the guide
+  once so iOS, the XR kit and the Studio agree. The library's guide menu
+  gains "Check parts against the model…" with the result in words and the
+  rebind behind a confirm; the XR kit also matches by objectID at load
+  time for a guide not yet rebound, and says so in the console.
 - **Publish needs a chamber configuration, in the library too.** The server
   has refused since the lifecycle change; the portal now says so before the
   click: Publish is greyed with the reason when the chamber has no

@@ -6735,7 +6735,8 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
     <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Guides QR Anchor</a>
     ${modelLinks}
     ${guide?.assembly?.source === 'cortona' ? `<button onclick="showSavedImportLog('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>
-    <button onclick="openAssembledPose('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Assembled pose: ${guide?.assembly?.assembledPose === 'final' ? 'after the last step' : 'as published'}…</button>` : ''}
+    <button onclick="openAssembledPose('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Assembled pose: ${guide?.assembly?.assembledPose === 'final' ? 'after the last step' : 'as published'}…</button>
+    <button onclick="checkGuideParts('${guideId}');closeRowMenu()" title="Find every step part in the current model; a part the model renamed since the guide was written is re-pointed by objectID, part number or name"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Check parts against the model…</button>` : ''}
     <hr>
     <button onclick="showXrQr('${guideId}','${esc((guide?.name || '').replace(/'/g, ''))}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Open on a headset (XR kit)…</button>
     <button onclick="showReadiness('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Device readiness</button>
@@ -6756,6 +6757,25 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
   m.style.left = Math.max(8, r.right + window.scrollX - m.offsetWidth) + 'px';
   rowMenuEl = m;
   setTimeout(() => document.addEventListener('click', closeRowMenuOnOutside), 0);
+}
+
+/** Backlog #6: a guide written against an earlier build of its model may name
+ *  parts the current GLB has renamed (the XR kit's "step nodes not found").
+ *  Dry-run first, say it in words, then rebind on the server so every
+ *  renderer agrees. */
+async function checkGuideParts(guideId) {
+  try {
+    const r = (await apiFetch(`/guides/${encodeURIComponent(guideId)}/model-check`)).data;
+    if (r.note) { toast(r.note === 'no assembly' ? 'This guide has no assembly model - nothing to check.' : 'The model file is not on this server, so the parts cannot be checked here.', 4000); return; }
+    if (!r.renamed.length && !r.unmatched.length) { toast(`All ${r.total} step parts are in the model.`, 3000); return; }
+    const lines = [`${r.matched} of ${r.total} step parts found in the model.`];
+    if (r.renamed.length) lines.push(`${r.renamed.length} renamed since the guide was written and found again by ${[...new Set(r.renamed.map(x => x.by))].join(' / ')}:\n  ` + r.renamed.slice(0, 8).map(x => `${x.from.replace(/^cmp:/, '')} → ${x.to.replace(/^cmp:/, '')}`).join('\n  ') + (r.renamed.length > 8 ? '\n  …' : ''));
+    if (r.unmatched.length) lines.push(`${r.unmatched.length} not found at all (the step will show nothing for them):\n  ` + r.unmatched.slice(0, 8).map(x => x.replace(/^cmp:/, '')).join('\n  ') + (r.unmatched.length > 8 ? '\n  …' : ''));
+    if (!r.renamed.length) { alert(lines.join('\n\n') + '\n\nRe-import the publication with "Update the existing guide" to refresh both the steps and the model.'); return; }
+    if (!confirm(lines.join('\n\n') + '\n\nRebind the guide to the current model now? Placement, sessions and training are not touched.')) return;
+    const b = (await apiFetch(`/guides/${encodeURIComponent(guideId)}/rebind-parts`, { method: 'POST' })).data;
+    toast(`Rebound ${b.renamed.length} part reference${b.renamed.length === 1 ? '' : 's'}${b.unmatched.length ? ` · ${b.unmatched.length} still not in the model` : ''}.`, 5000);
+  } catch (e) { toast(`Check failed: ${e.message}`, 5000); }
 }
 
 // D: push one guide to every other chamber of its configuration (U2 copy per

@@ -12,6 +12,8 @@ api: |
   GET /guides/import/jobs/:id - poll the import: queued | processing | done (guide, steps, model, log - or exists, when a same-name guide waits for a choice) | failed (portal · API key)
   POST /guides/import/jobs/:id/apply - { mode: update | new } finishes an import that stopped on an existing guide; update refreshes its steps by position and keeps id, anchor, configuration, sharing, sessions, map, placement and validation training (portal · API key)
   POST /guides/import/jobs/:id/discard - the caller cancelled; drops the parsed guide and the assembly model it registered (portal · API key)
+  GET /guides/:id/model-check - dry run: which step parts the current model has, which it renamed (found again by objectID, part number or display name) and which are gone (portal · API key)
+  POST /guides/:id/rebind-parts - re-point every step and initial-state node at the current model, once, on the server, so iOS, the XR kit and the Studio agree (portal · Engineer+)
   GET /guides/:id/import-log - the importer log kept for the guide (counts, PROTOs, options, warnings); guide menu → Import log (portal · API key)
   POST /guides/:id/assembled-pose - { pose: published | final } switches the model's rest pose in place, bumps glbRevision, rebuilds variants (portal · Engineer+)
   PATCH /guides/:id - { assemblyPose } places the whole assembly once; null clears it (iOS · portal · API key)

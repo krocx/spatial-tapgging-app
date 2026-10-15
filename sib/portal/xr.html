@@ -438,7 +438,16 @@ async function loadBundle() {
   // its own scale - placeFromQR applies it.
   assembly.userData.scale = s;
   if (guide.assembly?.pose?.scale && guide.assembly.pose.scale !== s) console.info(`[xr] model scale ${s} (portal) used; the iPad placement carried ${guide.assembly.pose.scale}`);
-  const referenced = new Set([...(guide.assembly?.initialNodes || []), ...steps.flatMap(s => s.nodes || [])].map(d => d.node));
+  const refs = [...(guide.assembly?.initialNodes || []), ...steps.flatMap(s => s.nodes || [])];
+  const referenced = new Set(refs.map(d => d.node));
+  // A model regenerated since the guide was written may have renamed parts;
+  // the importer's objectID (the step's sourceKey, the node's extras) still
+  // identifies them. Alias the old name to the part it means - the server's
+  // Rebind parts (Content Library) makes this permanent.
+  { const byOid = new Map(); for (const [name, p] of parts) { const oid = p.obj.userData?.objectID; if (oid !== undefined && oid !== null) byOid.set(String(oid), byOid.has(String(oid)) ? null : name); }
+    let aliased = 0;
+    for (const d of refs) if (!parts.has(d.node) && d.sourceKey && /^\d+$/.test(d.sourceKey)) { const name = byOid.get(d.sourceKey); if (name && !parts.has(d.node)) { parts.set(d.node, parts.get(name)); aliased++; } }
+    if (aliased) console.info(`[xr] ${aliased} step node(s) matched by objectID after a model change - rebind the guide in the Content Library to make it permanent`); }
   const missing = [...referenced].filter(n => !parts.has(n));
   $('gateText').textContent = $('gateText').textContent.replace(' · loading model…', ` · ${parts.size} parts`)
     + (missing.length ? ` · ⚠ ${missing.length} of ${referenced.size} step nodes not found in the model` : '');

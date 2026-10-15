@@ -30,6 +30,8 @@ import { memoryLimitBytes, importNeedBytes, checkWorkerMemory } from '../memory.
 import { registerGeneratedGlb, deleteModel3D, MODELS_DIR } from './models.js';
 import type { LadderResult } from '../models/variants.js';
 import { findExistingGuide, existingStepIdsBySeq } from '../guides/dedup.js';
+import { buildPartIndex, rebindParts } from '../models/part-resolver.js';
+import { readGlbJson } from '../models/glb-nodes.js';
 import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
 import fs   from 'fs';
@@ -1026,6 +1028,50 @@ router.delete('/:id', requireRole('owner'), (req: Request, res: Response): void 
 // GET /guides/:id/runs-count - what a delete would leave behind (the confirm says it in words).
 router.get('/:id/runs-count', (req: Request, res: Response): void => {
   res.json({ data: { runs: runsOf(req.params.id) }, timestamp: new Date().toISOString() });
+});
+
+// ── Guide ↔ model parts (backlog #6, 2026.4.50) ─────────────────────────────
+// A step addresses a part by node name; a model regenerated from a later
+// publication may have renamed it. The check says which references the
+// current model cannot find and which a rebind would recover (by objectID,
+// part number or display name); the rebind re-points the guide once, on the
+// server, so iOS, the XR kit and the Studio all agree afterwards.
+function partIndexForGuide(guide: Guide) {
+  const modelId = guide.assembly?.modelId; if (!modelId) return null;
+  const file = path.join(MODELS_DIR, `${modelId}.glb`);
+  if (!fs.existsSync(file)) return null;
+  return buildPartIndex(readGlbJson(fs.readFileSync(file)));
+}
+function guideNodeLists(guide: Guide, steps: GuideStep[]): GuideStepNode[][] {
+  return [guide.assembly?.initialNodes ?? [], ...steps.map(s => s.nodes ?? [])];
+}
+// GET /guides/:id/model-check - dry run: { modelId, total, matched, renamed[], unmatched[] } (nothing is written)
+router.get('/:id/model-check', (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: 'Guide not found', timestamp: new Date().toISOString() }); return; }
+  const idx = partIndexForGuide(guide);
+  if (!idx) { res.json({ data: { modelId: guide.assembly?.modelId ?? null, total: 0, matched: 0, renamed: [], unmatched: [], note: guide.assembly ? 'model file not on this server' : 'no assembly' }, timestamp: new Date().toISOString() }); return; }
+  const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id);
+  // Work on copies: a check never writes.
+  const lists = guideNodeLists(structuredClone(guide), structuredClone(steps));
+  const r = rebindParts(idx, lists);
+  res.json({ data: { modelId: guide.assembly!.modelId, ...r }, timestamp: new Date().toISOString() });
+});
+// POST /guides/:id/rebind-parts - re-point every step and initial-state node at the current model (Engineer+)
+router.post('/:id/rebind-parts', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: 'Guide not found', timestamp: new Date().toISOString() }); return; }
+  const idx = partIndexForGuide(guide);
+  if (!idx) { res.status(409).json({ error: 'This guide has no assembly model on this server to rebind against', code: 'no-model', timestamp: new Date().toISOString() }); return; }
+  const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id);
+  const r = rebindParts(idx, guideNodeLists(guide, steps));
+  if (r.renamed.length) {
+    const now = new Date().toISOString();
+    guideStore.save({ ...guide, updatedAt: now });
+    for (const s of steps) if (s.nodes?.length) guideStepStore.save({ ...s, updatedAt: now });
+    console.log(`[SIB] Guide ${guide.id} parts rebound to model ${guide.assembly!.modelId}: ${r.renamed.length} renamed, ${r.unmatched.length} unmatched (by ${whoIs(req)})`);
+  }
+  res.json({ data: { modelId: guide.assembly!.modelId, ...r }, timestamp: new Date().toISOString() });
 });
 
 // GET /guides/:id/steps - list steps in ascending sequenceNumber order
