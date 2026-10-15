@@ -510,6 +510,7 @@ export function PartsStudio(): JSX.Element | null {
   const select   = useStore(s => s.select);
   const order    = useStore(s => s.procedure?.order);
   const mapNodes = useStore(s => s.map?.nodes);
+  const guideId  = useStore(s => s.map?.guideSync?.guideId);
   const validate = useStore(s => s.validateProcedure);
   const pk = usePartsPicker(nodeId);
 
@@ -557,6 +558,18 @@ export function PartsStudio(): JSX.Element | null {
           <div className="st-title"><span className="ax-eyebrow">Step {cur ? cur.seq : '·'} of {steps.length || '·'}</span><b>{cur ? cur.title : title}</b><span className="ax-label-s ax-muted">parts this step {pk.verb}{pk.summary}</span></div>
           <button className="ax-btn ax-btn--quiet ax-btn--sm" onClick={next} disabled={idx < 0 || idx >= steps.length - 1} title="Next step (→)">▶</button>
         </div>
+        {guideId && (
+          <button className="ax-btn ax-btn--quiet ax-btn--sm" title="Open this step in the XR kit's preview - the player the operator gets, same engine, nothing recorded. Send unsent edits to the Guide Library first to see them there."
+                  onClick={() => window.open(`/xr?guide=${encodeURIComponent(guideId)}&preview=1&step=${Math.max(1, idx + 1)}`, '_blank', 'noopener')}>
+            Open as operator
+          </button>
+        )}
+        {pk.modelId && (
+          <button className="ax-btn ax-btn--quiet ax-btn--sm" title="Size, which way is up and the origin the assembly is placed by - the Models page preview, with Save as default"
+                  onClick={() => window.open(`/portal#content/models?preview=${encodeURIComponent(pk.modelId!)}`, '_blank', 'noopener')}>
+            Fit and defaults…
+          </button>
+        )}
         <button className="ax-btn ax-btn--quiet ax-btn--sm" onClick={undo} disabled={!canUndo} title="Undo (⌘Z)">Undo</button>
         <button className="ax-btn ax-btn--quiet ax-btn--sm" onClick={redo} disabled={!canRedo} title="Redo (⇧⌘Z)">Redo</button>
         <button className={`ax-btn ax-btn--sm${coach ? ' ax-btn--tint' : ' ax-btn--quiet'}`} onClick={() => setCoach(v => !v)} title="Coach: what you can do here, right now (?)" aria-label="Coach">?</button>

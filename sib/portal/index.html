@@ -3005,7 +3005,11 @@ function renderRoute() {
     else if (sub === 'inspections') { switchView('sessions'); }
     else { switchView('ar-guides'); if (sub === 'insights' && params.has('guide')) insightsGuide = params.get('guide'); setUsageView(sub === 'usage'); setIntelView(sub === 'intelligence'); setInsightsView(sub === 'insights'); }
   }
-  else if (sec === 'content') { switchView(sub === 'models' ? 'models' : 'guide-library'); }
+  else if (sec === 'content') {
+    switchView(sub === 'models' ? 'models' : 'guide-library');
+    // #content/models?preview=<modelId> - the Studio's "Fit and defaults…" lands straight in the fit preview.
+    if (sub === 'models' && params.has('preview')) openModelPreviewWhenListed(params.get('preview'));
+  }
   else if (sec === 'admin')   { switchView('admin'); adminShowSub(sub); }
   else if (sec === 'gemba')   { switchView('gemba'); gembaShowSub(sub); }
   else                        { switchView(sec); }
@@ -4896,6 +4900,12 @@ async function setModelCategory(modelId, category) {
 }
 
 /** Fetch all models in the global library (no anchor filter). */
+/** Open the fit preview for a model once the library has listed it (deep link from the Studio). */
+function openModelPreviewWhenListed(modelId, tries = 20) {
+  const m = (typeof modelsData !== 'undefined' ? modelsData : []).find(x => x.id === modelId);
+  if (m) { if (typeof openModelPreview === 'function') openModelPreview(m.id, m.name); return; }
+  if (tries > 0) setTimeout(() => openModelPreviewWhenListed(modelId, tries - 1), 300);
+}
 async function loadModels() {
   const grid = document.getElementById('models-grid');
   grid.innerHTML = '<p style="color:var(--muted);padding:24px 0;text-align:center;font-size:0.82rem">Loading…</p>';
@@ -8309,6 +8319,7 @@ import * as THREE from 'three';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import { USDZExporter }  from 'three/addons/exporters/USDZExporter.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { restoreNames, prepareMeshes } from '/portal/assembly-model.js';
 
 // Module-private renderer state
 let _r = null, _s = null, _cam = null, _ctrl = null, _raf = null;
@@ -8640,19 +8651,14 @@ function _loadGLB(url) {
   if (key) loader.setRequestHeader({ 'X-API-Key': key });
 
   loader.load(url, (gltf) => {
-    const model = gltf.scene;
-    // The model library shows the WHOLE model at rest, whatever a guide's
-    // initial state hides (in many publications most parts start hidden and
-    // the steps reveal them). Only the baked hose flipbook frames are left
-    // out - they are playback frames, and drawn together they look like
-    // rings of tubes; the rest tube stands for each hose.
-    let hidden = 0;
-    model.traverse(c => {
-      if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
-      const nm = (c.userData && c.userData.name) || c.name || '';
-      if (/#s\d+f\d+$/.test(nm)) { c.visible = false; hidden++; }
-    });
-    if (hidden) console.info(`[Portal] preview: ${hidden} hose frame node(s) not drawn`);
+    // Same reader as the XR kit and the Studio (assembly-model.js): names
+    // restored, materials owned per mesh, frames left out. This preview is
+    // for physical fit, so it shows the WHOLE model at rest, whatever a
+    // guide's initial state hides - rest-hidden parts are drawn here.
+    const model = restoreNames(gltf);
+    const { hiddenFrames } = prepareMeshes(model, THREE, { frames: 'hide' });
+    model.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; for (const m of c.userData.mats || []) { m.visible = true; m.opacity = c.userData.hidden0 ? 1 : m.opacity; } } });
+    if (hiddenFrames) console.info(`[Portal] preview: ${hiddenFrames} hose frame node(s) not drawn`);
 
     // A wrapper carries scale; the model inside carries orientation and is
     // re-seated on the floor (bottom of bounding box → y = 0).

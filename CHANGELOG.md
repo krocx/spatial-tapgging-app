@@ -21,12 +21,17 @@ it, it gets a line.
   per browser: hand tracking on the headset (off leaves the feature out of
   the session) and virtual hands in the desktop preview, which used to need
   `?hands=sim` typed into the address bar.
-- **Studio and XR player share one state engine.** The Designer's 3D
+- **One 3D workflow: Studio, operator preview and fit.** The Designer's 3D
   preview had its own port of the part-state rules; the XR kit had another;
   the two previews could disagree on what is visible at a step. The Studio
   now reads `portal/xr-engine.js` (settled state, schedule, and a new pure
   in-flight state, `stateDuring`), plays at the guide's authored speed, and
-  the XR engine test is the single contract. Nothing changes for operators.
+  the XR engine test is the single contract. The GLB reader is shared too
+  (`portal/assembly-model.js`) between the XR kit and the Models page
+  preview. The Studio header gains "Open as operator" (the XR preview at
+  the step the author is on) and "Fit and defaults…" (the Models page
+  preview for this assembly), so authoring, rehearsal and physical fit are
+  one click apart. Nothing changes for operators.
 - **Step parts survive a model rebuild.** A guide names its parts by node
   (`cmp:<DEF>`); a model regenerated from a later publication may rename
   them, and the XR kit then warned "N step nodes not found in the model"

@@ -188,6 +188,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DEFAULT_SPEED, GHOST_OPACITY, stateBefore, stateAfter, scheduleStep, scheduleLength, stepParts, originForSurface, attentionFor } from '/portal/xr-engine.js';
+import { restoreNames, prepareMeshes, buildParts } from '/portal/assembly-model.js';
 import { XRPanel } from '/portal/xr-panel.js';
 import { XRHands } from '/portal/xr-hands.js';
 
@@ -391,46 +392,16 @@ async function loadBundle() {
   const glbUrl = reducedMode ? model.glbUrl + (model.glbUrl.includes('?') ? '&' : '?') + 'budget=350000' : model.glbUrl;
   const buf = await (await fetch(glbUrl, { headers: hdr() })).arrayBuffer();
   const gltf = await new Promise((ok, err) => new GLTFLoader().parse(buf, '', ok, err));
-  const root = gltf.scene;
-  // GLTFLoader sanitizes node names (strips ':' '.' '/' '[' ']'), so
-  // `cmp:PN_0190-1` would come out as `cmpPN_0190-1`. Part control is by
-  // name, so restore the original glTF names from the parser's associations
-  // (fallback: the exporter's extras.def).
-  const gltfNodes = gltf.parser?.json?.nodes || [];
-  root.traverse(o => {
-    const idx = gltf.parser?.associations?.get(o)?.nodes;
-    const orig = idx !== undefined ? gltfNodes[idx]?.name : undefined;
-    if (orig) o.name = orig;
-    else if (o.userData?.def && !String(o.name).startsWith('cmp:')) o.name = `cmp:${o.userData.def}`;
-  });
-  root.traverse(o => {
-    if (o.isMesh) {
-      if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
-      const mats = (Array.isArray(o.material) ? o.material : [o.material]).map(m => { const c = m.clone(); c.transparent = true; c.flatShading = true; c.side = THREE.DoubleSide; c.needsUpdate = true; return c; });
-      o.material = Array.isArray(o.material) ? mats : mats[0];
-      o.userData.mats = mats;
-    }
-  });
-  const depthOf = o => { let d = 0, c = o; while (c && c !== root) { d++; c = c.parent; } return d; };
-  // Rest visibility comes from the model itself: a node the publication
-  // starts hidden (Cortona Switch, `extras.visible=false` on it or an
-  // ancestor) rests hidden - the Studio's rule, so the three renderers agree
-  // whether or not the importer named that node in initialNodes.
-  const startsHidden = o => { for (let q = o; q && q !== root; q = q.parent) if (q.userData?.visible === false) return true; return false; };
-  root.traverse(o => { if (o.isMesh) { o.userData.hidden0 = startsHidden(o); if (o.userData.hidden0) for (const mat of o.userData.mats || []) { mat.opacity = 0; mat.visible = false; } } });
-  root.traverse(o => {
-    if (typeof o.name === 'string' && o.name.startsWith('cmp:')) {
-      const meshes = []; o.traverse(m => { if (m.isMesh) meshes.push(m); });
-      const bb = new THREE.Box3().setFromObject(o); const center = bb.isEmpty() ? new THREE.Vector3() : bb.getCenter(new THREE.Vector3());
-      o.updateMatrixWorld();
-      const inst = { obj: o, rest: { pos: o.position.clone(), quat: o.quaternion.clone() } };
-      const prev = parts.get(o.name);
-      // A re-used part (VRML USE) is several nodes with one name: state and
-      // playback address all of them, so a hidden screw hides every screw.
-      if (prev) { prev.insts.push(inst); prev.meshes.push(...meshes); return; }
-      parts.set(o.name, { obj: o, rest: inst.rest, insts: [inst], meshes, depth: depthOf(o), centerLocal: o.parent ? o.parent.worldToLocal(center.clone()) : center, displayName: o.userData?.displayName || o.userData?.def || o.name.slice(4) });
-    }
-  });
+  // One reader for every browser surface (assembly-model.js): names restored,
+  // materials owned per mesh, rest visibility from the model, parts by name
+  // with every instance of a re-used part, renamed parts found by objectID.
+  const root = restoreNames(gltf);
+  prepareMeshes(root, THREE, { frames: 'keep' });
+  const refs = [...(guide.assembly?.initialNodes || []), ...steps.flatMap(s => s.nodes || [])];
+  const built = buildParts(root, THREE, refs);
+  for (const [k, v] of built.parts) parts.set(k, v);
+  if (built.duplicates) console.info(`[xr] ${built.duplicates} part name(s) used by more than one node - every instance follows that name`);
+  if (built.aliased) console.info(`[xr] ${built.aliased} step node(s) matched by objectID after a model change - rebind the guide in the Content Library to make it permanent`);
   const s = model.defaultScale ?? 1;
   assembly.add(root);
   modelBox = new THREE.Box3().setFromObject(root);
@@ -450,17 +421,7 @@ async function loadBundle() {
   // its own scale - placeFromQR applies it.
   assembly.userData.scale = s;
   if (guide.assembly?.pose?.scale && guide.assembly.pose.scale !== s) console.info(`[xr] model scale ${s} (portal) used; the iPad placement carried ${guide.assembly.pose.scale}`);
-  const refs = [...(guide.assembly?.initialNodes || []), ...steps.flatMap(s => s.nodes || [])];
-  const referenced = new Set(refs.map(d => d.node));
-  // A model regenerated since the guide was written may have renamed parts;
-  // the importer's objectID (the step's sourceKey, the node's extras) still
-  // identifies them. Alias the old name to the part it means - the server's
-  // Rebind parts (Content Library) makes this permanent.
-  { const byOid = new Map(); for (const [name, p] of parts) { const oid = p.obj.userData?.objectID; if (oid !== undefined && oid !== null) byOid.set(String(oid), byOid.has(String(oid)) ? null : name); }
-    let aliased = 0;
-    for (const d of refs) if (!parts.has(d.node) && d.sourceKey && /^\d+$/.test(d.sourceKey)) { const name = byOid.get(d.sourceKey); if (name && !parts.has(d.node)) { parts.set(d.node, parts.get(name)); aliased++; } }
-    if (aliased) console.info(`[xr] ${aliased} step node(s) matched by objectID after a model change - rebind the guide in the Content Library to make it permanent`); }
-  const missing = [...referenced].filter(n => !parts.has(n));
+  const { referenced, missing } = built;
   $('gateText').textContent = $('gateText').textContent.replace(' · loading model…', ` · ${parts.size} parts`)
     + (missing.length ? ` · ⚠ ${missing.length} of ${referenced.size} step nodes not found in the model` : '');
   if (missing.length) console.warn('[xr] step nodes missing from model:', missing.slice(0, 20));
@@ -963,7 +924,10 @@ function lockPlacement() {
   locked = true; reticle.visible = false;
   $('reticleHint').classList.add('hidden'); $('placeRow').classList.add('hidden'); $('navRow').classList.remove('hidden');
   if (frameKind === 'tap' || frameKind === 'qr') { $('framePill').textContent = frameKind === 'qr' ? 'anchored on QR' : 'placed'; }
-  showStep(0);
+  // ?step=N (1-based) lands on that step - the Studio's "Open as operator"
+  // sends the step the author is on. Only in the preview; a run starts at 1.
+  const want = PREVIEW ? parseInt(params.get('step') || '', 10) : NaN;
+  showStep(Number.isInteger(want) && want >= 1 && want <= steps.length ? want - 1 : 0);
 }
 
 let frameRef = null;

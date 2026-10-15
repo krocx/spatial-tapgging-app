@@ -363,8 +363,14 @@ state the XR player's tweens paint (a hidden part travels visible and hides
 when the motion ends; flash-only entries change nothing). The Studio plays at
 the guide's authored speed (`settings.assembly.animationSpeed`, carried by
 the reverse compiler). `sib/test/xr-engine.test.ts` is the single contract
-test. Slice 2 (pending): "Open as operator" from the Studio, and the Models
-page preview on the same loader.
+test. Slice 2: the GLB reader is one module too (`portal/assembly-model.js`:
+names restored, materials owned per mesh, rest visibility from the model,
+parts by name with every instance of a re-used part, renamed parts found by
+objectID), used by the XR kit and the Models page preview; the Studio header
+gains **Open as operator** (the XR preview at the same step, `?step=N`) and
+**Fit and defaults…** (the Models page preview for this assembly:
+`#content/models?preview=<modelId>`), so authoring, rehearsal and physical
+fit are one click apart and never leave the guide.
 
 ### Slice 4 - shared sequencing
 
