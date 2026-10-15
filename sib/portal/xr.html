@@ -111,6 +111,11 @@
         <button class="grow" id="startDesk" disabled>Desktop preview</button>
         <button class="grow hidden" id="startText" disabled>Start (text)</button>
       </div>
+      <!-- Hands (H1): a choice here, not a URL parameter. Remembered on this browser. -->
+      <div class="row muted" id="handsRow" style="margin-top:10px;gap:16px;flex-wrap:wrap;font-size:12.5px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="handsHeadset"> Hand tracking on the headset <span class="muted">(pinch to grab, point to mark, thumbs up to pass)</span></label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="handsSim"> Virtual hands in the desktop preview <span class="muted">(⇧ hand · Space grab · Enter thumbs up · V on/off)</span></label>
+      </div>
       <div class="muted" id="capLine" style="margin-top:10px"></div>
     </div>
   </div>
@@ -277,7 +282,14 @@ const panel = new XRPanel(THREE, { colors: { text: cssVar('--text', '#f4f6fa'), 
 scene.add(panel.mesh);
 let panelMode = false;
 // ── Hands (H1): tracked joints, held gestures, part proximity, wrist card, grab, evidence ──
-const HAND_SIM = params.get('hands') === 'sim';
+// Hands: the gate's checkboxes decide (remembered per browser); `?hands=sim`
+// and `?hands=off` still work for links and the readiness page.
+const handsPref = (key, fallback) => { const v = localStorage.getItem(key); return v === null ? fallback : v === '1'; };
+const HAND_SIM = params.get('hands') === 'sim' || (params.get('hands') === null && handsPref('sib_xr_hands_sim', false));
+const HANDS_HEADSET = params.get('hands') !== 'off' && handsPref('sib_xr_hands_headset', true);
+{ const sim = $('handsSim'), hs = $('handsHeadset');
+  if (sim) { sim.checked = HAND_SIM; sim.onchange = () => { localStorage.setItem('sib_xr_hands_sim', sim.checked ? '1' : '0'); if (params.get('hands') !== null) { params.delete('hands'); history.replaceState(null, '', `${location.pathname}?${params}`); } }; }
+  if (hs)  { hs.checked = HANDS_HEADSET; hs.onchange = () => localStorage.setItem('sib_xr_hands_headset', hs.checked ? '1' : '0'); } }
 let handsOn = null;                     // the step part the hand is on right now (name) or null
 const hands = new XRHands(THREE, scene, {
   colors: { ink: cssVar('--text', '#f1f3f8'), green: cssVar('--green', '#22c55e'), blue: cssVar('--blue', '#3b82f6'), orange: cssVar('--amber', '#f59e0b') },
@@ -815,7 +827,7 @@ async function startAR() {
   // floor while you work, so the two drifted apart and the model slid. The
   // three.js hit-test sample pins 'local' for both; so do we.
   renderer.xr.setReferenceSpaceType('local');
-  const opt = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'anchors', 'hand-tracking'], domOverlay: { root: $('overlay') } };
+  const opt = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'anchors', ...(($('handsHeadset')?.checked ?? HANDS_HEADSET) ? ['hand-tracking'] : [])], domOverlay: { root: $('overlay') } };
   const qr = bundle.anchor?.frames?.qr;
   if (qr?.available && qr.markerSizeM && bundle.anchor?.id) {
     try {
@@ -873,7 +885,7 @@ function startDesktop() {
   });
   enterSession('desktop');
   lockPlacement();
-  if (HAND_SIM) startHandSim(controls);
+  if (params.get('hands') === 'sim' || $('handsSim')?.checked) startHandSim(controls);
 }
 // The desktop simulator (keyboard + trackpad, the way MRTK and the Meta XR
 // Simulator do it): the pointer is the fingertip; hold Left Shift for the

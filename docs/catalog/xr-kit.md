@@ -8,7 +8,7 @@ depends: [guide-bundle, live-telemetry, contextual-intelligence, evidence-signof
 terms: [Assembly Model, Anchor, Operator Mode]
 spec: ar-ojt/UNITY-RUNTIME.md
 api: |
-  GET /xr - the kit page; open as /xr?guide=<guideId>; ?hands=sim adds virtual hands to the desktop preview: the pointer is the fingertip, Left / Right Shift picks the hand, Space grabs, Enter is thumbs up, M marks, H calls for help, V toggles the hands (browser · same gate as the portal)
+  GET /xr - the kit page; open as /xr?guide=<guideId>; two checkboxes on the gate choose hand tracking on the headset and virtual hands in the desktop preview, remembered per browser (?hands=sim and ?hands=off still work for links): the pointer is the fingertip, Left / Right Shift picks the hand, Space grabs, Enter is thumbs up, M marks, H calls for help, V toggles the hands (browser · same gate as the portal)
   POST /guide-sessions/live/:id/events - hands:gesture { gesture, part, did } for a held pinch / point / thumbs-up / open palm; perception:result carries the hands-at-the-part fact; step completions carry hands { tracked, inZoneSeconds, share, onPartAtCheck } (any client · API key / token)
   GET /guides/:id/bundle - everything the page loads (any client · API key / token)
   POST /guide-sessions/live - the kit opens a live session like the iPad (any client · API key / token)

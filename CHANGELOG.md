@@ -7,6 +7,10 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Added
+- **XR kit: hands are a choice on the gate.** Two checkboxes, remembered
+  per browser: hand tracking on the headset (off leaves the feature out of
+  the session) and virtual hands in the desktop preview, which used to need
+  `?hands=sim` typed into the address bar.
 - **Studio and XR player share one state engine.** The Designer's 3D
   preview had its own port of the part-state rules; the XR kit had another;
   the two previews could disagree on what is visible at a step. The Studio
