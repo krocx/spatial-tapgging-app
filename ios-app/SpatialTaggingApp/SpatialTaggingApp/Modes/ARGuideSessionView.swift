@@ -39,6 +39,7 @@ struct ARGuideSessionView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     // ── AR session ────────────────────────────────────────────────────────────
     @StateObject private var arManager = ARSessionManager()
@@ -958,6 +959,23 @@ struct ARGuideSessionView: View {
     // ── Top bar ───────────────────────────────────────────────────────────────
 
     private var topBar: some View {
+        VStack(spacing: 4) {
+        topBarRow
+        // AROMS-333: compact width - the name gets its own line under the controls.
+        if horizontalSizeClass != .regular {
+            Text(guide.name.hasPrefix("[Guide] ") ? String(guide.name.dropFirst(8)) : guide.name)
+                .font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.9))
+                .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.85)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .padding(.top, 4)
+        .background(.ultraThinMaterial.opacity(0.85))
+    }
+
+    private var topBarRow: some View {
         HStack {
             Button {
                 stopSpeaking()
@@ -974,12 +992,21 @@ struct ARGuideSessionView: View {
 
             // Title takes whatever is left; the icon cluster never wraps.
             // "[Guide] " is the Designer's map-name prefix - not for operators.
-            Text(guide.name.hasPrefix("[Guide] ") ? String(guide.name.dropFirst(8)) : guide.name)
-                .font(.headline).foregroundStyle(.white)
-                .lineLimit(1).truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .layoutPriority(-1)
-                .padding(.horizontal, 8)
+            // AROMS-333: on a phone the bar has no room for the name beside
+            // seven controls ("Axle A…"), so it shrinks to fit and, below a
+            // readable size, moves under the controls on its own line.
+            // The iPad keeps it inline.
+            let title = guide.name.hasPrefix("[Guide] ") ? String(guide.name.dropFirst(8)) : guide.name
+            if horizontalSizeClass == .regular {
+                Text(title)
+                    .font(.headline).foregroundStyle(.white)
+                    .lineLimit(1).truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .layoutPriority(-1)
+                    .padding(.horizontal, 8)
+            } else {
+                Spacer(minLength: 4)
+            }
 
             HStack(spacing: 12) {
                 // Demo placement: say so the whole time - nothing here is at the authored position.
@@ -1118,10 +1145,6 @@ struct ARGuideSessionView: View {
             }
             .fixedSize()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .padding(.top, 4)
-        .background(.ultraThinMaterial.opacity(0.85))
     }
 
     // ── Loading overlay ───────────────────────────────────────────────────────

@@ -23,6 +23,14 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-330 order rule and "Requires first".** In the step navigator a
+  later step is locked ("After step N") while an earlier complete-required
+  step is undone; optional steps can be passed over; going back is always
+  allowed. The Designer's step inspector gains "Requires first", a picker
+  that draws the Requires rule for a non-adjacent step (the next-step order
+  already requires each non-optional step; one connection per pair, said in
+  words). The AR session's top bar puts the guide name on its own line on
+  an iPhone (AROMS-333).
 - **iOS (next app build): AROMS-330 step navigator, AROMS-331 training
   plan, AROMS-333 readable step tray, AROMS-311 lifecycle.** Tap the
   progress ring in an AR session for a list of every step with its state

@@ -196,6 +196,9 @@ interface Actions {
   moveNode(id: string, x: number, y: number, live: boolean): void;
   moveNodes(positions: Array<{ id: string; x: number; y: number }>, live: boolean): void;
   addEdge(from: string, to: string, fromPort?: MindmapEdgePort, toPort?: MindmapEdgePort): void;
+  /** AROMS-330: a role-typed edge from the inspector (no role pick). Refuses a pair that already has one. */
+  addRoleEdge(from: string, to: string, role: MindmapEdgeRole): boolean;
+  removeEdge(id: string): void;
   toggleEdgeType(id: string): void;
   setEdgeLabel(id: string, label: string): void;
   // ── Procedure Designer ────────────────────────────────────────────────────
@@ -681,6 +684,24 @@ export const useStore = create<State & Actions>((set, get) => {
       };
       mutateGraph(m => m.edges.push(edge));
       collab?.send('edge:add', edge);
+    },
+
+    addRoleEdge(from, to, role) {
+      const { map } = get();
+      if (!map || from === to) return false;
+      if (map.edges.some(e => (e.from === from && e.to === to) || (e.from === to && e.to === from))) return false;
+      pushHistory();
+      const edge: MindmapEdge = { id: crypto.randomUUID(), from, to, type: 'directed', role, updatedAt: Date.now() };
+      mutateGraph(m => m.edges.push(edge));
+      collab?.send('edge:add', edge);
+      return true;
+    },
+    removeEdge(id) {
+      const { map } = get();
+      if (!map || !map.edges.some(e => e.id === id)) return;
+      pushHistory();
+      mutateGraph(m => { m.edges = m.edges.filter(e => e.id !== id); });
+      collab?.send('edge:delete', { id });
     },
 
     confirmEdgeRole(role) {

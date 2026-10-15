@@ -333,6 +333,48 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
 interface StepModelSlot { slotId: string; modelId: string; modelScale?: number; modelOpacity?: number }
 const MAX_STEP_MODELS = 3;
 
+/**
+ * AROMS-330: "Requires first" without drawing. The next-step order already
+ * makes every non-optional step a prerequisite of the ones after it; a
+ * Requires edge is for a rule between NON-adjacent steps ("7 needs 2 done").
+ * One connection per pair, so a step cannot both follow and require the
+ * same step - the hint says so instead of failing silently.
+ */
+function RequiresFirst({ nodeId }: { nodeId: string }): JSX.Element | null {
+  const edges = useStore(s => s.map?.edges);
+  const nodes = useStore(s => s.map?.nodes);
+  const order = useStore(s => s.procedure?.order);
+  const addRoleEdge = useStore(s => s.addRoleEdge);
+  const removeEdge = useStore(s => s.removeEdge);
+  const [note, setNote] = useState<string | null>(null);
+  if (!edges || !nodes) return null;
+  const nameOf = (id: string) => { const n = nodes.find(x => x.id === id); return n ? `${order?.[id] !== undefined ? `${order[id]}. ` : ''}${n.text || 'Step'}` : id; };
+  const requires = edges.filter(e => e.role === 'requires' && e.to === nodeId);
+  const paired = new Set(edges.flatMap(e => e.from === nodeId ? [e.to] : e.to === nodeId ? [e.from] : []));
+  // Sequenced steps only (unconnected notes are not steps), not this one, not already paired.
+  const candidates = nodes.filter(n => n.id !== nodeId && !paired.has(n.id) && order?.[n.id] !== undefined)
+    .sort((a, b) => (order?.[a.id] ?? 9999) - (order?.[b.id] ?? 9999));
+  return (
+    <div className="inspector-field">Requires first
+      {requires.map(e => (
+        <div key={e.id} className="step-check" style={{ justifyContent: 'space-between' }}>
+          <span>{nameOf(e.from)}</span>
+          <button className="btn ghost" title="Remove this rule" onClick={() => removeEdge(e.id)}>✕</button>
+        </div>
+      ))}
+      <select value="" onChange={e => {
+        const from = e.target.value; if (!from) return;
+        setNote(addRoleEdge(from, nodeId, 'requires') ? null : 'That step is already connected to this one; the next-step order already requires it.');
+      }}>
+        <option value="">Add a step that must be done first…</option>
+        {candidates.map(n => <option key={n.id} value={n.id}>{nameOf(n.id)}</option>)}
+      </select>
+      <span className="step-check-hint">The step before this one is already required when it is not optional; add a rule only for a step further back.</span>
+      {note && <span className="step-check-hint" style={{ color: 'var(--ax-orange)' }}>{note}</span>}
+    </div>
+  );
+}
+
 function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
   const isProcedure = useStore(s => s.map?.kind === 'procedure');
   const step = useStore(s =>
@@ -450,8 +492,10 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
           checked={step.optional === true}
           onChange={e => patchStepMeta(nodeId, { optional: e.target.checked ? true : null })}
         />
-        Optional step <span className="step-check-hint">- operator may skip it</span>
+        Optional step <span className="step-check-hint">- the operator may pass over it; otherwise it must be completed before any later step</span>
       </label>
+
+      <RequiresFirst nodeId={nodeId} />
 
       <label className="step-check">
         <input
