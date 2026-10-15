@@ -56,10 +56,15 @@ it, it gets a line.
   and the Studio's parts panel have a drag edge on their inner side: 240 to
   560 px and 380 to 720 px, double-click resets, remembered per browser.
 - **AROMS-327: portal dialogs on the design system.** `axAlert`,
-  `axConfirm`, `axPrompt` and `axChoose` replace the browser's native boxes;
-  the Guide Library's move, copy, rename, delete, archive, reset, trash and
-  parts-check dialogs use them (a chamber is picked from a list, not typed
-  as a number). The remaining pages follow.
+  `axConfirm`, `axPrompt`, `axChoose` and `axForm` replace every browser
+  box in the portal (54 sites: Guide Library, chambers and tags,
+  configurations, models, admin, Gemba Walks, iLOTO, exports) and the
+  catalogue's IP key prompt. A chamber is picked from a list, not typed as
+  a number; editing a configuration is one form, not three prompts; the
+  admin key is masked; "restore lists" offers two named choices instead of
+  OK-means-all; validation errors are inline or toasts; failures are
+  toasts; destructive actions have a red button with the consequence
+  written out.
 - **AROMS backlog keys (AROMS-300 and up).** `docs/BACKLOG.md` is the one
   list of work; `docs/catalog/` is the capability register (AROMS-100 to
   299, keys kept in `docs/jira/keys.json`); `npm run backlog:jira` writes

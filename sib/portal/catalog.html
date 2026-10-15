@@ -316,13 +316,15 @@ function ipHdrs(){
     return { 'X-IP-Key': rec.key };
   } catch (e) { return {}; }
 }
-function ipUnlock(){
-  const k = prompt('Secondary IP key - unlocks restricted feature details (remembered for 7 days):');
-  if (k === null) return;
-  const v = k.trim();
-  if (!v) { localStorage.removeItem('sib_ip_key'); return; }
-  localStorage.setItem('sib_ip_key', JSON.stringify({ key: v, savedAt: Date.now() }));
-  location.reload();   // re-fetch the catalogue with the key attached
+// AROMS-327: the key is typed in place, on the design system - no browser prompt.
+function ipUnlock(btn){
+  const host = (btn && btn.parentElement) || document.body;
+  if (host.querySelector('.ip-unlock')) return;
+  const row = document.createElement('form'); row.className = 'ip-unlock'; row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px';
+  row.innerHTML = `<input type="password" class="ax-input" placeholder="Secondary IP key" autocomplete="off" style="flex:1;min-width:200px"><button type="submit" class="btn primary">Unlock</button><button type="button" class="btn" data-cancel>Cancel</button><span class="ax-label-s ax-muted" style="width:100%">Unlocks restricted feature details on this browser for 7 days.</span>`;
+  row.onsubmit = e => { e.preventDefault(); const v = row.querySelector('input').value.trim(); if (!v) return; localStorage.setItem('sib_ip_key', JSON.stringify({ key: v, savedAt: Date.now() })); location.reload(); };
+  row.querySelector('[data-cancel]').onclick = () => row.remove();
+  host.appendChild(row); row.querySelector('input').focus();
 }
 
 async function boot(){
@@ -1582,7 +1584,7 @@ function showFeature(id){
       `<span class="deplink" data-go="${d.id}">${esc(d.name)}</span>`).join('')}` : ''}
     <div class="btnrow">
       ${f.locked
-        ? `<button class="btn primary" onclick="ipUnlock()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> Enter IP key</button>`
+        ? `<button class="btn primary" onclick="ipUnlock(this)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> Enter IP key</button>`
         : `<button class="btn primary" id="specBtn">Read the spec ↓</button>`}
       ${f.wireframe ? `<button class="btn" onclick="location.href='/wireframe#${esc(f.wireframe)}'">App Wireframe</button>` : ''}
       <button class="btn" id="backHome">← Overview</button>

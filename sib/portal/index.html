@@ -1658,6 +1658,7 @@
     <div id="ax-dialog-body" style="font-size:0.84rem;line-height:1.5;color:var(--text);white-space:pre-line;max-height:50vh;overflow:auto"></div>
     <div id="ax-dialog-choices" style="display:none;flex-direction:column;gap:6px;margin-top:12px;max-height:40vh;overflow:auto"></div>
     <input id="ax-dialog-input" class="ax-input" style="display:none;width:100%;margin-top:12px" autocomplete="off">
+    <div id="ax-dialog-form" style="display:none"></div>
     <div class="modal-actions">
       <button class="ax-btn ax-btn--quiet" id="ax-dialog-cancel">Cancel</button>
       <button class="ax-btn" id="ax-dialog-ok">OK</button>
@@ -1904,12 +1905,12 @@ function applyAdminUI() {
     btn.classList.toggle('unlocked', !locked);
   }
 }
-function toggleAdmin() {
+async function toggleAdmin() {
   if (adminKeyStored()) {
     localStorage.removeItem('sib_admin_key');
     toast('Admin mode locked.');
   } else {
-    const k = prompt('Admin key (SIB_ADMIN_KEY on the server):');
+    const k = await axPrompt('Unlock admin mode', 'The admin key is SIB_ADMIN_KEY on the server. It stays on this browser only.', { password: true, placeholder: 'Admin key', ok: 'Unlock' });
     if (k && k.trim()) { localStorage.setItem('sib_admin_key', k.trim()); toast('Admin mode unlocked.'); }
   }
   applyAdminUI();
@@ -2025,7 +2026,7 @@ async function uamSetRole(id, role, email) {
 }
 
 async function uamRemoveUser(id, email) {
-  if (!confirm(`Remove ${email} from the access list? They will no longer be able to sign in.`)) return;
+  if (!(await axConfirm(`Remove ${email}?`, 'They will no longer be able to sign in. Their past sessions and evidence are kept.', { ok: 'Remove', danger: true, icon: 'users' }))) return;
   try {
     await apiFetch(`/uam/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
     toast(`Removed ${email}`);
@@ -2122,7 +2123,7 @@ function safeId(id) { return id.replace(/[^a-z0-9]/gi,'_'); }
 // U3 (2026.4.45): template copy of an anchor - guides (drafts, unplaced,
 // untrained) + model kit on a brand-new QR/key. World map and tags stay.
 async function duplicateAnchor(anchorId, assetId) {
-  const name = prompt(`Duplicate "${assetId}" as a new anchor.\n\nNew asset name:`, `${assetId} copy`);
+  const name = await axPrompt(`Duplicate "${assetId}"`, 'A new chamber with the same configuration and tags, its own QR and no world map.', { value: `${assetId} copy`, placeholder: 'New asset name', ok: 'Duplicate' });
   if (name === null) return;
   try {
     const r = await apiFetch(`/anchors/${encodeURIComponent(anchorId)}/duplicate`, {
@@ -2210,18 +2211,20 @@ async function addChamberConfig() {
 
 async function editChamberConfig(id) {
   const c = chamberConfigs.find(x => x.id === id); if (!c) return;
-  const code = prompt('Code:', c.code); if (code === null) return;
-  const name = prompt('Name:', c.name); if (name === null) return;
-  const description = prompt('Description:', c.description || ''); if (description === null) return;
+  const f = await axForm('Edit configuration', '', [
+    { name: 'code', label: 'Code', value: c.code }, { name: 'name', label: 'Name', value: c.name }, { name: 'description', label: 'Description', value: c.description || '' },
+  ]);
+  if (!f) return;
+  if (!f.code.trim() || !f.name.trim()) { toast('Code and name are required.'); return; }
   try {
     await apiFetch(`/chamber-configs/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code.trim(), name: name.trim(), description: description.trim() }) });
+      body: JSON.stringify({ code: f.code.trim(), name: f.name.trim(), description: f.description.trim() }) });
     toast('Saved'); loadChamberConfigs();
   } catch (e) { toast(`Save failed: ${e.message}`); }
 }
 
 async function deleteChamberConfig(id, code) {
-  if (!confirm(`Delete configuration "${code}"?`)) return;
+  if (!(await axConfirm(`Delete configuration "${code}"?`, 'Chambers assigned to it lose their configuration and cannot be scanned into until reassigned.', { ok: 'Delete', danger: true, icon: 'trash' }))) return;
   try {
     await apiFetch(`/chamber-configs/${encodeURIComponent(id)}`, { method: 'DELETE' });
     toast(`Deleted ${code}`); loadChamberConfigs();
@@ -2528,7 +2531,7 @@ function objectScanHtml(anchor) {
   return src + provBadge + ` <span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) - sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
 }
 async function removeObjectScan(anchorId, assetId) {
-  if (!confirm(`Remove the object scan of "${assetId}"?\n\nThe chamber falls back to its world map / QR until an Author scans it again.`)) return;
+  if (!(await axConfirm(`Remove the object scan of "${assetId}"?`, 'The chamber falls back to its world map or QR until an Author scans it again.', { ok: 'Remove', danger: true }))) return;
   try {
     await _apiDelete(`/anchors/${encodeURIComponent(anchorId)}/object`);
     toast('Object scan removed.');
@@ -2561,7 +2564,7 @@ async function openAnchorLab(anchorId, assetId) {
 }
 function closeAnchorLab() { anchorLabId = null; document.getElementById('anchor-lab-modal').classList.remove('open'); }
 async function clearAnchorLab() {
-  if (!anchorLabId || !confirm('Clear every Anchor Lab mark for this chamber? The tags and map are untouched.')) return;
+  if (!anchorLabId || !(await axConfirm('Clear every Anchor Lab mark for this chamber?', 'The tags and the map are untouched.', { ok: 'Clear', danger: true }))) return;
   try { await _apiDelete(`/anchors/${encodeURIComponent(anchorLabId)}/accuracy`); toast('Lab cleared.'); closeAnchorLab(); loadAnchors(); }
   catch (e) { toast(`Clear failed: ${e.message}`, 4000); }
 }
@@ -2694,7 +2697,7 @@ function copyAnchorId(id) {
 
 // ── Create anchor ──────────────────────────────────────────────────────────────
 function openCreateModal() {
-  if (authRequired && !apiKey()) { alert('Enter your API key in Settings first.'); return; }
+  if (authRequired && !apiKey()) { toast('Enter your API key in Settings first.', 4000); return; }
   // A (2026.4.45): configuration select, pre-filled with the last one used.
   const sel = document.getElementById('new-config-id');
   const last = localStorage.getItem('sib.lastConfigId') || '';
@@ -2711,7 +2714,7 @@ function closeCreateModal() {
 async function submitCreateAnchor() {
   const assetId  = document.getElementById('new-asset-id').value.trim();
   const anchorId = document.getElementById('new-anchor-id').value.trim();
-  if (!assetId) { alert('Asset ID is required.'); return; }
+  if (!assetId) { toast('Asset ID is required.'); document.getElementById('new-asset-id')?.focus(); return; }
   try {
     const body = {
       assetId,
@@ -2736,7 +2739,7 @@ async function submitCreateAnchor() {
       document.getElementById(`card-${newAnchor.id}`)?.scrollIntoView({behavior:'smooth', block:'center'});
     }, 100);
   } catch(e) {
-    alert(`Failed to create anchor: ${e.message}`);
+    toast(`Failed to create anchor: ${e.message}`, 5000);
   }
 }
 
@@ -2749,11 +2752,11 @@ function showSettings() {
 function closeSettings() {
   document.getElementById('settings-modal').classList.remove('open');
 }
-function saveSettings() {
+async function saveSettings() {
   const setupVal    = (document.getElementById('setup-key')?.value    || '').trim();
   const settingsVal = (document.getElementById('settings-key')?.value || '').trim();
   const k = settingsVal || setupVal;
-  if (authRequired && !k) { alert('API key cannot be empty.'); return; }
+  if (authRequired && !k) { toast('API key cannot be empty.'); return; }
   if (k) localStorage.setItem('sib_api_key', k);
   document.getElementById('settings-modal').classList.remove('open');
   document.getElementById('setup-banner').style.display = 'none';
@@ -2788,7 +2791,7 @@ async function confirmDeleteAnchor() {
     renderAnchors();
     toast('Chamber deleted.');
   } catch (e) {
-    alert(`Failed to delete anchor: ${e.message}`);
+    toast(`Failed to delete anchor: ${e.message}`, 5000);
   }
 }
 
@@ -2800,7 +2803,7 @@ async function confirmDeleteAnchor() {
 
 // ── Create tag ────────────────────────────────────────────────────────────────
 function openCreateTagModal(anchorId) {
-  if (authRequired && !apiKey()) { alert('Enter your API key in Settings first.'); return; }
+  if (authRequired && !apiKey()) { toast('Enter your API key in Settings first.', 4000); return; }
   pendingTagAnchorId = anchorId;
   document.getElementById('ct-type').selectedIndex = 0;
   document.getElementById('ct-label').value   = '';
@@ -2827,7 +2830,7 @@ async function submitCreateTag() {
   const orderRaw = document.getElementById('ct-order').value.trim();
   const order    = orderRaw !== '' ? parseInt(orderRaw, 10) : undefined;
 
-  if (!label) { alert('Label is required.'); return; }
+  if (!label) { toast('Label is required.'); return; }
 
   const body = {
     anchorId,
@@ -2852,7 +2855,7 @@ async function submitCreateTag() {
     rebuildCard(anchorId);
     toast(`Tag "${label}" created.`);
   } catch(e) {
-    alert(`Failed to create tag: ${e.message}`);
+    toast(`Failed to create tag: ${e.message}`, 5000);
   }
 }
 
@@ -2893,7 +2896,7 @@ async function submitEditTag() {
   const orderRaw = document.getElementById('et-order').value.trim();
   const order    = orderRaw !== '' ? parseInt(orderRaw, 10) : null;
 
-  if (!label) { alert('Label is required.'); return; }
+  if (!label) { toast('Label is required.'); return; }
 
   const patchBody = {
     label,
@@ -2920,7 +2923,7 @@ async function submitEditTag() {
     rebuildCard(anchorId);
     toast(`Tag "${label}" updated.`);
   } catch(e) {
-    alert(`Failed to update tag: ${e.message}`);
+    toast(`Failed to update tag: ${e.message}`, 5000);
   }
 }
 
@@ -2949,7 +2952,7 @@ async function confirmDeleteTag() {
     rebuildCard(anchorId);
     toast('Tag deleted.');
   } catch (e) {
-    alert(`Failed to delete tag: ${e.message}`);
+    toast(`Failed to delete tag: ${e.message}`, 5000);
   }
 }
 
@@ -3691,11 +3694,11 @@ async function loadOrphanGuides() {
   } catch (e) { el.innerHTML = `<span class="ax-label-s" style="color:var(--red)">${esc(e.message)}</span>`; }
 }
 async function deleteOrphanGuide(id, name) {
-  if (!confirm(`Delete the orphaned guide "${name}" and its steps, images and import log?`)) return;
+  if (!(await axConfirm(`Delete the orphaned guide "${name}"?`, 'Its steps, images and import log go with it.', { ok: 'Delete', danger: true, icon: 'trash' }))) return;
   try { await apiFetch(`/guides/${encodeURIComponent(id)}`, { method: 'DELETE' }); toast('Deleted'); loadOrphanGuides(); } catch (e) { toast(e.message); }
 }
 async function deleteAllOrphanGuides(n) {
-  if (!confirm(`Delete all ${n} orphaned guides? Their steps, images and import logs go with them.`)) return;
+  if (!(await axConfirm(`Delete all ${n} orphaned guides?`, 'Their steps, images and import logs go with them.', { ok: `Delete ${n}`, danger: true, icon: 'trash' }))) return;
   try { const rows = (await apiFetch('/guides/orphans')).data || []; for (const r of rows) await apiFetch(`/guides/${encodeURIComponent(r.id)}`, { method: 'DELETE' }); toast(`Deleted ${rows.length}`); loadOrphanGuides(); } catch (e) { toast(e.message); }
 }
 
@@ -3860,13 +3863,13 @@ async function loadGembaWalkDetail(id) {
 }
 
 async function reopenGembaWalk(id) {
-  if (!confirm('Reopen this walk so the header can be edited?')) return;
+  if (!(await axConfirm('Reopen this walk?', 'The header becomes editable again; findings are untouched.', { ok: 'Reopen' }))) return;
   try { await apiFetch(`/gemba/walks/${id}/reopen`, { method: 'POST', body: '{}' }); toast('Walk reopened'); await loadGembaWalkSessions(); }
   catch (e) { toast(e.message); }
 }
 
 async function deleteGembaWalk(id) {
-  if (!confirm('Delete this walk record? Its findings stay in place but are no longer grouped under a walk.')) return;
+  if (!(await axConfirm('Delete this walk record?', 'Its findings stay in place but are no longer grouped under a walk.', { ok: 'Delete', danger: true, icon: 'trash' }))) return;
   try { await apiFetch(`/gemba/walks/${id}`, { method: 'DELETE' }); toast('Walk deleted'); await loadGembaWalkSessions(); }
   catch (e) { toast(e.message); }
 }
@@ -3891,7 +3894,12 @@ async function saveGembaLists() {
 }
 
 async function restoreGembaLists() {
-  const all = confirm('Restore the default values for every list?\n\nOK = all lists (replaces your edits) · Cancel = only lists that are empty');
+  const pick = await axChoose('Restore the default lists', 'Which lists should go back to the defaults?', [
+    { id: 'empty', label: 'Only lists that are empty', hint: 'your edits stay' },
+    { id: 'all', label: 'Every list', hint: 'replaces your edits' },
+  ]);
+  if (!pick) return;
+  const all = pick === 'all';
   try {
     const r = await apiFetch(`/gemba/library/lists/restore${all ? '?all=1' : ''}`, { method: 'POST', body: '{}' });
     const t = (r.data && r.data.restored) || [];
@@ -4007,7 +4015,7 @@ async function gembaLibDelete(kind, id) {
   const areas = gembaLib ? gembaLib.focusAreas : [];
   const label = kind === 'area' ? (a => a ? `focus area ${a.code} - ${a.title} and its ${a.questions.length} question(s)` : 'this focus area')(areas.find(a => a.id === id))
     : (x => x ? `question ${x.code} - ${x.title}` : 'this question')(areas.flatMap(a => a.questions).find(x => x.id === id));
-  if (!confirm(`Delete ${label}?\n\nFindings already logged keep their code and title; only the picker changes. Prefer "inactive" if the item may come back.`)) return;
+  if (!(await axConfirm(`Delete ${label}?`, 'Findings already logged keep their code and title; only the picker changes. Prefer "inactive" if the item may come back.', { ok: 'Delete', danger: true, icon: 'trash' }))) return;
   try {
     await apiFetch(`/gemba/library/${kind === 'area' ? 'focus-areas' : 'questions'}/${id}`, { method: 'DELETE' });
     toast('Deleted');
@@ -4125,7 +4133,7 @@ function renderGembaLibImportPreview(sourceLabel) {
 async function submitGembaLibImport() {
   if (!glibImportRows) return;
   const mode = document.querySelector('input[name="glib-mode"]:checked').value;
-  if (mode === 'replace' && !confirm('Replace the WHOLE library with this file? Everything not in the file is removed (findings keep their codes).')) return;
+  if (mode === 'replace' && !(await axConfirm('Replace the whole library with this file?', 'Everything not in the file is removed; findings keep their codes.', { ok: 'Replace', danger: true }))) return;
   const errEl = document.getElementById('glib-import-error');
   const btn = document.getElementById('glib-import-submit');
   errEl.style.display = 'none'; btn.disabled = true; btn.textContent = 'Importing…';
@@ -4563,7 +4571,7 @@ async function exportARGuidesXlsx() {
     await downloadServerFile('/guide-sessions/export.xlsx?all=true',
                              `completion-log-${new Date().toISOString().slice(0, 10)}.xlsx`);
   } catch (e) {
-    alert('Export failed: ' + (e.message || 'server error'));
+    toast('Export failed: ' + (e.message || 'server error'), 5000);
   }
 }
 
@@ -4573,7 +4581,7 @@ async function agExportSessionXlsx(sessionId) {
     await downloadServerFile(`/guide-sessions/${encodeURIComponent(sessionId)}/export.xlsx`,
                              `guide-session-${sessionId.slice(0, 8)}.xlsx`);
   } catch (e) {
-    alert('Export failed: ' + (e.message || 'server error'));
+    toast('Export failed: ' + (e.message || 'server error'), 5000);
   }
 }
 
@@ -4607,7 +4615,7 @@ async function exportUsageXlsx() {
     await downloadServerFile('/guide-sessions/usage/export.xlsx',
                              `usage-log-${new Date().toISOString().slice(0, 10)}.xlsx`);
   } catch (e) {
-    alert('Export failed: ' + (e.message || 'server error'));
+    toast('Export failed: ' + (e.message || 'server error'), 5000);
   }
 }
 
@@ -5138,7 +5146,7 @@ async function uploadModel(file) {
 }
 
 async function deleteModel(modelId) {
-  if (!confirm('Delete this 3D model from the global library? This cannot be undone.')) return;
+  if (!(await axConfirm('Delete this 3D model?', 'It leaves the library for good; guides that use it lose their model.', { ok: 'Delete', danger: true, icon: 'trash' }))) return;
   try {
     await apiFetch(`/models/${encodeURIComponent(modelId)}`, { method: 'DELETE' });
     clearInterval(modelPollTimers[modelId]);
@@ -5146,7 +5154,7 @@ async function deleteModel(modelId) {
     toast('Model deleted.');
     await loadModels();
   } catch (e) {
-    alert(`Failed to delete model: ${e.message}`);
+    toast(`Failed to delete model: ${e.message}`, 5000);
   }
 }
 
@@ -5180,7 +5188,7 @@ async function saveDefaultScale() {
   const defaultOrigin = document.getElementById('preview-origin').value;
   const rec = (typeof modelsData !== 'undefined' ? modelsData : []).find(x => x.id === modelId);
   if (rec?.importUnits && rec.importUnits.factor !== 1 && Math.abs(scale - rec.importUnits.factor) < 1e-9
-      && !confirm(`This model was imported at ×${rec.importUnits.factor} already (${rec.importUnits.chosen} → metres). Saving scale ${scale} would apply that conversion twice and make it ${rec.importUnits.factor}× too small on the device.\n\nSave anyway?`)) return;
+      && !(await axConfirm('Save this scale anyway?', `This model was imported at ×${rec.importUnits.factor} already (${rec.importUnits.chosen} → metres). Saving scale ${scale} would apply that conversion twice and make it ${rec.importUnits.factor}× too small on the device.`, { ok: 'Save anyway', danger: true }))) return;
   try {
     await apiFetch(`/models/${encodeURIComponent(modelId)}`, {
       method: 'PATCH',
@@ -5243,13 +5251,13 @@ async function openModelColours(modelId, name) {
       try { const r = (await apiFetch(`/models/${encodeURIComponent(modelId)}/colours`, { method: 'POST', body: JSON.stringify({ byFamily }) })).data; toast(`Coloured ${r.recoloured} parts - reduced copies rebuilding`); m.style.display = 'none'; loadModels(); }
       catch (e) { toast(e.message); }
     };
-    const rs = document.getElementById('col-reset'); if (rs) rs.onclick = async () => { if (!confirm('Put the original export back? The reduced copies are rebuilt.')) return; try { await apiFetch(`/models/${encodeURIComponent(modelId)}/colours`, { method: 'DELETE' }); toast('Back to the export'); m.style.display = 'none'; loadModels(); } catch (e) { toast(e.message); } };
+    const rs = document.getElementById('col-reset'); if (rs) rs.onclick = async () => { if (!(await axConfirm('Put the original export back?', 'The reduced copies are rebuilt.', { ok: 'Restore' }))) return; try { await apiFetch(`/models/${encodeURIComponent(modelId)}/colours`, { method: 'DELETE' }); toast('Back to the export'); m.style.display = 'none'; loadModels(); } catch (e) { toast(e.message); } };
   };
   render();
 }
 
 async function renameModel(modelId, currentName) {
-  const input = prompt('New model name:', currentName);
+  const input = await axPrompt('Rename model', '', { value: currentName, ok: 'Rename' });
   if (input === null) return;                       // cancelled
   const name = input.trim();
   if (!name || name === currentName) return;        // empty or unchanged - no-op
@@ -5311,7 +5319,7 @@ async function saveKitAssignment() {
     toast(`Anchor kit updated (${newIds.length} anchor${newIds.length !== 1 ? 's' : ''}).`);
     loadModels();
   } catch (e) {
-    alert(`Failed to update kit: ${e.message}`);
+    toast(`Failed to update kit: ${e.message}`, 5000);
   }
 }
 
@@ -5349,7 +5357,7 @@ async function _apiDelete(url) {
 }
 
 async function deleteAllAnchors() {
-  if (!confirm('Delete ALL anchors? This will also permanently delete all their tags, trained pass-state images, QR images, and world maps. This cannot be undone.')) return;
+  if (!(await axConfirm('Delete every chamber?', 'All their tags, trained pass-state images, QR images and world maps go with them. This cannot be undone.', { ok: 'Delete everything', danger: true, icon: 'trash' }))) return;
   try {
     const r = await _apiDelete('/anchors');
     toast(`Deleted ${r?.data?.deleted ?? '?'} anchor(s) (+${r?.data?.deletedTags ?? '?'} tags)`);
@@ -5365,7 +5373,7 @@ async function deleteSession(id) {
 }
 
 async function deleteAllSessions() {
-  if (!confirm('Delete ALL inspection sessions? This cannot be undone.')) return;
+  if (!(await axConfirm('Delete every inspection session?', 'This cannot be undone.', { ok: 'Delete everything', danger: true, icon: 'trash' }))) return;
   try {
     const r = await _apiDelete('/sessions');
     toast(`Deleted ${r?.deleted ?? '?'} session(s)`);
@@ -5381,7 +5389,7 @@ async function deleteARGuideSession(id) {
 }
 
 async function deleteAllARGuideSessions() {
-  if (!confirm('Delete ALL AR Guide sessions? Evidence photos will also be removed. This cannot be undone.')) return;
+  if (!(await axConfirm('Delete every AR guide session?', 'Evidence photos are removed with them. This cannot be undone.', { ok: 'Delete everything', danger: true, icon: 'trash' }))) return;
   try {
     const r = await _apiDelete('/guide-sessions');
     toast(`Deleted ${r?.deleted ?? '?'} AR Guide session(s)`);
@@ -6965,7 +6973,7 @@ function glOpacityInput(input, guideId, stepId) {
         body: JSON.stringify({ modelOpacity: pct / 100 }),
       });
     } catch (e) {
-      alert('Could not save opacity: ' + (e.message || 'server error'));
+      toast('Could not save opacity: ' + (e.message || 'server error'), 5000);
     }
   }, 400);
 }
@@ -7392,7 +7400,7 @@ async function resetGuideMap(guideId, anchorId) {
 // G1: unseal an anchor's world map. Tags are QR-relative and stay valid; the
 // next Author scan re-seals.
 async function unsealAnchorMap(anchorId, assetId) {
-  if (!confirm(`Unseal the world map of "${assetId}"?\n\nTags stay. Operators localize from the QR until an Author scans this chamber again.`)) return;
+  if (!(await axConfirm(`Unseal the world map of "${assetId}"?`, 'Tags stay. Operators localize from the QR until an Author scans this chamber again.', { ok: 'Unseal', danger: true }))) return;
   try {
     await _apiDelete(`/anchors/${encodeURIComponent(anchorId)}/worldmap`);
     toast('Map unsealed.');
@@ -7408,7 +7416,7 @@ async function deleteGembaCompletion(id) {
 }
 
 async function deleteAllGembaCompletions() {
-  if (!confirm('Delete ALL Gemba Walk completion records? The loc-tag stops themselves are preserved. This cannot be undone.')) return;
+  if (!(await axConfirm('Delete every Gemba Walk completion record?', 'The loc-tag stops themselves are kept. This cannot be undone.', { ok: 'Delete everything', danger: true, icon: 'trash' }))) return;
   try {
     const r = await _apiDelete('/loc-tags/completions');
     toast(`Deleted ${r?.deleted ?? '?'} completion record(s)`);
@@ -8016,7 +8024,7 @@ function exportAllGembaCSV() {
 // axPrompt(title, body, {value, placeholder}) → string|null ·
 // axChoose(title, body, [{id, label, hint}]) → id|null. Escape cancels.
 let _axDialogResolve = null;
-function _axDialog({ title, body, choices, input, ok = 'OK', cancel = 'Cancel', danger = false, icon }) {
+function _axDialog({ title, body, choices, input, form, ok = 'OK', cancel = 'Cancel', danger = false, icon }) {
   const el = document.getElementById('ax-dialog'); if (!el) return Promise.resolve(null);
   const t = document.getElementById('ax-dialog-title'), b = document.getElementById('ax-dialog-body');
   const ch = document.getElementById('ax-dialog-choices'), inp = document.getElementById('ax-dialog-input');
@@ -8028,23 +8036,32 @@ function _axDialog({ title, body, choices, input, ok = 'OK', cancel = 'Cancel', 
   inp.style.display = input ? '' : 'none';
   okB.textContent = ok; okB.className = 'ax-btn' + (danger ? ' ax-btn--danger' : ''); okB.style.display = choices ? 'none' : '';
   cB.textContent = cancel; cB.style.display = cancel ? '' : 'none';
-  if (input) { inp.value = input.value ?? ''; inp.placeholder = input.placeholder ?? ''; }
+  if (input) { inp.value = input.value ?? ''; inp.placeholder = input.placeholder ?? ''; inp.type = input.password ? 'password' : 'text'; }
+  const formEl = document.getElementById('ax-dialog-form'); formEl.style.display = form ? '' : 'none'; formEl.innerHTML = '';
+  if (form) for (const f of form) {
+    const row = document.createElement('label'); row.className = 'ax-label-s ax-muted'; row.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-top:10px';
+    row.innerHTML = `${esc(f.label)}<input class="ax-input" name="${esc(f.name)}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder ?? '')}" autocomplete="off" style="width:100%">`;
+    formEl.appendChild(row);
+  }
   if (choices) for (const c of choices) {
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'ax-btn ax-btn--quiet'; btn.style.cssText = 'justify-content:flex-start;text-align:left;gap:10px';
     btn.innerHTML = `<span>${esc(c.label)}</span>${c.hint ? `<span class="ax-label-s ax-muted">${esc(c.hint)}</span>` : ''}`;
     btn.onclick = () => finish(c.id); ch.appendChild(btn);
   }
   const finish = v => { el.classList.remove('open'); document.removeEventListener('keydown', onKey); el.onclick = null; const r = _axDialogResolve; _axDialogResolve = null; if (r) r(v); };
-  const onKey = e => { if (e.key === 'Escape') finish(null); if (e.key === 'Enter' && input && document.activeElement === inp) finish(inp.value); };
-  okB.onclick = () => finish(input ? inp.value : true); cB.onclick = () => finish(null); el.onclick = () => finish(null);
+  const onKey = e => { if (e.key === 'Escape') finish(null); if (e.key === 'Enter' && input && document.activeElement === inp) finish(inp.value); if (e.key === 'Enter' && form && formEl.contains(document.activeElement)) finish(formValues()); };
+  const formValues = () => Object.fromEntries([...formEl.querySelectorAll('input[name]')].map(i => [i.name, i.value]));
+  okB.onclick = () => finish(input ? inp.value : form ? formValues() : true); cB.onclick = () => finish(null); el.onclick = () => finish(null);
   document.addEventListener('keydown', onKey);
   el.classList.add('open');
-  setTimeout(() => (input ? inp : (choices ? ch.querySelector('button') : okB))?.focus(), 30);
+  setTimeout(() => (input ? inp : form ? formEl.querySelector('input') : (choices ? ch.querySelector('button') : okB))?.focus(), 30);
   return new Promise(res => { _axDialogResolve = res; });
 }
 const axAlert   = (title, body, icon) => _axDialog({ title, body, cancel: '', icon });
 const axConfirm = async (title, body, o = {}) => (await _axDialog({ title, body, ok: o.ok || 'OK', danger: !!o.danger, icon: o.icon })) === true;
-const axPrompt  = (title, body, o = {}) => _axDialog({ title, body, input: { value: o.value, placeholder: o.placeholder }, ok: o.ok || 'OK' });
+const axPrompt  = (title, body, o = {}) => _axDialog({ title, body, input: { value: o.value, placeholder: o.placeholder, password: !!o.password }, ok: o.ok || 'OK' });
+/** axForm(title, body, [{name, label, value, placeholder}], {ok}) → {name: value} | null */
+const axForm    = (title, body, fields, o = {}) => _axDialog({ title, body, form: fields, ok: o.ok || 'Save' });
 const axChoose  = (title, body, choices) => _axDialog({ title, body, choices });
 
 function toast(msg, duration=2200) {
@@ -8179,7 +8196,7 @@ async function lotoQuizSave(id) {
 
 async function lotoQuizDelete(id) {
   if (lotoQuizAdmin.length <= 3 &&
-      !confirm('The bank is nearly empty - certification becomes impossible without questions. Delete anyway?')) return;
+      !(await axConfirm('Delete this question?', 'The bank is nearly empty - certification becomes impossible without questions.', { ok: 'Delete anyway', danger: true }))) return;
   try {
     const r = await apiFetch(`/loto/quiz/questions/${id}`, { method: 'DELETE' });
     toast(`Deleted · ${r.remaining} questions remain.`);
@@ -8215,7 +8232,7 @@ async function lotoQuizImportFile(event) {
 
   const mode = document.getElementById('loto-quiz-replace').checked ? 'replace' : 'append';
   if (mode === 'replace' &&
-      !confirm(`REPLACE the entire bank with ${Array.isArray(questions) ? questions.length : '?'} imported questions?`)) return;
+      !(await axConfirm('Replace the entire question bank?', `${Array.isArray(questions) ? questions.length : '?'} imported questions replace everything in the bank.`, { ok: 'Replace', danger: true }))) return;
   try {
     const r = await apiFetch('/loto/quiz/import', {
       method: 'POST', body: JSON.stringify({ mode, questions }),
