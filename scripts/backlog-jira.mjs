@@ -5,9 +5,11 @@
 //                                          docs/catalog) + work items (AROMS-300…, from docs/BACKLOG.md)
 //   npm run backlog:jira -- --since DATE   only rows updated on or after DATE (the Friday delta)
 //
-// Keys are stable: docs/jira/keys.json maps a catalogue id to its number and
-// only ever grows. The CSV carries an Issue Key column so Jira updates the
-// same issue each time ("update existing issues" on import).
+// Our ids (AROMS-nnn) are ours: a label and a summary prefix, never Jira's
+// key. docs/jira/keys.json maps a catalogue id to its number and only grows.
+// After the first import, Jira's own keys are recorded (BACKLOG.md "Jira"
+// column; keys.json "jira") and the CSV's Issue Key column lets Jira update
+// the same issue each Friday ("update existing issues" on import).
 //
 // Proprietary & Confidential · Applied Materials.
 
@@ -27,16 +29,21 @@ const since = args.includes('--since') ? args[args.indexOf('--since') + 1] : nul
 
 // ── Capability register from the catalogue ──────────────────────────────────
 const fm = (s) => { const m = s.match(/^---\n([\s\S]*?)\n---/); if (!m) return null; const o = {}; for (const line of m[1].split('\n')) { const k = line.match(/^([a-z]+):\s*(.*)$/i); if (k) o[k[1]] = k[2].trim(); } return o; };
-const keys = fs.existsSync(KEYS) ? JSON.parse(fs.readFileSync(KEYS, 'utf8')) : { next: CAP_FIRST, byId: {} };
+const keys = fs.existsSync(KEYS) ? JSON.parse(fs.readFileSync(KEYS, 'utf8')) : { next: CAP_FIRST, byId: {}, jira: {} };
+keys.jira ??= {};   // catalogue id → Jira key, filled in once after the first import
+// Jira epics, one per area (create them in Jira with these exact names once).
+const EPIC = { guides: 'AR OMS guides', platform: 'Platform', tags: 'Spatial tagging and inspection', designer: 'Roadmap and Procedure Designer', portal: 'Portal', gemba: 'Gemba Walks', iloto: 'iLOTO', server: 'SIB server', 'xr-kit': 'XR kit', ios: 'iOS app', unity: 'Unity client', devops: 'DevOps and hosting', research: 'Research', programme: 'Programme' };
 const caps = [];
 for (const f of fs.readdirSync(CATALOG).filter(f => f.endsWith('.md') && f !== 'README.md').sort()) {
   const o = fm(fs.readFileSync(path.join(CATALOG, f), 'utf8'));
   if (!o?.id || !o.name || o.kind === 'area') continue;   // area pages are not capabilities
   if (!keys.byId[o.id]) { keys.byId[o.id] = keys.next++; }
+  const devId = `${PROJECT}-${keys.byId[o.id]}`;
+  const jiraKey = keys.jira?.[o.id] ?? '';
   if (keys.next >= WORK_FIRST) throw new Error('capability keys would cross into the work band - raise WORK_FIRST');
   const status = o.status === 'shipped' ? 'Done' : o.status === 'beta' ? 'In Progress' : 'To Do';
-  caps.push({ key: `${PROJECT}-${keys.byId[o.id]}`, type: 'Story', summary: o.name, description: `Catalogue feature \`${o.id}\` (docs/catalog/${f}); live at /catalog#${o.id}.`,
-    status, component: o.area || '', labels: ['capability', o.area || ''].filter(Boolean).join(' '), version: o.version && o.version !== 'baseline' ? o.version : '', updated: '' });
+  caps.push({ key: jiraKey, devId, type: 'Story', summary: `${devId} · ${o.name}`, description: `${devId}. Catalogue feature \`${o.id}\` (docs/catalog/${f}); live at /catalog#${o.id}.`,
+    status, component: o.area || '', epic: EPIC[o.area] ?? o.area ?? '', labels: [devId, 'capability', o.area || ''].filter(Boolean).join(' '), version: o.version && o.version !== 'baseline' ? o.version : '', updated: '' });
 }
 fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.writeFileSync(KEYS, JSON.stringify(keys, null, 2) + '\n');
@@ -48,19 +55,22 @@ for (const line of md.split('\n')) {
   const m = line.match(/^\|\s*(AROMS-\d+)\s*\|(.*)\|\s*$/);
   if (!m) continue;
   const cells = m[2].split('|').map(c => c.trim());
-  if (cells.length < 7) continue;
-  const [item, component, owner, status, version, updated, notes] = cells;
-  const jira = { done: 'Done', doing: 'In Progress', todo: 'To Do', parked: 'To Do', wont: 'Done' }[status] ?? 'To Do';
-  work.push({ key: m[1], type: 'Task', summary: item, description: [notes, owner ? `Owner: ${owner}` : '', status === 'parked' ? 'Parked.' : status === 'wont' ? "Won't do." : ''].filter(Boolean).join(' · '),
-    status: jira, component, labels: ['work', status, ...component.split(',').map(s => s.trim()).filter(Boolean)].join(' '), version, updated });
+  if (cells.length < 8) continue;
+  const [item, component, owner, status, version, updated, jira, notes] = cells;
+  const jiraStatus = { done: 'Done', doing: 'In Progress', todo: 'To Do', parked: 'To Do', wont: 'Done' }[status] ?? 'To Do';
+  const first = component.split(',')[0]?.trim() ?? '';
+  work.push({ key: jira, devId: m[1], type: 'Task', summary: `${m[1]} · ${item}`, description: [`${m[1]}.`, notes, owner ? `Owner: ${owner}` : '', status === 'parked' ? 'Parked.' : status === 'wont' ? "Won't do." : ''].filter(Boolean).join(' · '),
+    status: jiraStatus, component, epic: EPIC[first] ?? first, labels: [m[1], 'work', status, ...component.split(',').map(s => s.trim()).filter(Boolean)].join(' '), version, updated });
 }
 
 // ── Output ─────────────────────────────────────────────────────────────────
 let rows = [...caps, ...work];
 if (since) rows = rows.filter(r => r.updated && r.updated >= since);
 const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-const header = ['Issue Key', 'Issue Type', 'Summary', 'Description', 'Status', 'Component', 'Labels', 'Fix Version'];
-const csv = [header.join(','), ...rows.map(r => [r.key, r.type, r.summary, r.description, r.status, r.component, r.labels, r.version].map(esc).join(','))].join('\n') + '\n';
+// Issue Key is Jira's own key, present only once recorded (docs/BACKLOG.md
+// "Jira" column, keys.json "jira"); our AROMS id travels in Summary and Labels.
+const header = ['Issue Key', 'Backlog ID', 'Issue Type', 'Summary', 'Description', 'Status', 'Component', 'Epic Link', 'Labels', 'Fix Version'];
+const csv = [header.join(','), ...rows.map(r => [r.key, r.devId, r.type, r.summary, r.description, r.status, r.component, r.epic, r.labels, r.version].map(esc).join(','))].join('\n') + '\n';
 const stamp = new Date().toISOString().slice(0, 10);
 const out = path.join(OUT_DIR, `${PROJECT}-${since ? `delta-${since}-to-` : ''}${stamp}.csv`);
 fs.writeFileSync(out, csv);

@@ -15,6 +15,11 @@ One key series, `AROMS-<n>`, never reused, in three bands:
 
 Rules that keep it honest:
 
+- Our key is ours, not Jira's. In Jira it is the Summary prefix and a label
+  (`AROMS-305 · …`); Jira issues its own key, which goes in the `Jira`
+  column here (and `docs/jira/keys.json` for capabilities) after the first
+  import, so Friday deltas update the same ticket. Jira also holds programme
+  and management tickets that never appear here.
 - A key is assigned once and never renumbered. Scope moves between
   components by editing the component, not the key.
 - Every commit message and every changelog entry quotes the key(s) it
@@ -24,44 +29,52 @@ Rules that keep it honest:
 - Owner is one of `PO` · `AR Dev` · `DevOps` · `GIS` · `Team`.
 - Component is one or more of `server` · `portal` · `designer` · `xr-kit`
   · `ios` · `unity` · `devops` · `research` · `programme`.
+- Jira shape: one Epic per area (`Platform`, `AR OMS guides`, `Spatial
+  tagging and inspection`, `Roadmap and Procedure Designer`, `Portal`,
+  `Gemba Walks`, `iLOTO`, `SIB server`, `XR kit`, `iOS app`, `Unity
+  client`, `DevOps and hosting`, `Research`, `Programme`); capabilities are
+  Stories, work items are Tasks; Fix Version is the SIB version.
 - Friday ritual: `npm run backlog:jira -- --since <last Friday>` writes
-  `docs/jira/AROMS-<date>.csv` with the week's new and changed rows (Issue
-  Key included); upload it in Jira with "update existing issues". The full
-  export (`npm run backlog:jira`) rebuilds everything from 100 up.
+  `docs/jira/AROMS-delta-…csv` with the week's new and changed rows; upload
+  it in Jira ("update existing issues" once Jira keys are recorded). The
+  full export (`npm run backlog:jira`) rebuilds everything from 100 up.
+- Versions: `2026.4.NN` as today; a work item is `done` the day it is
+  committed and carries the version it will ship in. Capabilities take the
+  catalogue's status (`shipped` → Done, `beta` → In Progress, `planned` → To
+  Do).
 
 ## 2. Work items (AROMS-300 …)
 
 Newest at the bottom. `Updated` is the date the row last changed.
 
-| Key | Item | Component | Owner | Status | Version | Updated | Notes |
-|---|---|---|---|---|---|---|---|
-| AROMS-300 | Guide lifecycle: archive, 30-day trash with restore, role gates, publish needs Manager + configuration (server + portal) | server, portal | PO | done | 2026.4.50 | 2026-10-14 | docs/GUIDE-LIFECYCLE-REVIEW.md |
-| AROMS-301 | Import de-duplication: update the existing guide or create a new one; Cortona job waits for the choice | server, portal | PO | done | 2026.4.50 | 2026-10-14 | |
-| AROMS-302 | Content Library → Designer lands in the map (shared API key, opening state, tab at click time) | portal, designer | PO | done | 2026.4.50 | 2026-10-14 | |
-| AROMS-303 | Designer sections for long procedures: one band per section, wrap every 10, Outline panel, rename | server, designer | PO | done | 2026.4.50 | 2026-10-15 | |
-| AROMS-304 | Publish greyed with the reason in the library (no configuration, role below Manager, archived) | portal | PO | done | 2026.4.50 | 2026-10-14 | |
-| AROMS-305 | Step parts survive a model rebuild: resolver by objectID / part number / display name, model-check, rebind-parts, library action, XR alias | server, portal, xr-kit | PO | done | 2026.4.50 | 2026-10-15 | |
-| AROMS-306 | One 3D workflow: shared state engine (xr-engine.js) and GLB reader (assembly-model.js); Studio "Open as operator" and "Fit and defaults…" | designer, xr-kit, portal | PO | done | 2026.4.50 | 2026-10-15 | |
-| AROMS-307 | Cortona import: unreferenced sub-steps at their place in the animation order | server | PO | done | 2026.4.50 | 2026-10-15 | re-import with Update to refresh older guides |
-| AROMS-308 | XR kit: hand tracking and virtual hands chosen on the gate, remembered per browser | xr-kit | PO | done | 2026.4.50 | 2026-10-15 | |
-| AROMS-309 | Roadmap home cards: anchor, configuration, guide date and state; missing guide flagged | designer | PO | done | 2026.4.50 | 2026-10-14 | |
-| AROMS-310 | Ask SIB above the Compass on Roadmap pages | portal | PO | done | 2026.4.50 | 2026-10-14 | |
-| AROMS-311 | iOS lifecycle half: swipe-delete Owner only, Archive for Managers, archived filtered from lists and Operator, publish-gate reason shown, Operator-mode warning removed | ios | PO | todo | | 2026-10-15 | needs an app build |
-| AROMS-312 | Admin role for sessions management (data stewardship apart from product ownership) | server, portal | PO | parked | | 2026-10-14 | revisit with more users; one line per route when wanted |
-| AROMS-313 | Remote assist: LiveKit self-hosted under a SIB layer (Remote View page, token route, iOS camera + audio, XR audio + scene; Teams deep link as escape hatch) | server, portal, ios, xr-kit, devops | PO → AR Dev, DevOps | parked | | 2026-10-15 | needs approval before any code; GIS firewall (UDP / TURN 443) is the critical path |
-| AROMS-314 | AR on-the-job training mode: demo mode with real spatial validation | ios | PO | todo | | 2026-10-14 | scope to review |
-| AROMS-315 | Meta Oakley Vanguard camera photo for validation steps (Wearables Device Access Toolkit) | ios, research | AR Dev | todo | | 2026-10-14 | |
-| AROMS-316 | XR kit hands on hardware: Quest 3 with cleanroom gloves (scorecard), Vision Pro joint access, gesture thresholds | xr-kit, research | AR Dev | todo | | 2026-10-14 | |
-| AROMS-317 | Play the chamber: ME and Lead card wording after team feedback; station durations tuned on the wall | portal | Team | todo | | 2026-10-14 | |
-| AROMS-318 | Device pictures with credits in /devices-media; Ask SIB model tier when ASK_LLM_URL exists | portal, server | PO | todo | | 2026-10-14 | |
-| AROMS-319 | Deploy hygiene: SIB_WEB_LOCK on Render, IP key rotation, API key rotation (iOS ServerPreset + rebuild) | devops | PO → DevOps | todo | | 2026-10-14 | keys never in the repo |
-| AROMS-320 | Production-grade SIB: releases, automated backups, monitoring on /health, SSO, database and object storage decision, CI/CD POC → pilot (FY27 DevOps row; absorbs June T1-21..24, T2-9) | devops, server | DevOps | todo | | 2026-10-16 | |
-| AROMS-321 | Enterprise cloud / in-house hosting with GIS: IT review, TLS, identity (June T-3) | devops | DevOps, GIS | todo | | 2026-10-16 | |
-| AROMS-322 | iOS accessibility: VoiceOver and Dynamic Type (June T6-23) | ios | PO | todo | | 2026-10-16 | low |
-| AROMS-323 | FY27 use-cases 2 and 3 identified with WMO; TAM / SAM per component (June T-8) | programme | PO | todo | | 2026-10-16 | |
-| AROMS-324 | Unity client reading the Guide Bundle; passthrough camera on Quest 3 (FY27 AR Dev row) | unity, research | AR Dev | todo | | 2026-10-16 | |
-| AROMS-325 | Designer: Cortona section headings carry their own index ("1. 1."), stripped in sections; importer could carry `section` explicitly | server | PO | todo | | 2026-10-16 | nice to have |
-
+| Key | Item | Component | Owner | Status | Version | Updated | Jira | Notes |
+|---|---|---|---|---|---|---|---|---|
+| AROMS-300 | Guide lifecycle: archive, 30-day trash with restore, role gates, publish needs Manager + configuration (server + portal) | server, portal | PO | done | 2026.4.50 | 2026-10-14 | | docs/GUIDE-LIFECYCLE-REVIEW.md |
+| AROMS-301 | Import de-duplication: update the existing guide or create a new one; Cortona job waits for the choice | server, portal | PO | done | 2026.4.50 | 2026-10-14 | | |
+| AROMS-302 | Content Library → Designer lands in the map (shared API key, opening state, tab at click time) | portal, designer | PO | done | 2026.4.50 | 2026-10-14 | | |
+| AROMS-303 | Designer sections for long procedures: one band per section, wrap every 10, Outline panel, rename | server, designer | PO | done | 2026.4.50 | 2026-10-15 | | |
+| AROMS-304 | Publish greyed with the reason in the library (no configuration, role below Manager, archived) | portal | PO | done | 2026.4.50 | 2026-10-14 | | |
+| AROMS-305 | Step parts survive a model rebuild: resolver by objectID / part number / display name, model-check, rebind-parts, library action, XR alias | server, portal, xr-kit | PO | done | 2026.4.50 | 2026-10-15 | | |
+| AROMS-306 | One 3D workflow: shared state engine (xr-engine.js) and GLB reader (assembly-model.js); Studio "Open as operator" and "Fit and defaults…" | designer, xr-kit, portal | PO | done | 2026.4.50 | 2026-10-15 | | |
+| AROMS-307 | Cortona import: unreferenced sub-steps at their place in the animation order | server | PO | done | 2026.4.50 | 2026-10-15 | | re-import with Update to refresh older guides |
+| AROMS-308 | XR kit: hand tracking and virtual hands chosen on the gate, remembered per browser | xr-kit | PO | done | 2026.4.50 | 2026-10-15 | | |
+| AROMS-309 | Roadmap home cards: anchor, configuration, guide date and state; missing guide flagged | designer | PO | done | 2026.4.50 | 2026-10-14 | | |
+| AROMS-310 | Ask SIB above the Compass on Roadmap pages | portal | PO | done | 2026.4.50 | 2026-10-14 | | |
+| AROMS-311 | iOS lifecycle half: swipe-delete Owner only, Archive for Managers, archived filtered from lists and Operator, publish-gate reason shown, Operator-mode warning removed | ios | PO | todo | | 2026-10-15 | | needs an app build |
+| AROMS-312 | Admin role for sessions management (data stewardship apart from product ownership) | server, portal | PO | parked | | 2026-10-14 | | revisit with more users; one line per route when wanted |
+| AROMS-313 | Remote assist: LiveKit self-hosted under a SIB layer (Remote View page, token route, iOS camera + audio, XR audio + scene; Teams deep link as escape hatch) | server, portal, ios, xr-kit, devops | PO → AR Dev, DevOps | parked | | 2026-10-15 | | needs approval before any code; GIS firewall (UDP / TURN 443) is the critical path |
+| AROMS-314 | AR on-the-job training mode: demo mode with real spatial validation | ios | PO | todo | | 2026-10-14 | | scope to review |
+| AROMS-315 | Meta Oakley Vanguard camera photo for validation steps (Wearables Device Access Toolkit) | ios, research | AR Dev | todo | | 2026-10-14 | | |
+| AROMS-316 | XR kit hands on hardware: Quest 3 with cleanroom gloves (scorecard), Vision Pro joint access, gesture thresholds | xr-kit, research | AR Dev | todo | | 2026-10-14 | | |
+| AROMS-317 | Play the chamber: ME and Lead card wording after team feedback; station durations tuned on the wall | portal | Team | todo | | 2026-10-14 | | |
+| AROMS-318 | Device pictures with credits in /devices-media; Ask SIB model tier when ASK_LLM_URL exists | portal, server | PO | todo | | 2026-10-14 | | |
+| AROMS-319 | Deploy hygiene: SIB_WEB_LOCK on Render, IP key rotation, API key rotation (iOS ServerPreset + rebuild) | devops | PO → DevOps | todo | | 2026-10-14 | | keys never in the repo |
+| AROMS-320 | Production-grade SIB: releases, automated backups, monitoring on /health, SSO, database and object storage decision, CI/CD POC → pilot (FY27 DevOps row; absorbs June T1-21..24, T2-9) | devops, server | DevOps | todo | | 2026-10-16 | | |
+| AROMS-321 | Enterprise cloud / in-house hosting with GIS: IT review, TLS, identity (June T-3) | devops | DevOps, GIS | todo | | 2026-10-16 | | |
+| AROMS-322 | iOS accessibility: VoiceOver and Dynamic Type (June T6-23) | ios | PO | todo | | 2026-10-16 | | low |
+| AROMS-323 | FY27 use-cases 2 and 3 identified with WMO; TAM / SAM per component (June T-8) | programme | PO | todo | | 2026-10-16 | | |
+| AROMS-324 | Unity client reading the Guide Bundle; passthrough camera on Quest 3 (FY27 AR Dev row) | unity, research | AR Dev | todo | | 2026-10-16 | | |
+| AROMS-325 | Designer: Cortona section headings carry their own index ("1. 1."), stripped in sections; importer could carry `section` explicitly | server | PO | todo | | 2026-10-16 | | nice to have |
 ## 3. June 2026 import (AROMS-1 … 99): close-out
 
 Mark in Jira, do not re-import. Where an item is superseded, the key above
