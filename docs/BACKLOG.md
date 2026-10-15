@@ -83,7 +83,7 @@ Newest at the bottom. `Updated` is the date the row last changed.
 | AROMS-331 | Validation mode authored per step (Quick shot / Cone): `validationPlan` set in the Designer inspector and toggled in the Guide Library (done), shown on the iOS step page (segmented Cone / Quick shot) and offered first in the AR tray's single Train / Trained chip; Retrain is explicit | server, portal, designer, ios | PO | done | 2026.4.50 | 2026-10-17 | | confirmed by Karthik |
 | AROMS-332 | OCR on steps: read text from the camera (on-device Vision) as evidence and as a check against expected text; AR OMS steps and Spatial Inspection tags | ios, server, portal | PO | todo | | 2026-10-16 | | next priority after 330, 331, 333; brainstorm first: capture vs verify, where expected text is authored |
 | AROMS-333 | iOS Author mode: step tray chips readable (11 pt, two lines, 96 pt wide), action bar titles two lines; AR session top bar adapts to iPhone (guide name on its own line, iPad inline) | ios | PO | done | 2026.4.50 | 2026-10-17 | | confirmed by Karthik |
-| AROMS-334 | iOS: "Wrong QR" on a guide created in the app until restart - the Guide editor's Place Steps / Place assembly gates now set the active anchor to the guide's chamber before scanning | ios | PO | done | 2026.4.50 | 2026-10-17 | | in the next app build; Karthik to confirm |
+| AROMS-334 | iOS: "Wrong QR" on a guide created in the app until restart - the Guide editor's Place Steps / Place assembly gates now set the active anchor to the guide's chamber before scanning | ios | PO | done | 2026.4.50 | 2026-10-17 | | confirmed by Karthik |
 ## 3. June 2026 import (AROMS-1 … 99): close-out
 
 Mark in Jira, do not re-import. Where an item is superseded, the key above
