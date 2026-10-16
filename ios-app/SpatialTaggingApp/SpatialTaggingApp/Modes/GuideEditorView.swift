@@ -1294,7 +1294,7 @@ struct EditStepSheet: View {
                 trainedAt          = step.validationTrainedAt
                 trainedMode        = step.validationMode
                 validationPlan     = step.validationPlan ?? "cone"
-                assertions         = step.assertions ?? []"
+                assertions         = step.assertions ?? []
                 evidenceOn         = step.evidenceRequired == true
                 // 3D model: pre-populate from step
                 // U4: slot 1 drives the existing picker; the rest are extras.
