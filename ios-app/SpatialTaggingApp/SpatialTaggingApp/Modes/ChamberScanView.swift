@@ -133,7 +133,7 @@ struct ChamberScanView: View {
         }
         .onAppear { arManager.startSession() }
         .onDisappear { if appState.activeARSession == nil { arManager.pauseSession() } }
-        .onChange(of: arManager.scanState) { state in
+        .onChange(of: arManager.scanState) { _, state in
             if case .locked(let ctx) = state, phase == .scanning { resolve(ctx) }
         }
     }

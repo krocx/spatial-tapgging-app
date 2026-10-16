@@ -220,7 +220,7 @@ struct ConeCaptureView: View {
                 .animation(.easeInOut(duration: 0.35), value: showSweepHint)
             }
         }
-        .onChange(of: phase) { newPhase in
+        .onChange(of: phase) { _, newPhase in
             // Auto-dismiss hints when their phase activates
             if newPhase == .sweeping && showSweepHint {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {

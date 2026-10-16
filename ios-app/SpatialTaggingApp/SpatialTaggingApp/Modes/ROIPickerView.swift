@@ -91,7 +91,7 @@ struct ROIPickerView: View {
                     }
                     .frame(width: geo.size.width, height: geo.size.height)
                     .onAppear { imageFrame = displayFrame }
-                    .onChange(of: geo.size) { _ in imageFrame = aspectFitFrame(for: referenceImage.size, in: geo.size) }
+                    .onChange(of: geo.size) { imageFrame = aspectFitFrame(for: referenceImage.size, in: geo.size) }
                 }
 
                 footer

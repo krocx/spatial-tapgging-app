@@ -285,15 +285,15 @@ struct ModeSelectionView: View {
             tourFrames.merge(frames) { _, new in new }
         }
         // ── Tour: auto-advance when Settings sheet opens ───────────────────────
-        .onChange(of: showSettings) { isOpen in
+        .onChange(of: showSettings) { _, isOpen in
             if isOpen { tour.advancePast(.tapSettings) }
         }
         // ── Tour: auto-advance when Author directory opens ─────────────────────
-        .onChange(of: showAuthorDirectory) { isOpen in
+        .onChange(of: showAuthorDirectory) { _, isOpen in
             if isOpen { tour.advancePast(.tapAuthor) }
         }
         // ── Tour: auto-advance when Operator directory opens ───────────────────
-        .onChange(of: showOperatorDirectory) { isOpen in
+        .onChange(of: showOperatorDirectory) { _, isOpen in
             if isOpen { tour.advancePast(.tapOperator) }
         }
         // ── Tour overlay (home-screen steps) ──────────────────────────────────
@@ -322,7 +322,7 @@ struct ModeSelectionView: View {
                 .animation(.easeInOut(duration: 0.25), value: tour.currentStep)
             }
         }
-        .onChange(of: appState.labPendingMode) { m in
+        .onChange(of: appState.labPendingMode) { _, m in
             if m != nil { showAnchorLab = false }      // onDismiss enters the mode
         }
         // Anchor Lab door (2026.4.46) - rigs, runs, history.

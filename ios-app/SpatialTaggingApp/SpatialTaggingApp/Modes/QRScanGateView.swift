@@ -265,11 +265,11 @@ struct QRScanGateView: View {
             wrongQRTimeoutWorkItem?.cancel()
             wrongQRTimeoutWorkItem = nil
         }
-        .onChange(of: arManager.objectTransform) { t in
+        .onChange(of: arManager.objectTransform) { _, t in
             // B3: proof of recognition - the ghost lands on the chamber.
             if t != nil { shapeGhost?.update(objectTransform: t); shapeGhost?.flash() }
         }
-        .onChange(of: arManager.scanState) { state in
+        .onChange(of: arManager.scanState) { _, state in
             if case .detected = state { scanPhase = .detected }
             if case .locked(let ctx) = state {
                 scanPhase = .locking

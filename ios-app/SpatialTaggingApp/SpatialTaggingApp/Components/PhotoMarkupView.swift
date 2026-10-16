@@ -38,7 +38,7 @@ struct PhotoMarkupView: View {
                         MarkupCanvas(canvas: canvas, tool: tool, existing: existing, imageWidth: image.size.width,
                                      onStroke: { strokes = $0 })
                             .onAppear { canvasSize = fit; strokes = existing?.strokes.count ?? 0 }
-                            .onChange(of: fit) { canvasSize = $0 }
+                            .onChange(of: fit) { _, f in canvasSize = f }
                     }
                     .frame(width: fit.width, height: fit.height)
                     .position(x: geo.size.width / 2, y: geo.size.height / 2)

@@ -199,7 +199,7 @@ struct AuthorModeView: View {
                 // Fires each time processImageAnchors pushes a new normalised
                 // transform from the continuously-tracked ARImageAnchor.
                 // Keep AppState in sync and reposition all tag nodes.
-                .onChange(of: arManager.lockedAnchorTransform) { newTransform in
+                .onChange(of: arManager.lockedAnchorTransform) { _, newTransform in
                     guard let t = newTransform else { return }
                     appState.anchorNormalisedTransform = t
                     presenceLayer?.worldFromShared = t
@@ -222,7 +222,7 @@ struct AuthorModeView: View {
                 // Surface it so a tap-to-place or training capture made right
                 // after tracking resumes isn't silently trusted against a
                 // possibly stale anchor pose.
-                .onChange(of: arManager.isInterrupted) { interrupted in
+                .onChange(of: arManager.isInterrupted) { _, interrupted in
                     if interrupted {
                         infoMsg = "Session interrupted - placement paused."
                     } else {
@@ -436,7 +436,7 @@ struct AuthorModeView: View {
         }
 
         // ── Training cover - routes by TagCaptureMode ──────────────────────────
-        .onChange(of: captureTag?.id) { id in
+        .onChange(of: captureTag?.id) { _, id in
             if let id { focusTagId = id; applyTagVisibility() }   // G3: training → current
         }
         .confirmationDialog("Delete all \(appState.activeTags.count) tag\(appState.activeTags.count == 1 ? "" : "s")?",
@@ -493,7 +493,7 @@ struct AuthorModeView: View {
             if let t = presenceToast { PresenceToast(text: t.text, color: t.color).padding(.top, 104) }
         }
         .animation(.easeInOut(duration: 0.25), value: presenceToast?.text)
-        .onChange(of: focusTagId) { id in presenceFocus.stepId = id }
+        .onChange(of: focusTagId) { _, id in presenceFocus.stepId = id }
         // ── Tour banners (Author steps) ────────────────────────────────────────
         .overlay {
             let authorStep = tour.currentStep
@@ -513,7 +513,7 @@ struct AuthorModeView: View {
         // Tour: advance from placeTag → trainTag when a NEW tag is placed in this session.
         // Compare against tourBaselineTagCount (set at first appear) to avoid spuriously
         // advancing when returning to an anchor that already had tags.
-        .onChange(of: appState.activeTags.count) { count in
+        .onChange(of: appState.activeTags.count) { _, count in
             let baseline = tourBaselineTagCount >= 0 ? tourBaselineTagCount : 0
             if count > baseline { tour.advancePast(.placeTag) }
         }

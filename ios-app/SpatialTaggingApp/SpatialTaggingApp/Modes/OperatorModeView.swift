@@ -764,7 +764,7 @@ struct OperatorModeView: View {
         // in-flight scoring/training against a now-stale frame, and prompt the
         // operator to re-verify alignment once tracking resumes - instead of
         // silently trusting a result computed during/just after the interruption.
-        .onChange(of: arManager.isInterrupted) { interrupted in
+        .onChange(of: arManager.isInterrupted) { _, interrupted in
             if interrupted {
                 validationTask?.cancel()
                 stopLiveLoop()
@@ -793,7 +793,7 @@ struct OperatorModeView: View {
         //   • linkToExistingSession() restoring the live ARImageAnchor (~150 ms)
         //   • processImageAnchors() continuous refinement while QR is visible
         //   • Legacy QR re-lock path (onChange scanState below) via lockedAnchorTransform
-        .onChange(of: arManager.lockedAnchorTransform) { newTransform in
+        .onChange(of: arManager.lockedAnchorTransform) { _, newTransform in
             guard let t = newTransform else { return }
             appState.anchorNormalisedTransform = t
             if !anchorLocated {
@@ -812,7 +812,7 @@ struct OperatorModeView: View {
         // ── Legacy fallback: QR re-scan path ──────────────────────────────────
         // Handles the case where no activeARSession was available and the operator
         // manually scanned the QR in a fresh session.
-        .onChange(of: arManager.scanState) { state in
+        .onChange(of: arManager.scanState) { _, state in
             guard case .locked(let ctx) = state else { return }
             guard ctx.anchorId == appState.activeAnchor?.id else { return }
             // lockedAnchorTransform is already set by lockAnchor(); the
@@ -820,7 +820,7 @@ struct OperatorModeView: View {
             // Nothing extra needed here except the anchorId safety check above.
         }
         .onReceive(proximityTicker) { _ in tickProximity() }
-        .onChange(of: showTagMarkers) { visible in
+        .onChange(of: showTagMarkers) { _, visible in
             tagMarkerNodes.values.forEach { $0.isHidden = !visible }
         }
         // Summary sheet - slides up after "End Inspection"

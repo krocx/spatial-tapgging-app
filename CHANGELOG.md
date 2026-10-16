@@ -7,6 +7,9 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Fixed
+- **AROMS-343: iOS build warnings.** All 53 `onChange(of:perform:)` uses
+  moved to the iOS 17 two-parameter (or zero-parameter) form; behaviour
+  unchanged, the build log is clean for TestFlight.
 - **AROMS-334: "Wrong QR" after creating a guide in the app.** The Guide
   editor's Place Steps in AR and Place assembly buttons opened the scan
   gate without pointing it at the guide's chamber, so the gate compared the

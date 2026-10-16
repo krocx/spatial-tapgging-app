@@ -646,7 +646,7 @@ struct AddStepSheet: View {
                 // ── Step validation (K4/K5 - B1: same controls as Edit Step) ──
                 Section {
                     Toggle("Require validation", isOn: $validationOn)
-                        .onChange(of: validationOn) { on in if on { evidenceOn = true } }
+                        .onChange(of: validationOn) { _, on in if on { evidenceOn = true } }
                     // W1: a validated step always yields an evidence photo - the
                     // validation frame IS the evidence, so the toggle is locked on.
                     Toggle("Require evidence photo", isOn: $evidenceOn)
@@ -724,7 +724,7 @@ struct AddStepSheet: View {
                                 }
                             }
                         }
-                        .onChange(of: selectedModelId) { newId in
+                        .onChange(of: selectedModelId) { _, newId in
                             // Pre-fill scale from model's saved default scale (set in portal preview)
                             if let id = newId,
                                let m  = anchorModels.first(where: { $0.id == id }),
@@ -943,7 +943,7 @@ struct EditStepSheet: View {
                 // ── Step validation (K4) - Spatial Inspection on this step ────
                 Section {
                     Toggle("Require validation", isOn: $validationOn)
-                        .onChange(of: validationOn) { on in if on { evidenceOn = true } }
+                        .onChange(of: validationOn) { _, on in if on { evidenceOn = true } }
                     // W1: a validated step always yields an evidence photo - the
                     // validation frame IS the evidence, so the toggle is locked on.
                     Toggle("Require evidence photo", isOn: $evidenceOn)
@@ -1133,7 +1133,7 @@ struct EditStepSheet: View {
                                 }
                             }
                         }
-                        .onChange(of: selectedModelId) { newId in
+                        .onChange(of: selectedModelId) { _, newId in
                             // Pre-fill scale from model's saved default scale (set in portal preview)
                             if let id = newId,
                                let m  = anchorModels.first(where: { $0.id == id }),

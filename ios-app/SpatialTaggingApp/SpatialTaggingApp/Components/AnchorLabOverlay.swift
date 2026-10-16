@@ -113,7 +113,7 @@ struct AnchorLabOverlay: View {
                 TextField("run label (door · evening · 2 m)", text: $run)
                     .font(.caption2).foregroundStyle(.white)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .onChange(of: run) { UserDefaults.standard.set($0, forKey: "anchor_lab_run") }
+                    .onChange(of: run) { _, v in UserDefaults.standard.set(v, forKey: "anchor_lab_run") }
             }
             .padding(.horizontal, 8).padding(.vertical, 5)
             .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8)) }

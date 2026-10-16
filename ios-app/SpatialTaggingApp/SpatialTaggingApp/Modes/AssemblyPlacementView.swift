@@ -253,7 +253,7 @@ struct AssemblyPlacementView: View {
             HStack(spacing: 10) {
                 Toggle(isOn: $previewOn) { Text("Preview steps").font(.subheadline.bold()).foregroundStyle(.white) }
                     .toggleStyle(.switch).tint(.indigo)
-                    .onChange(of: previewOn) { on in
+                    .onChange(of: previewOn) { _, on in
                         if on { previewIndex = 0; playPreview() } else { stopPreview() }
                     }
                 if previewOn {

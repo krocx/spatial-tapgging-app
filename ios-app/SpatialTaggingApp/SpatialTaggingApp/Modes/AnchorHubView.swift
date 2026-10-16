@@ -621,7 +621,7 @@ struct AnchorHubView: View {
                 Text("Its shape").tag(true)
             }
             .pickerStyle(.segmented)
-            .onChange(of: originObject) { v in
+            .onChange(of: originObject) { _, v in
                 Task {
                     do {
                         _ = try await SIBClient(settings: settings)

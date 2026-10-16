@@ -237,7 +237,7 @@ struct LabRigView: View {
                     }
                 }
                 TextField("or a custom run label", text: $customLabel)
-                    .onChange(of: customLabel) { v in if !v.isEmpty { runLabel = v } }
+                    .onChange(of: customLabel) { _, v in if !v.isEmpty { runLabel = v } }
                 Toggle(isOn: $growMap) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Grow the map on clean runs")

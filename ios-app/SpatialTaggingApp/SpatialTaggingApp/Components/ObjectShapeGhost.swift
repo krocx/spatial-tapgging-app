@@ -247,7 +247,7 @@ struct ObjectModelAlignView: View {
             installGestures()
         }
         .onDisappear { arManager.pauseSession() }
-        .onChange(of: arManager.objectTransform) { t in
+        .onChange(of: arManager.objectTransform) { _, t in
             guard let t else { return }
             if !detected { detected = true; UINotificationFeedbackGenerator().notificationOccurred(.success) }
             ghost?.show()

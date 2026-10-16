@@ -366,11 +366,11 @@ struct GuideStepPlacementView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: presenceToast?.text)
-        .onChange(of: relocState) { st in
+        .onChange(of: relocState) { _, st in
             // Share my pose only once this session's frame is the guide map's.
             if st == .relocalized { startPresence() } else { stopPresence() }
         }
-        .onChange(of: activeStepIndex) { idx in
+        .onChange(of: activeStepIndex) { _, idx in
             presenceFocus.stepId = idx < steps.count ? steps[idx].id : nil
         }
         .onDisappear { stopPresence() }
@@ -389,7 +389,7 @@ struct GuideStepPlacementView: View {
         } message: {
             Text("Every step becomes unplaced when you Save. The world map, training and 3D model assignments are kept; model placements are dropped.")
         }
-        .onChange(of: arManager.objectTransform) { objT in
+        .onChange(of: arManager.objectTransform) { _, objT in
             // B3: the ghost sits where the app thinks the chamber is.
             if objT != nil { shapeGhost?.update(objectTransform: objT); shapeGhost?.flash() }
             // B2: object found + calibrated map → re-base the world onto the map
@@ -412,7 +412,7 @@ struct GuideStepPlacementView: View {
                 }
             }
         }
-        .onChange(of: arManager.objectRealignCount) { n in
+        .onChange(of: arManager.objectRealignCount) { _, n in
             guard n > 0 else { return }
             flashRealignToast()
             shapeGhost?.update(objectTransform: arManager.objectTransform); shapeGhost?.flash()
@@ -427,7 +427,7 @@ struct GuideStepPlacementView: View {
                 .environmentObject(settings)
             }
         }
-        .onChange(of: arManager.relocalizationOutcome) { outcome in
+        .onChange(of: arManager.relocalizationOutcome) { _, outcome in
             guard relocState == .relocalizing else { return }
             switch outcome {
             case .succeeded:
@@ -869,7 +869,7 @@ struct GuideStepPlacementView: View {
                 .padding(.horizontal, 16).padding(.vertical, 10)
             }
             .background(.ultraThinMaterial)
-            .onChange(of: activeStepIndex) { idx in
+            .onChange(of: activeStepIndex) { _, idx in
                 guard idx < steps.count else { return }
                 withAnimation { proxy.scrollTo(steps[idx].id, anchor: .center) }
             }

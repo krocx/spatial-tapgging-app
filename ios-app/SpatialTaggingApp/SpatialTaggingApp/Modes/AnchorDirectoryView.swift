@@ -185,8 +185,8 @@ struct AnchorDirectoryView: View {
             // The ? button here still shows the QR-mode walkthrough as a manual reference.
         }
         // Tour: auto-advance when + Create sheet opens or a row is tapped
-        .onChange(of: showCreateSheet) { if $0 { tour.advancePast(.createAnchor) } }
-        .onChange(of: hubAnchor)       { if $0 != nil { tour.advancePast(.createAnchor) } }
+        .onChange(of: showCreateSheet) { _, shown in if shown { tour.advancePast(.createAnchor) } }
+        .onChange(of: hubAnchor)       { _, a in if a != nil { tour.advancePast(.createAnchor) } }
         // Tour: banner overlay for createAnchor step
         .overlay {
             if tour.isActive && tour.currentStep == .createAnchor {

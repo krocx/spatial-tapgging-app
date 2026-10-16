@@ -433,7 +433,7 @@ struct ARGuideSessionView: View {
                     demoRing?.cleanup(); demoRing = nil
                     demoGestures?.remove(); demoGestures = nil
                 }
-                .onChange(of: arManager.objectTransform) { objT in
+                .onChange(of: arManager.objectTransform) { _, objT in
                     // B3: ghost on the recognised chamber (fades after a few seconds).
                     if objT != nil { shapeGhost?.update(objectTransform: objT); shapeGhost?.flash() }
                     // B2: object seen + calibrated → world re-based onto the map
@@ -460,7 +460,7 @@ struct ARGuideSessionView: View {
                     }
                 }
                 // B2e: automatic re-alignment (chamber moved mid-session) - never silent.
-                .onChange(of: arManager.objectRealignCount) { n in
+                .onChange(of: arManager.objectRealignCount) { _, n in
                     guard n > 0 else { return }
                     observeInteraction("realign")
                     shapeGhost?.update(objectTransform: arManager.objectTransform); shapeGhost?.flash()
@@ -470,7 +470,7 @@ struct ARGuideSessionView: View {
                         withAnimation { showRealignToast = false }
                     }
                 }
-                .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
+                .onChange(of: arManager.isRelocalizing) { _, stillRelocalizing in
                     guard !stillRelocalizing, phase == .relocalizing else { return }
                     // Trust layer: ARKit matched the map; wait for the origin
                     // anchor to settle (≤ 8 s) so pins spawn on the final fit.

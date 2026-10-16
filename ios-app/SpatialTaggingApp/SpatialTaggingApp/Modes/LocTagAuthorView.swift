@@ -242,8 +242,8 @@ struct LocTagAuthorView: View {
             }
         }
         // ── R2/R5: every interruption that ends runs the checkpoint ────────────
-        .onChange(of: authorScenePhase) { ph in if ph == .background { sawBackground = true } }
-        .onChange(of: arManager.resumeCount) { n in
+        .onChange(of: authorScenePhase) { _, ph in if ph == .background { sawBackground = true } }
+        .onChange(of: arManager.resumeCount) { _, n in
             guard n != lastResumeCount else { return }
             lastResumeCount = n
             // Camera / photo library / share sheet interruptions: the app never
@@ -253,7 +253,7 @@ struct LocTagAuthorView: View {
             guard !isLoadingSession, !isSavingWalk, pendingTap == nil, peekingLocTag == nil, !showWalkStart else { return }
             startCheckpoint()
         }
-        .onChange(of: arManager.isRelocalizing) { still in
+        .onChange(of: arManager.isRelocalizing) { _, still in
             guard !still, case .some(.relocalizing) = checkpoint else { return }
             withAnimation { checkpoint = .confirm }
         }

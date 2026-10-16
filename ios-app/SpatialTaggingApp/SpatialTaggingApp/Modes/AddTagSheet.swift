@@ -177,7 +177,7 @@ struct AddTagSheet: View {
                                     lineWidth: 1)
                     )
                     .padding(.horizontal, 16)
-                    .onChange(of: labelFocused) { focused in
+                    .onChange(of: labelFocused) { _, focused in
                         // Mark as touched once the user leaves the field
                         if !focused { labelTouched = true }
                     }

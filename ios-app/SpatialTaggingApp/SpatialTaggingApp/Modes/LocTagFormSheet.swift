@@ -131,7 +131,7 @@ struct LocTagFormSheet: View {
                     focusArea = fa
                 }
             }
-            .onChange(of: pickerItems) { items in
+            .onChange(of: pickerItems) { _, items in
                 guard !items.isEmpty else { return }
                 Task {
                     for item in items {
@@ -243,7 +243,7 @@ struct LocTagFormSheet: View {
                 TextField("Question / observation", text: $customQuestion, axis: .vertical)
                     .lineLimit(2...5)
                     .focused($questionFocused)
-                    .onChange(of: questionFocused) { focused in if !focused { questionTouched = true } }
+                    .onChange(of: questionFocused) { _, focused in if !focused { questionTouched = true } }
                 if customQuestionTrimmed.isEmpty {
                     Text("*").font(.system(size: 17, weight: .bold)).foregroundStyle(.red)
                 }

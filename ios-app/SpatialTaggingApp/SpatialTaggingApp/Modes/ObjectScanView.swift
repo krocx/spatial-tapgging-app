@@ -121,7 +121,7 @@ struct ObjectScanView: View {
         HStack(spacing: 10) {
             Text(label).font(.caption.bold()).foregroundStyle(.white.opacity(0.7)).frame(width: 16)
             Slider(value: value, in: 0.2...4.0, step: 0.05).tint(.indigo)
-                .onChange(of: value.wrappedValue) { _ in scanner.updateBoxNode() }
+                .onChange(of: value.wrappedValue) { scanner.updateBoxNode() }
             Text(String(format: "%.2f m", value.wrappedValue))
                 .font(.caption.monospacedDigit()).foregroundStyle(.white.opacity(0.85)).frame(width: 58, alignment: .trailing)
         }
@@ -549,7 +549,7 @@ struct ObjectTrackOverlay: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: arManager.objectRealignManual)
-        .onChange(of: arManager.objectRealignCount) { n in
+        .onChange(of: arManager.objectRealignCount) { _, n in
             guard n > 0 else { return }
             withAnimation { showToast = true }
             Task {

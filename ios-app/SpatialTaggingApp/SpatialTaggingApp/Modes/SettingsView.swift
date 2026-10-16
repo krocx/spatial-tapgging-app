@@ -232,7 +232,7 @@ struct SettingsView: View {
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                             .keyboardType(.URL)
-                            .onChange(of: draftURL) { newVal in
+                            .onChange(of: draftURL) { _, newVal in
                                 // Deselect preset if user manually edits the URL
                                 if let p = activePreset, newVal != p.url {
                                     activePreset = nil

@@ -73,7 +73,7 @@ struct AnchorScanView: View {
         }
         .onAppear { arManager.startSession() }
         .onDisappear { arManager.pauseSession() }
-        .onChange(of: arManager.scanState) { newState in
+        .onChange(of: arManager.scanState) { _, newState in
             if case .locked(let ctx) = newState {
                 Task { await loadAnchor(context: ctx) }
             }

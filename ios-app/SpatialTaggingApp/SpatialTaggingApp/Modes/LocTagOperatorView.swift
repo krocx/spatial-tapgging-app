@@ -111,7 +111,7 @@ struct LocTagOperatorView: View {
                     appState.activeARSession = nil
                 }
                 // Fired when ARKit finishes matching the saved world map
-                .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
+                .onChange(of: arManager.isRelocalizing) { _, stillRelocalizing in
                     guard !stillRelocalizing else { return }
                     // R2: back from an interruption - tracking is normal again;
                     // ask the one question before trusting the pins.
@@ -122,7 +122,7 @@ struct LocTagOperatorView: View {
                 }
                 // R2: every interruption that ends (background → foreground,
                 // phone call…) runs the welcome-back checkpoint.
-                .onChange(of: arManager.resumeCount) { n in
+                .onChange(of: arManager.resumeCount) { _, n in
                     guard n != lastResumeCount else { return }
                     lastResumeCount = n
                     guard sawBackground else { return }
@@ -219,7 +219,7 @@ struct LocTagOperatorView: View {
         .animation(.easeInOut(duration: 0.25), value: resumeToast)
         // R1: background → honest posture in the Dynamic Island; foreground is
         // handled by the ARKit interruption callbacks (resumeCount).
-        .onChange(of: scenePhase) { ph in
+        .onChange(of: scenePhase) { _, ph in
             if ph == .background { sawBackground = true }
             guard ph == .background, case .navigating(let i) = phase, i < locTags.count else { return }
             let t = locTags[i]
