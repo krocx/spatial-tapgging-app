@@ -19,6 +19,11 @@ struct ReadingCaptureSheet: View {
     let step:        GuideStep
     let frameSource: () -> UIImage?
     let onDone:      (_ results: [StepReadingResult], _ frame: UIImage?) -> Void
+    /// AROMS-339: Author mode - "Save as trained" hands back where each text
+    /// was read (top-left normalised), to be stored as the assertion's region.
+    var authoring:   Bool = false
+    var onTrained:   ((_ regions: [String: StepAssertion.AssertionRegion]) -> Void)? = nil
+    @State private var matchedBoxes: [String: CGRect] = [:]
 
     @Environment(\.dismiss) private var dismiss
     @State private var phase: Phase = .framing
@@ -93,8 +98,18 @@ struct ReadingCaptureSheet: View {
                                 .buttonStyle(.bordered)
                         }
                         Spacer()
-                        Button { onDone(results, frame); dismiss() } label: { Text(allPass ? "Use this" : "Keep this").font(.headline) }
-                            .buttonStyle(.borderedProminent).tint(allPass ? .green : .orange)
+                        if authoring {
+                            Button {
+                                var regions: [String: StepAssertion.AssertionRegion] = [:]
+                                for (id, b) in matchedBoxes { regions[id] = StepAssertion.AssertionRegion(x: b.minX, y: b.minY, w: b.width, h: b.height) }
+                                onTrained?(regions); dismiss()
+                            } label: { Text("Save as trained").font(.headline) }
+                                .buttonStyle(.borderedProminent).tint(.green)
+                                .disabled(matchedBoxes.isEmpty)
+                        } else {
+                            Button { onDone(results, frame); dismiss() } label: { Text(allPass ? "Use this" : "Keep this").font(.headline) }
+                                .buttonStyle(.borderedProminent).tint(allPass ? .green : .orange)
+                        }
                     }
                 }
                 Spacer(minLength: 0)
@@ -159,10 +174,28 @@ struct ReadingCaptureSheet: View {
         let joined = recognised.map(\.text).joined(separator: " ")
         // A reading: the tallest line that carries a number is the display's main digits.
         let numeric = found.filter { ReadingJudge.parseReading($0.text) != nil }.max { $0.box.height < $1.box.height }?.text
-        results = assertions.map { a in
+        // Vision boxes are bottom-left normalised; the app stores top-left normalised.
+        let topLeft = { (b: CGRect) in CGRect(x: b.minX, y: 1 - b.maxY, width: b.width, height: b.height) }
+        matchedBoxes = [:]
+        var out: [StepReadingResult] = []
+        for a in assertions where a.kind != "location" {
             let read = a.isReading ? (numeric ?? joined) : joined
-            return ReadingJudge.evaluate(a, read: read, typed: false)
+            let r = ReadingJudge.evaluate(a, read: read, typed: false)
+            out.append(r)
+            // The line that carried the match (or, for a reading, the digits) - where the text is.
+            let want = a.expected.lowercased()
+            if let hit = found.first(where: { a.isReading ? $0.text == numeric : (!want.isEmpty && $0.text.lowercased().contains(want)) }) ?? (a.isReading ? nil : found.max { $0.box.height < $1.box.height }) {
+                matchedBoxes[a.id] = topLeft(hit.box)
+            }
         }
+        // AROMS-339: location - the text's place now against where it was trained
+        // (the region stored on the step's first trained text-match).
+        for a in assertions where a.kind == "location" {
+            let anchorText = assertions.first { $0.kind == "text-match" && $0.region != nil }
+            let matched = anchorText.flatMap { matchedBoxes[$0.id] }
+            out.append(ReadingJudge.evaluateLocation(a, trained: anchorText?.region, matched: matched, typed: false))
+        }
+        results = out
         phase = .review
         UINotificationFeedbackGenerator().notificationOccurred(allPass ? .success : .warning)
     }

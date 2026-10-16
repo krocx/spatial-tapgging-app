@@ -423,6 +423,10 @@ export interface Tag {
    * to the TagGroup with this id.
    */
   groupId?: string;
+  /** AROMS-339: readings and text checks on this tag, the same shape as a step's
+   *  (docs/SPATIAL-READINGS.md). A languageCheck tag trained in the app carries
+   *  one text-match assertion with the read region; `expectedOutcome` stays as is. */
+  assertions?: StepAssertion[];
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -440,6 +444,8 @@ export interface UpdateTagRequest {
   roi?: RegionOfInterest | null;
   /** Deep-merged into tag.metadata - existing keys are preserved. */
   metadata?: Record<string, unknown>;
+  /** AROMS-339: the list replaces; null or [] clears. */
+  assertions?: StepAssertion[] | null;
 }
 
 // ============================================================

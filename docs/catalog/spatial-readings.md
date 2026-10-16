@@ -28,6 +28,6 @@ mbar·l/s") in the Designer's step inspector or the iPad step page; SIB
 derives the bounds once and both ends judge by them. On the floor the number
 comes from the camera, never the keyboard; a typed fallback is recorded as
 typed so a manager can tell a measured value from a remembered one. This
-version ships the model, the authoring (AROMS-337) and the iPad capture and
-verdict (AROMS-338); labels and codes (339, 340), import recognition (341)
+version ships the model, the authoring (AROMS-337), the iPad capture and
+verdict (AROMS-338) and labels with their place (AROMS-339); codes (340), import recognition (341)
 and the torque and leak-check display cases (342) follow.

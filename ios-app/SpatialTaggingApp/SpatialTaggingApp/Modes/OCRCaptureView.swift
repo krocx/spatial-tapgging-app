@@ -62,6 +62,7 @@ struct OCRCaptureView: View {
     @State private var phase: Phase = .ready
 
     @State private var capturedImage: UIImage?   = nil
+    @State private var readRegion: StepAssertion.AssertionRegion? = nil   // AROMS-339
     @State private var capturedJpeg:  Data?      = nil
     @State private var detectedText:  String     = ""
     @State private var editedText:    String     = ""
@@ -347,7 +348,11 @@ struct OCRCaptureView: View {
             let sorted = observations.sorted { $0.boundingBox.maxY > $1.boundingBox.maxY }
             let lines  = sorted.compactMap { $0.topCandidates(1).first?.string }
             let joined = lines.joined(separator: " ")
+            // AROMS-339: where the label sits in the frame (union of the read lines,
+            // Vision's bottom-left normalised box → top-left normalised region).
+            let union = observations.map(\.boundingBox).reduce(CGRect.null) { $0.union($1) }
             DispatchQueue.main.async {
+                readRegion    = union.isNull ? nil : StepAssertion.AssertionRegion(x: union.minX, y: 1 - union.maxY, w: union.width, h: union.height)
                 detectedText  = joined
                 editedText    = joined
                 ocrWordCount  = joined.components(separatedBy: .whitespaces)
@@ -384,16 +389,22 @@ struct OCRCaptureView: View {
         //    Operator's client-side validation reads this field to compare
         //    against Vision OCR results on the live Operator frame.
         do {
-            _ = try await client.updateTag(
-                id: tag.id,
-                req: UpdateTagRequest(
-                    label:            nil,
-                    expectedOutcome:  finalText.isEmpty ? nil : finalText,
-                    checkDescription: nil,
-                    order:            nil,
-                    metadata:         nil
-                )
+            // AROMS-339: the same check in the assertion shape, with the read
+            // region, so Spatial Readings and the legacy languageCheck agree.
+            var req = UpdateTagRequest(
+                label:            nil,
+                expectedOutcome:  finalText.isEmpty ? nil : finalText,
+                checkDescription: nil,
+                order:            nil,
+                metadata:         nil
             )
+            if !finalText.isEmpty {
+                let existing = tag.assertions?.first { $0.kind == "text-match" }
+                req.assertions = [StepAssertion(id: existing?.id ?? "as-\(UUID().uuidString.prefix(8).lowercased())", kind: "text-match", expected: finalText,
+                                                unit: nil, min: nil, max: nil, match: "contains", instrument: nil, region: readRegion,
+                                                onFail: existing?.onFail ?? "block", source: "author")]
+            }
+            _ = try await client.updateTag(id: tag.id, req: req)
         } catch {
             // Non-fatal - log and continue so the reference image is still uploaded
             print("[OCRCapture] Could not update expectedOutcome: \(error.localizedDescription)")

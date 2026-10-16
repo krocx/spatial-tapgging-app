@@ -157,6 +157,8 @@ struct GuideStepPlacementView: View {
     @State private var trainingTarget:      StepTrainingTarget? = nil
     @State private var isPreparingTraining  = false
     @State private var trainingChoiceStep: GuideStep? = nil   // AROMS-331: which step the training sheet is for
+    @State private var labelTrainStep: GuideStep? = nil       // AROMS-339: the step whose label is being trained
+    @State private var labelTrainedStepIds: Set<String> = []  // AROMS-339: trained this session (server has the region)
     @State private var coneTrainedStepIds:  Set<String>         = []
     @State private var sessionTagIds:       [String: String]    = [:]  // stepId → hidden tag id (this session)
     @State private var anchorRecord:        Anchor?             = nil
@@ -871,6 +873,18 @@ struct GuideStepPlacementView: View {
                 guard idx < steps.count else { return }
                 withAnimation { proxy.scrollTo(steps[idx].id, anchor: .center) }
             }
+            // AROMS-339: read the label here, save where it sits on the step's checks.
+            .sheet(isPresented: Binding(get: { labelTrainStep != nil }, set: { if !$0 { labelTrainStep = nil } })) {
+                if let st = labelTrainStep {
+                    ReadingCaptureSheet(step: st,
+                                        frameSource: { arManager.sceneView.session.currentFrame.flatMap { HoneycombCaptureView.rawCameraImage(from: $0) } ?? arManager.sceneView.snapshot() },
+                                        onDone: { _, _ in },
+                                        authoring: true,
+                                        onTrained: { regions in Task { await saveLabelRegions(step: st, regions: regions) } })
+                    .presentationDetents([.medium, .large])
+                    .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                }
+            }
             // AROMS-331: one place to choose the training, with the author's
             // plan first. Retrain is explicit and asks; nothing is hidden
             // behind the word "Trained".
@@ -975,6 +989,19 @@ struct GuideStepPlacementView: View {
                 }
                 .accessibilityLabel(trained ? "Validation trained - tap to retrain" : "Train the validation check")
                 .disabled(isPreparingTraining)
+            }
+            // AROMS-339: a step that reads a label or part number is trained
+            // where the text sits - the operator's location check needs it.
+            if let checks = step.assertions, checks.contains(where: { $0.kind == "text-match" || $0.kind == "code" }), placed {
+                let trained = labelTrainedStepIds.contains(step.id) || checks.contains { $0.region != nil }
+                Button { labelTrainStep = step } label: {
+                    Label(trained ? "Label trained" : "Train label", systemImage: trained ? "checkmark.seal.fill" : "textformat")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(trained ? Color.green : Color.orange)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Color.black.opacity(0.35), in: Capsule())
+                }
+                .accessibilityLabel(trained ? "Label trained - tap to retrain where it sits" : "Train where the label sits")
             }
 
             // U4b: per-slot adjust - every model of a PLACED step can be
@@ -1167,6 +1194,20 @@ struct GuideStepPlacementView: View {
 
     /// Cone (multi-angle) training - presents ConeCaptureView at the pin.
     @MainActor
+    /// AROMS-339: store where each text was read as the assertion's region (PATCH replaces the list).
+    private func saveLabelRegions(step: GuideStep, regions: [String: StepAssertion.AssertionRegion]) async {
+        guard var list = step.assertions, !regions.isEmpty else { return }
+        for i in list.indices { if let r = regions[list[i].id] { list[i].region = r } }
+        var req = UpdateGuideStepRequest()
+        req.assertions = list
+        do {
+            _ = try await SIBClient(settings: settings).updateGuideStep(guideId: guide.id, stepId: step.id, req: req)
+            labelTrainedStepIds.insert(step.id)
+        } catch {
+            saveError = "Could not save the label position: \(friendlyMessage(for: error))"
+        }
+    }
+
     private func beginConeTraining(for step: GuideStep) async {
         guard !isPreparingTraining, let pos = stepPositions[step.id] else { return }
         isPreparingTraining = true

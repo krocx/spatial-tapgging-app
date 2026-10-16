@@ -307,6 +307,9 @@ struct Tag: Codable, Identifiable {
     /// trained for this tag. Nil/false on tags trained before this feature
     /// existed - the client should treat that as "no fail-state".
     let hasFailState: Bool?
+    /// AROMS-339: readings and text checks on this tag (a languageCheck tag
+    /// trained in the app carries one text-match with the read region).
+    var assertions: [StepAssertion]? = nil
     let createdAt: String
     let updatedAt: String
 }
@@ -336,6 +339,8 @@ struct UpdateTagRequest: Codable {
     /// Deep-merged into tag.metadata on the server.
     /// Used to store feature prints, OCR text, and other per-tag payload.
     let metadata:         [String: AnyCodable]?
+    /// AROMS-339: the list replaces; omit to leave as is.
+    var assertions:       [StepAssertion]? = nil
 
     /// Explicit initializer (rather than relying on the synthesized
     /// memberwise init) so `roi` has a real default of `nil` for every

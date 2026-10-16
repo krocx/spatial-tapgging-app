@@ -997,13 +997,16 @@ struct EditStepSheet: View {
                     ForEach($assertions) { $a in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(a.kind == "text-value" ? "Reading" : a.kind == "code" ? "Code" : "Text")
+                                Text(a.kind == "text-value" ? "Reading" : a.kind == "code" ? "Code" : a.kind == "location" ? "Location" : "Text")
                                     .font(.caption.bold()).foregroundStyle(.secondary)
                                 Spacer()
                                 Button(role: .destructive) { assertions.removeAll { $0.id == a.id } } label: { Image(systemName: "trash") }
                                     .buttonStyle(.borderless)
                             }
-                            if a.kind == "text-value" {
+                            if a.kind == "location" {
+                                Text("The label must sit where it was read when the step was trained (Place Steps in AR → Train label).")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            } else if a.kind == "text-value" {
                                 Picker("Instrument", selection: Binding(get: { a.instrument ?? "other" }, set: { a.instrument = $0 })) {
                                     Text("Multimeter").tag("multimeter"); Text("Torque tool").tag("torque"); Text("Leak checker").tag("leak-check"); Text("Other display").tag("other")
                                 }
@@ -1027,6 +1030,9 @@ struct EditStepSheet: View {
                         Button { addAssertion(kind: "text-value") } label: { Label("Reading", systemImage: "gauge.with.needle") }
                         Button { addAssertion(kind: "text-match") } label: { Label("Text", systemImage: "textformat") }
                         Button { addAssertion(kind: "code") } label: { Label("Code", systemImage: "barcode") }
+                        if assertions.contains(where: { $0.kind == "text-match" }) && !assertions.contains(where: { $0.kind == "location" }) {
+                            Button { addAssertion(kind: "location") } label: { Label("Location", systemImage: "mappin.and.ellipse") }
+                        }
                     }
                     .buttonStyle(.bordered)
                 } header: {

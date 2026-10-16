@@ -437,6 +437,9 @@ function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: 
         <button className="btn ghost" onClick={() => add('text-value')}>+ Reading</button>
         <button className="btn ghost" onClick={() => add('text-match')}>+ Text</button>
         <button className="btn ghost" onClick={() => add('code')}>+ Code</button>
+        {assertions.some(a => a.kind === 'text-match') && !assertions.some(a => a.kind === 'location') && (
+          <button className="btn ghost" onClick={() => add('location')} title="The label must sit where it was when the step was trained in Author mode">+ Location</button>
+        )}
       </div>
       <span className="step-check-hint">Read from the camera on the floor - a multimeter, torque or leak-check display, a label, an engraved part number. The frame is the evidence; a typed value is recorded as typed.</span>
     </div>

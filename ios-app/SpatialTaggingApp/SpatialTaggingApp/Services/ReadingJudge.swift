@@ -8,6 +8,7 @@
 // Proprietary & Confidential · Applied Materials.
 
 import Foundation
+import CoreGraphics
 
 /// One assertion's outcome - mirrors `StepReadingResult` in shared/src/index.ts.
 struct StepReadingResult: Codable, Equatable, Identifiable {
@@ -72,6 +73,24 @@ enum ReadingJudge {
         }
         let what = a.kind == "code" ? "Code" : "Read"
         return base(pass, nil, pass ? "\(what) \"\(read)\" - matches" : "\(what) \"\(read)\" - expected \(a.expected)")
+    }
+
+    /// AROMS-339: a `location` assertion - the text the step reads sits where it
+    /// was read when the step was trained. `trained` is the region stored on the
+    /// step's text-match assertion; `matched` is the box of the line that matched
+    /// it now (both top-left normalised). Within 0.2 of the frame in centre
+    /// distance passes; untrained or unmatched is a miss said in words.
+    static func evaluateLocation(_ a: StepAssertion, trained: StepAssertion.AssertionRegion?, matched: CGRect?, typed: Bool) -> StepReadingResult {
+        let now = ISO8601DateFormatter().string(from: Date())
+        let mk = { (pass: Bool, words: String) in
+            StepReadingResult(assertionId: a.id, kind: a.kind, pass: pass, read: matched.map { "\(Int($0.midX * 100)),\(Int($0.midY * 100))" } ?? "", value: nil, typed: typed, onFail: a.onFail, words: words, at: now)
+        }
+        guard let t = trained else { return mk(false, "Label location not trained yet - train the label in Author mode") }
+        guard let m = matched else { return mk(false, "Label text not found, so its place could not be checked") }
+        let dx = (m.midX - (t.x + t.w / 2)), dy = (m.midY - (t.y + t.h / 2))
+        let d = (dx * dx + dy * dy).squareRoot()
+        let pass = d <= 0.2
+        return mk(pass, pass ? "Label is in the trained place" : "Label is \(dx > 0.1 ? "to the right of" : dx < -0.1 ? "to the left of" : dy > 0.1 ? "below" : dy < -0.1 ? "above" : "away from") the trained place")
     }
 
     /// The step's verdict: every blocking assertion passed. Flagged misses are reported, not blocking.

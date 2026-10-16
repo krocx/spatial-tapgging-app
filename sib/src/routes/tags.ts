@@ -1,3 +1,4 @@
+import { sanitizeAssertions } from '../oms/assertions.js';
 import { Router, type Request, type Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import type { Tag, CreateTagRequest, UpdateTagRequest, ApiResponse } from '@spatial/shared';
@@ -142,6 +143,8 @@ router.patch('/:id', (req: Request, res: Response) => {
     // Deep-merge incoming metadata so existing keys (anchor_rel_*, etc.) are preserved.
     // Feature prints and OCR text are stored this way without touching other fields.
     ...(body.metadata !== undefined && { metadata: { ...tag.metadata, ...body.metadata } }),
+    // AROMS-339: readings and text checks, the step's shape; bounds derived server-side.
+    ...(body.assertions !== undefined && { assertions: sanitizeAssertions(body.assertions) }),
     updatedAt: now,
   };
 
