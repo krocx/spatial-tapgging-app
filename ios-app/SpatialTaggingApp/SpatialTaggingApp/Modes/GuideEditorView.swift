@@ -970,11 +970,10 @@ struct EditStepSheet: View {
                                 .font(.footnote)
                             Spacer()
                         }
-                        Label(trainedAt != nil
-                              ? "Retrain from \"Place Steps in AR\": tap the step's Trained chip."
-                              : "Train from \"Place Steps in AR\": tap the step's Train chip where the operator will stand.",
-                              systemImage: "arkit")
-                            .font(.footnote).foregroundStyle(.secondary)
+                        // One status line: what is trained in AR and what still needs it.
+                        // The plan above says what; Place Steps in AR is where; nothing else to do here.
+                        Label(trainingStatusWords, systemImage: "arkit")
+                            .font(.footnote).foregroundStyle(trainingComplete ? .secondary : .orange)
                         if trainedAt != nil {
                             Button("Remove training", role: .destructive) {
                                 Task { await removeValidationTraining() }
@@ -995,6 +994,7 @@ struct EditStepSheet: View {
                 // ── Readings and text checks (AROMS-332) ─────────────────────
                 Section {
                     ForEach($assertions) { $a in
+                        if a.kind != "location" {   // position rides on the Text row's switch
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text(a.kind == "text-value" ? "Reading" : a.kind == "code" ? "Code" : a.kind == "location" ? "Location" : "Text")
@@ -1023,16 +1023,28 @@ struct EditStepSheet: View {
                                 Text("Block the step").tag("block"); Text("Flag, step proceeds").tag("flag")
                             }
                             .pickerStyle(.segmented)
+                            if a.kind == "text-match" {
+                                // Position is a property of the label check, not a check of its own:
+                                // the switch keeps one paired "location" entry on the wire.
+                                Toggle("Also check it sits where it was trained", isOn: Binding(
+                                    get: { assertions.contains { $0.kind == "location" } },
+                                    set: { on in
+                                        if on { if !assertions.contains(where: { $0.kind == "location" }) { addAssertion(kind: "location") } }
+                                        else { assertions.removeAll { $0.kind == "location" } }
+                                    }))
+                                .font(.footnote)
+                            }
                         }
                         .padding(.vertical, 4)
+                        }
                     }
                     HStack(spacing: 10) {
                         Button { addAssertion(kind: "text-value") } label: { Label("Reading", systemImage: "gauge.with.needle") }
                         Button { addAssertion(kind: "text-match") } label: { Label("Text", systemImage: "textformat") }
                         Button { addAssertion(kind: "code") } label: { Label("Code", systemImage: "barcode") }
-                        if assertions.contains(where: { $0.kind == "text-match" }) && !assertions.contains(where: { $0.kind == "location" }) {
-                            Button { addAssertion(kind: "location") } label: { Label("Location", systemImage: "mappin.and.ellipse") }
-                        }
+                    }
+                    if !assertions.isEmpty {
+                        Label(labelTrainingWords, systemImage: "arkit").font(.footnote).foregroundStyle(labelTrainingNeeded ? .orange : .secondary)
                     }
                     .buttonStyle(.bordered)
                 } header: {
@@ -1371,6 +1383,24 @@ struct EditStepSheet: View {
             validationNote = friendlyMessage(for: error)
         }
         validationBusy = false
+    }
+
+    // ── Training status, in words (one line on the page, same facts as the AR tray) ──
+    private var labelTrainingNeeded: Bool {
+        assertions.contains { $0.kind == "location" } && !assertions.contains { $0.kind == "text-match" && $0.region != nil }
+    }
+    private var labelTrainingWords: String {
+        if !assertions.contains(where: { $0.kind == "text-match" || $0.kind == "code" }) { return "Readings are checked live on the floor - nothing to train." }
+        if labelTrainingNeeded { return "Label position needs training: Place Steps in AR → the step's Train chip → Read the label where it should be." }
+        return assertions.contains { $0.kind == "location" } ? "Label trained in AR, position known." : "Label text is checked live; turn on the position switch to also check where it sits."
+    }
+    private var trainingComplete: Bool { trainedAt != nil && !labelTrainingNeeded }
+    private var trainingStatusWords: String {
+        var done: [String] = [], todo: [String] = []
+        if trainedAt != nil { done.append(trainedMode == "cone" ? "cone" : "quick shot") } else { todo.append(validationPlan == "cone" ? "cone sweep" : "quick shot") }
+        if assertions.contains(where: { $0.kind == "location" }) { if labelTrainingNeeded { todo.append("label position") } else { done.append("label") } }
+        if todo.isEmpty { return "Trained in AR: \(done.joined(separator: " · ")). Nothing left to do here; retrain from the step's chip in Place Steps in AR." }
+        return "Needs training in AR: \(todo.joined(separator: " · "))" + (done.isEmpty ? "" : " (done: \(done.joined(separator: " · ")))") + ". Open Place Steps in AR and tap the step's Train chip."
     }
 
     /// AROMS-332: a new check with sensible defaults.

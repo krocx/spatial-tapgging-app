@@ -93,7 +93,7 @@ struct ReadingCaptureSheet: View {
                     HStack(spacing: 10) {
                         Button { phase = .framing; frame = nil; recognised = []; results = [] } label: { Label("Read again", systemImage: "arrow.counterclockwise") }
                             .buttonStyle(.bordered)
-                        if let a = assertions.first(where: { r in !(results.first { $0.assertionId == r.id }?.pass ?? false) }) {
+                        if let a = assertions.first(where: { r in r.kind != "location" && !(results.first { $0.assertionId == r.id }?.pass ?? false) }) {
                             Button { typing = a; typedText = "" } label: { Label("Type it instead", systemImage: "keyboard") }
                                 .buttonStyle(.bordered)
                         }
@@ -192,7 +192,12 @@ struct ReadingCaptureSheet: View {
         // AROMS-339: location - the text's place now against where it was trained
         // (the region stored on the step's first trained text-match).
         for a in assertions where a.kind == "location" {
-            let anchorText = assertions.first { $0.kind == "text-match" && $0.region != nil }
+            let anchorText = assertions.first { $0.kind == "text-match" && $0.region != nil } ?? assertions.first { $0.kind == "text-match" }
+            if anchorText == nil {
+                // A position with no label text to anchor it is a configuration slip, said in words, never a block.
+                out.append(StepReadingResult(assertionId: a.id, kind: a.kind, pass: false, read: "", value: nil, typed: false, onFail: "flag", words: "No label text to check the position against - skipped", at: ISO8601DateFormatter().string(from: Date())))
+                continue
+            }
             let matched = anchorText.flatMap { matchedBoxes[$0.id] }
             out.append(ReadingJudge.evaluateLocation(a, trained: anchorText?.region, matched: matched, typed: false))
         }

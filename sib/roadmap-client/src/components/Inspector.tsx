@@ -406,7 +406,7 @@ function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: 
   };
   return (
     <div className="inspector-field">Readings and text checks
-      {assertions.map(a => (
+      {assertions.filter(a => a.kind !== 'location').map(a => (
         <div key={a.id} className="assertion-row">
           <div className="assertion-head">
             <span className="chip">{a.kind === 'text-value' ? 'Reading' : a.kind === 'code' ? 'Code' : a.kind === 'location' ? 'Location' : 'Text'}</span>
@@ -430,16 +430,24 @@ function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: 
                    onChange={e => update(a.id, { expected: e.target.value })} />
           )}
           {a.kind === 'text-value' && <span className="step-check-hint">{boundsWords(a)}</span>}
-          {a.kind === 'location' && <span className="step-check-hint">Checked against where the text was read when the step was trained on the iPad.</span>}
+          {a.kind === 'text-match' && (
+            <label className="step-check">
+              <input type="checkbox" checked={assertions.some(x => x.kind === 'location')}
+                     onChange={e => save(e.target.checked
+                       ? (assertions.some(x => x.kind === 'location') ? assertions : [...assertions, { id: `as-${crypto.randomUUID().slice(0, 8)}`, kind: 'location' as const, expected: '', onFail: a.onFail, source: 'author' as const }])
+                       : assertions.filter(x => x.kind !== 'location'))} />
+              Also check it sits where it was trained <span className="step-check-hint">- the author reads the label once in Place Steps in AR</span>
+            </label>
+          )}
         </div>
       ))}
+      {assertions.some(a => a.kind === 'location') && !assertions.some(a => a.kind === 'text-match' && a.region) && (
+        <span className="step-check-hint" style={{ color: 'var(--ax-orange)' }}>Label position needs training on the iPad (Place Steps in AR → the step's Train chip). Until then the operator sees it flagged, not blocked.</span>
+      )}
       <div className="assertion-add">
         <button className="btn ghost" onClick={() => add('text-value')}>+ Reading</button>
         <button className="btn ghost" onClick={() => add('text-match')}>+ Text</button>
         <button className="btn ghost" onClick={() => add('code')}>+ Code</button>
-        {assertions.some(a => a.kind === 'text-match') && !assertions.some(a => a.kind === 'location') && (
-          <button className="btn ghost" onClick={() => add('location')} title="The label must sit where it was when the step was trained in Author mode">+ Location</button>
-        )}
       </div>
       <span className="step-check-hint">Read from the camera on the floor - a multimeter, torque or leak-check display, a label, an engraved part number. The frame is the evidence; a typed value is recorded as typed.</span>
     </div>

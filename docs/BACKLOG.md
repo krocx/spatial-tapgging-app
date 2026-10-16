@@ -95,6 +95,7 @@ Newest at the bottom. `Updated` is the date the row last changed.
 | AROMS-343 | iOS: onChange(of:perform:) deprecation (iOS 17) - all 53 sites moved to the two-parameter or zero-parameter form; clean build log for TestFlight | ios | PO | done | 2026.4.50 | 2026-10-16 | | Karthik to confirm the build |
 | AROMS-344 | iOS build warnings before TestFlight: UIScreen.main → the scene view's bounds (5), unused values, trailing-closure form, project-level MARKETING_VERSION so the widget's CFBundleShortVersionString matches, App Store icon without alpha, loose icon variants moved out of the icon set | ios | PO | done | 2026.4.50 | 2026-10-16 | | the two hitTest(_:types:) deprecations stay (AROMS-345) |
 | AROMS-345 | iOS: ARSCNView.hitTest(_:types:) (deprecated iOS 14) → raycastQuery in AuthorModeView and LocTagAuthorView; needs a placement regression test on device | ios | PO | todo | | 2026-10-16 | | behaviour change risk - not before a TestFlight build |
+| AROMS-346 | Author journey for readings and labels (UX review): position as a switch on the Text check, one status line on the step page, one Train chip and sheet in Place Steps with the label reading chained after presence training, untrained position flagged not blocking for operators, library chip says "position needs training" | ios, designer, portal | PO | done | 2026.4.50 | 2026-10-16 | | spec §8; Karthik to confirm on device |
 ## 3. June 2026 import (AROMS-1 … 99): close-out
 
 Mark in Jira, do not re-import. Where an item is superseded, the key above

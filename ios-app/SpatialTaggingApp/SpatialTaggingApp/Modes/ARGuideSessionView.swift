@@ -3060,7 +3060,12 @@ struct ARGuideSessionView: View {
         if let checks = step.assertions, !checks.isEmpty, !progresses[index].isCompleted {
             let done = progresses[index].readings
             let blocking = checks.filter { $0.blocks }
-            let missing = blocking.filter { c in !(done.first { $0.assertionId == c.id }?.pass ?? false) }
+            // Missing = never read, or read and failed with a blocking result. A result the
+            // device downgraded to "flag" (untrained position, no text to anchor) lets the step go.
+            let missing = blocking.filter { c in
+                guard let r = done.first(where: { $0.assertionId == c.id }) else { return true }
+                return !r.pass && r.onFail != "flag"
+            }
             if !missing.isEmpty {
                 showNotice(done.isEmpty ? "Read the \(checks.first?.isReading == true ? (checks.first?.instrumentWords.lowercased() ?? "display") : "label") to complete this step" : "A reading is outside what the step expects - read again")
                 readingIndex = index

@@ -199,7 +199,7 @@ struct StepAssertion: Codable, Identifiable, Equatable {
         switch kind {
         case "text-value": return "\(instrumentWords): \(expected)"
         case "code":       return "Code \(expected)"
-        case "location":   return "Label in the trained place"
+        case "location":   return "Label where it should be"
         default:           return "Reads \"\(expected)\""
         }
     }

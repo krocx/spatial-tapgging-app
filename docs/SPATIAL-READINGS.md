@@ -90,3 +90,29 @@ API allows (AR Developer, FY27).
 
 Reading handwriting; reading from a photo the operator picks from the
 library (the camera frame is the point); any server-side OCR.
+
+## 8. Author journey (reviewed 2026-10-16, AROMS-346)
+
+One rule: the step page says **what** the step checks, Place Steps in AR is
+**where** it is trained, and both show one status line.
+
+- Step page: Require validation and the Cone / Quick shot plan; the Text,
+  Reading and Code checks; on a Text check a switch "Also check it sits
+  where it was trained" (position is a property of the label check, not a
+  check of its own - the `location` kind stays on the wire, paired). One
+  status line under the checks: "Trained in AR: cone · label" or "Needs
+  training in AR: label position". Nothing on the page is a step to do
+  after training.
+- Place Steps in AR: one chip per step whose words are the state ("Train ·
+  cone + label", "Trained · label needs training", "Trained · cone ·
+  label"); tapping opens one sheet with each half and its own button;
+  when a cone sweep or quick shot finishes and the label position is still
+  untrained, the label reading opens on its own.
+- Operator: an untrained position, or a position with no label text to
+  anchor it, is **flagged, not blocking** ("Label position not trained -
+  skipped"), as an untrained presence check falls back to manual. Text is
+  always checked live; only position needs the training. Words for
+  operators: "Label where it should be".
+- Portal: the Guide Library's "Reads …" chip says "· position needs
+  training"; the Designer's Text row carries the same switch and the same
+  orange hint.

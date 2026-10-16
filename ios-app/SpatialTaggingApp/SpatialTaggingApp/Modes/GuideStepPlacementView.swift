@@ -895,20 +895,22 @@ struct GuideStepPlacementView: View {
                 presenting: trainingChoiceStep
             ) { step in
                 let plan = step.validationPlan ?? "cone"
-                let trained = coneTrainedStepIds.contains(step.id) || step.validationTrained
-                if plan == "cone" {
-                    Button(trained ? "Retrain with the cone sweep" : "Train with the cone sweep · planned") { Task { await beginConeTraining(for: step) } }
-                    Button(trained ? "Retrain with a quick shot from here" : "Quick shot from here instead") { Task { await quickShotTrain(for: step) } }
-                } else {
-                    Button(trained ? "Retrain with a quick shot from here" : "Train with a quick shot from here · planned") { Task { await quickShotTrain(for: step) } }
-                    Button(trained ? "Retrain with the cone sweep" : "Cone sweep instead (multi-angle)") { Task { await beginConeTraining(for: step) } }
+                let trained = presenceTrained(step)
+                if step.needsValidation {
+                    if plan == "cone" {
+                        Button(trained ? "Retrain presence with the cone sweep" : "Train presence with the cone sweep · planned") { Task { await beginConeTraining(for: step) } }
+                        Button(trained ? "Retrain presence with a quick shot" : "Quick shot from here instead") { Task { await quickShotTrain(for: step) } }
+                    } else {
+                        Button(trained ? "Retrain presence with a quick shot" : "Train presence with a quick shot · planned") { Task { await quickShotTrain(for: step) } }
+                        Button(trained ? "Retrain presence with the cone sweep" : "Cone sweep instead (multi-angle)") { Task { await beginConeTraining(for: step) } }
+                    }
+                }
+                if wantsPosition(step) && !labelChecks(step).isEmpty {
+                    Button(labelTrained(step) ? "Re-read the label where it should be" : "Read the label where it should be" + (step.needsValidation && !trained ? "" : " · needed")) { labelTrainStep = step }
                 }
                 Button("Cancel", role: .cancel) { }
             } message: { step in
-                let trained = coneTrainedStepIds.contains(step.id) || step.validationTrained
-                Text(trained
-                     ? "Trained with \(step.coneTrained || coneTrainedStepIds.contains(step.id) ? "the cone sweep" : "a quick shot"). Retraining replaces it."
-                     : "Plan: \((step.validationPlan ?? "cone") == "cone" ? "cone sweep, multi-angle (recommended for assembly steps)" : "quick shot, one photo from where the operator will stand"). Set in the Designer or the Guide Library.")
+                Text(trainingSheetWords(step))
             }
         }
     }
@@ -973,35 +975,20 @@ struct GuideStepPlacementView: View {
             // V1: cone training for validation steps - tap the seal to train
             // this step with the Spatial Inspection dome sweep. Only shown
             // once the step has a pin (the cone anchors at the pin).
-            if step.needsValidation && placed {
-                // AROMS-331: one control that says the state and opens the
-                // choice (plan first); the camera and cone no longer compete.
-                let cone    = coneTrainedStepIds.contains(step.id) || step.coneTrained
-                let trained = cone || step.validationTrained
-                let plan    = step.validationPlan ?? "cone"
+            // One chip for everything the step's plan needs trained in AR
+            // (presence by cone / quick shot, label position): the words are the
+            // state, the tap opens one sheet with each half and its own button.
+            if (step.needsValidation || (wantsPosition(step) && !labelChecks(step).isEmpty)) && placed {
+                let chip = trainChipWords(step)
                 Button { trainingChoiceStep = step } label: {
-                    Label(trained ? "Trained · \(cone ? "cone" : "quick shot")" : "Train · \(plan == "cone" ? "cone" : "quick shot")",
-                          systemImage: trained ? "checkmark.seal.fill" : (plan == "cone" ? "seal" : "camera"))
+                    Label(chip.text, systemImage: chip.done ? "checkmark.seal.fill" : "seal")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(trained ? Color.green : Color.orange)
+                        .foregroundStyle(chip.done ? Color.green : Color.orange)
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Color.black.opacity(0.35), in: Capsule())
                 }
-                .accessibilityLabel(trained ? "Validation trained - tap to retrain" : "Train the validation check")
+                .accessibilityLabel(chip.done ? "Trained - tap to retrain" : "Train what this step checks")
                 .disabled(isPreparingTraining)
-            }
-            // AROMS-339: a step that reads a label or part number is trained
-            // where the text sits - the operator's location check needs it.
-            if let checks = step.assertions, checks.contains(where: { $0.kind == "text-match" || $0.kind == "code" }), placed {
-                let trained = labelTrainedStepIds.contains(step.id) || checks.contains { $0.region != nil }
-                Button { labelTrainStep = step } label: {
-                    Label(trained ? "Label trained" : "Train label", systemImage: trained ? "checkmark.seal.fill" : "textformat")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(trained ? Color.green : Color.orange)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .background(Color.black.opacity(0.35), in: Capsule())
-                }
-                .accessibilityLabel(trained ? "Label trained - tap to retrain where it sits" : "Train where the label sits")
             }
 
             // U4b: per-slot adjust - every model of a PLACED step can be
@@ -1194,6 +1181,35 @@ struct GuideStepPlacementView: View {
 
     /// Cone (multi-angle) training - presents ConeCaptureView at the pin.
     @MainActor
+    // ── What a step needs trained, in one place (the chip, the sheet and the chain read this) ──
+    private func labelChecks(_ step: GuideStep) -> [StepAssertion] { (step.assertions ?? []).filter { $0.kind == "text-match" || $0.kind == "code" } }
+    private func wantsPosition(_ step: GuideStep) -> Bool { (step.assertions ?? []).contains { $0.kind == "location" } }
+    private func labelTrained(_ step: GuideStep) -> Bool { labelTrainedStepIds.contains(step.id) || (step.assertions ?? []).contains { $0.kind == "text-match" && $0.region != nil } }
+    /// Only a position check needs the label read in AR; text alone is checked live.
+    private func labelNeedsTraining(_ step: GuideStep) -> Bool { wantsPosition(step) && !labelChecks(step).isEmpty && !labelTrained(step) }
+    private func presenceTrained(_ step: GuideStep) -> Bool { coneTrainedStepIds.contains(step.id) || step.validationTrained }
+    /// Chip text: "Train · cone + label", "Trained · label needs reading", "Trained".
+    private func trainChipWords(_ step: GuideStep) -> (text: String, done: Bool) {
+        var todo: [String] = [], done: [String] = []
+        if step.needsValidation { if presenceTrained(step) { done.append(coneTrainedStepIds.contains(step.id) || step.coneTrained ? "cone" : "quick shot") } else { todo.append((step.validationPlan ?? "cone") == "cone" ? "cone" : "quick shot") } }
+        if wantsPosition(step) && !labelChecks(step).isEmpty { if labelTrained(step) { done.append("label") } else { todo.append("label") } }
+        if todo.isEmpty { return ("Trained" + (done.isEmpty ? "" : " · \(done.joined(separator: " · "))"), true) }
+        return ((done.isEmpty ? "Train · " : "Trained · ") + (done.isEmpty ? todo.joined(separator: " + ") : "\(todo.joined(separator: " + ")) needs training"), false)
+    }
+
+    private func trainingSheetWords(_ step: GuideStep) -> String {
+        var parts: [String] = []
+        if step.needsValidation {
+            parts.append(presenceTrained(step)
+                ? "Presence: trained with \(coneTrainedStepIds.contains(step.id) || step.coneTrained ? "the cone sweep" : "a quick shot"); retraining replaces it."
+                : "Presence: plan is \((step.validationPlan ?? "cone") == "cone" ? "the cone sweep (multi-angle)" : "a quick shot from where the operator will stand").")
+        }
+        if wantsPosition(step) && !labelChecks(step).isEmpty {
+            parts.append(labelTrained(step) ? "Label: position known." : "Label: read it once where it should be so the operator's position check has something to compare with.")
+        }
+        return parts.joined(separator: "\n")
+    }
+
     /// AROMS-339: store where each text was read as the assertion's region (PATCH replaces the list).
     private func saveLabelRegions(step: GuideStep, regions: [String: StepAssertion.AssertionRegion]) async {
         guard var list = step.assertions, !regions.isEmpty else { return }
@@ -1283,6 +1299,7 @@ struct GuideStepPlacementView: View {
             saveError = nil
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             showTrainingToast(.trained)
+            if labelNeedsTraining(step) { labelTrainStep = step }   // the other half, without remembering it
         } catch {
             saveError = "Quick-shot training failed: \(error.localizedDescription)"
             showTrainingToast(.failed("Training failed: \(error.localizedDescription)"), autoHide: false)
@@ -1307,6 +1324,7 @@ struct GuideStepPlacementView: View {
                 coneTrainedStepIds.insert(step.id)
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 showTrainingToast(.trained)
+                if labelNeedsTraining(step) { labelTrainStep = step }   // the other half, without remembering it
             }
         } catch {
             await MainActor.run {
