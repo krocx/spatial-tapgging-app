@@ -28,7 +28,15 @@ Each has a kind, an expectation, where to look, and what a miss means.
 | `code` | a barcode / QR / Data Matrix | expected payload (exact / prefix / regex) | the Luna label's serial |
 | `location` | where the read text sits in the frame against the trained reference | within tolerance of the trained region | the label is on the left door, not the right |
 
-Fields: `{ kind, expected, unit?, tolerance?, match?: 'exact'|'contains'|'any-of'|'regex', region?, onFail: 'block'|'flag', source: 'author'|'import' }`.
+Fields: `{ kind, expected, unit?, min?, max?, match?: 'exact'|'contains'|'any-of'|'regex', region?, onFail: 'block'|'flag', source: 'author'|'import' }`.
+
+For `text-value` the comparison always runs on `min` / `max` (either side
+optional); the ME enters the expectation in whichever form the work
+instruction uses and the app derives the bounds: "80 Ω ± 5 %" → 76 to 84,
+"12.0 N·m ± 0.5" → 11.5 to 12.5, "≤ 1.0e-9" → max only, "≥ 20 psi" → min
+only. The typed form is kept in `expected` for display, so a verdict reads
+"79.6 Ω - within 80 Ω ±5 %". A new entry form later touches the authoring
+field only, never the stored bounds or the operator side.
 A step's verdict is the conjunction; each assertion keeps its own result in
 the evidence. "Flag" records a miss and lets the step proceed; "block"
 behaves like a failed validation today. Both are authored per assertion;
