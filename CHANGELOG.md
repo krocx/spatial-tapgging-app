@@ -29,6 +29,15 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-337: readings and text checks on a step (spatial readings,
+  docs/SPATIAL-READINGS.md).** A step carries `assertions`: a reading from
+  an instrument display (multimeter, torque tool, leak checker), text on a
+  label or engraved on a part, or a code, each with the ME's expectation
+  typed as the work instruction says it and a block-or-flag rule. The
+  Designer's step inspector and the iPad step page author them; SIB derives
+  the bounds ("80 Ω ±5 %" → 76 to 84) with one parser both ends use; the
+  compiler, import and re-sync carry them; the Guide Library says "Reads …"
+  on the step. The iPad capture and verdict follow (AROMS-338).
 - **AROMS-335: every chamber in the Guide Library.** A chamber with no
   guides yet is listed in its configuration block with "No guides on this
   chamber yet" and the next step: Import a guide (the chamber preselected),

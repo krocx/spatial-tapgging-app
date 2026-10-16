@@ -6962,6 +6962,10 @@ function renderStepsInCard(guideId, anchorId) {
     const plan = step.validationPlan;
     const trainedTag = step.validationTrainedAt
       ? `<span class="gl-step-tag gl-step-placed" title="Trained on the iPad ${esc(new Date(step.validationTrainedAt).toLocaleDateString())}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Trained · ${planLabel[step.validationMode] || 'quick shot'}</span>` : '';
+    // AROMS-332: what the step reads from the camera, in words.
+    const reads = Array.isArray(step.assertions) ? step.assertions : [];
+    const readsTag = reads.length
+      ? `<span class="gl-step-tag gl-step-img" title="${esc(reads.map(a => a.kind === 'text-value' ? `${a.instrument || 'display'}: ${a.expected}` : a.kind === 'code' ? `code: ${a.expected}` : a.kind === 'location' ? 'label location' : `text: ${a.expected}`).join('\n'))}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> Reads ${reads.length === 1 ? (reads[0].kind === 'text-value' ? reads[0].expected : reads[0].kind === 'code' ? 'a code' : reads[0].kind === 'location' ? 'label location' : 'text') : `${reads.length} checks`}</span>` : '';
     const planTag = `<button type="button" class="gl-step-tag${plan ? ' gl-step-img' : ''}" style="cursor:pointer;border:0" title="Validation training planned for this step - click to change (the iPad offers it by default when training)" onclick="event.stopPropagation(); glCyclePlan('${guideId}','${anchorId}','${step.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-target"/></svg> ${plan ? `Plan: ${planLabel[plan]}` : 'No validation planned'}</button>`;
 
     html += `<div class="gl-step-row">
@@ -6969,7 +6973,7 @@ function renderStepsInCard(guideId, anchorId) {
       <div class="gl-step-body">
         <div class="gl-step-title">${esc(title)}</div>
         <div class="gl-step-text">${esc(step.text)}</div>
-        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${modelsTag}${rotTag}${partsTag}${planTag}${trainedTag}${opacityCtl}</div>
+        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${modelsTag}${rotTag}${partsTag}${planTag}${trainedTag}${readsTag}${opacityCtl}</div>
       </div>
     </div>`;
   }

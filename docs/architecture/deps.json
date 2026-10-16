@@ -234,6 +234,7 @@
    "models/glb-geometry.ts"
   ],
   "oms/anchor-accuracy.ts": [],
+  "oms/assertions.ts": [],
   "oms/insights.ts": [
    "oms/intelligence.ts"
   ],
@@ -378,6 +379,7 @@
    "models/mindmap.model.ts",
    "models/part-resolver.ts",
    "models/variants.ts",
+   "oms/assertions.ts",
    "oms/step-validation.ts",
    "perception/image-comparator.ts",
    "procedure/designer-images.ts",

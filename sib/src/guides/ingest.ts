@@ -242,6 +242,8 @@ export async function applyImportedGuide(
       completionRequired: s.completionRequired ?? true,
       ...(s.evidenceRequired === true ? { evidenceRequired: true } : {}),
       ...(s.validationPlan ? { validationPlan: s.validationPlan } : existing?.validationPlan ? { validationPlan: existing.validationPlan } : {}),
+      // AROMS-332: an authoring surface that sends assertions owns the list; one that is silent keeps the step's.
+      ...(s.assertions ? { assertions: s.assertions } : existing?.assertions ? { assertions: existing.assertions } : {}),
       // CAD-driven presentation (AR OJT): the import owns node deltas and the
       // suggested view outright - they are authoring data, not placement.
       // A source that knows nothing about the assembly (older designer maps,

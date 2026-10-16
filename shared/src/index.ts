@@ -1100,6 +1100,38 @@ export type GuideStepMediaType = 'image' | 'video' | 'glb';
  * mediaPath is the filename on the SIB step-image store - absent when no media is attached.
  * completionRequired: when true the Operator must tap the checkmark before advancing.
  */
+/**
+ * AROMS-332 (2026.4.50): one check a step or tag makes on the captured frame,
+ * beside the trained appearance. See docs/SPATIAL-READINGS.md.
+ *   text-match  printed or engraved text equals `expected` (per `match`)
+ *   text-value  a number read on an instrument display is within min..max
+ *   code        a barcode / QR / Data Matrix payload matches `expected`
+ *   location    the read text sits where the trained reference had it
+ * A step's verdict is the conjunction; each assertion carries its own result
+ * in the evidence. `onFail` 'block' = the step cannot complete (as a failed
+ * validation today); 'flag' = recorded, the step proceeds.
+ */
+export type StepAssertionKind = 'text-match' | 'text-value' | 'code' | 'location';
+export interface StepAssertion {
+  id:        string;
+  kind:      StepAssertionKind;
+  /** What the ME typed / trained: the text, the code, or the reading in the work instruction's own form ("80 Ω ±5 %"). */
+  expected:  string;
+  /** text-value: the unit as displayed (Ω, N·m, mbar·l/s). */
+  unit?:     string;
+  /** text-value: comparison bounds derived from `expected`; either side may be open. */
+  min?:      number;
+  max?:      number;
+  /** text-match / code: how `expected` is compared; default 'exact' (case and whitespace folded). */
+  match?:    'exact' | 'contains' | 'any-of' | 'regex';
+  /** Which instrument the reading comes from, for the operator's framing hint. */
+  instrument?: 'multimeter' | 'torque' | 'leak-check' | 'other';
+  /** Where in the trained reference frame the text was read (normalised 0..1 box), when trained. */
+  region?:   { x: number; y: number; w: number; h: number };
+  onFail:    'block' | 'flag';
+  source:    'author' | 'import';
+}
+
 export interface GuideStep {
   id:                 string;
   guideId:            string;
@@ -1200,6 +1232,8 @@ export interface GuideStep {
    * what was actually trained. 'single' = quick shot, 'cone' = dome sweep.
    */
   validationPlan?:    'single' | 'cone';
+  /** AROMS-332: readings and text checks on this step (docs/SPATIAL-READINGS.md). */
+  assertions?:        StepAssertion[];
   /** K5: the operator must attach an evidence photo before completing. */
   evidenceRequired?:  boolean;
   createdAt:          string;
@@ -1256,6 +1290,8 @@ export type UpdateGuideStepRequest = {
   validationRequired?: boolean;
   /** AROMS-331: planned training mode; null clears. */
   validationPlan?:     'single' | 'cone' | null;
+  /** AROMS-332: the full list replaces the step's assertions; null or [] clears. */
+  assertions?:         StepAssertion[] | null;
   /** K5: evidence photo mandatory before completion. */
   evidenceRequired?:   boolean;
 };
@@ -1918,6 +1954,8 @@ export interface ImportedGuideStep {
   evidenceRequired?:    boolean;
   /** AROMS-331: planned training mode (Designer / import). */
   validationPlan?:      'single' | 'cone';
+  /** AROMS-332: readings and text checks authored in the Designer or found by the import. */
+  assertions?:          StepAssertion[];
   // 3D ghost overlay ASSIGNMENT (which model, how big, how transparent).
   // Deliberately excludes offsets/rotation: those are AR placement, owned by
   // the device, and survive re-sync - see applyImportedGuide.

@@ -34,6 +34,7 @@ import type {
   GuideStepNode,
   GuideStepView,
   ProcedureIssue,
+  StepAssertion,
 } from '@spatial/shared';
 
 /** Canvas reading order: left to right, then top to bottom. */
@@ -68,6 +69,7 @@ interface StepMeta {
   optional?:     boolean;
   evidenceRequired?: boolean;
   validationPlan?: 'single' | 'cone';
+  assertions?: StepAssertion[];
   imageFile?:    string;
   linkUrl?:      string;
   modelId?:      string;
@@ -157,6 +159,7 @@ function stepMetaOf(node: MindmapNode): StepMeta {
     optional:     m.optional === true,
     evidenceRequired: m.evidenceRequired === true,
     validationPlan: m.validationPlan === 'single' || m.validationPlan === 'cone' ? m.validationPlan : undefined,
+    assertions: Array.isArray(m.assertions) && m.assertions.length ? (m.assertions as StepAssertion[]) : undefined,
     imageFile:    typeof m.imageFile === 'string' && m.imageFile ? m.imageFile : undefined,
     // Only http(s) survives - anything else would produce a dead button on device.
     linkUrl:      typeof m.linkUrl === 'string' && /^https?:\/\//i.test(m.linkUrl.trim())
@@ -401,6 +404,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
       completionRequired: (meta.optional || node.metadata?.optional === true) ? false : true,
       ...(meta.evidenceRequired === true ? { evidenceRequired: true } : {}),
       ...(meta.validationPlan ? { validationPlan: meta.validationPlan } : {}),
+      ...(meta.assertions ? { assertions: meta.assertions } : {}),
     };
     if (meta.ttsText)      step.ttsText      = meta.ttsText;
     if (meta.imageFile)    step.imageFile    = meta.imageFile;

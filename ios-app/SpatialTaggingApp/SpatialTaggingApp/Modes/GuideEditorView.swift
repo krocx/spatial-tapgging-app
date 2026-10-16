@@ -889,6 +889,7 @@ struct EditStepSheet: View {
     @State private var evidenceOn        = false
     @State private var trainedAt:        String? = nil
     @State private var validationPlan:   String  = "cone"    // AROMS-331: "single" | "cone"
+    @State private var assertions:       [StepAssertion] = []   // AROMS-332
     @State private var trainedMode:      String? = nil
     @State private var validationBusy    = false
     @State private var validationNote:   String? = nil
@@ -989,6 +990,49 @@ struct EditStepSheet: View {
                     Text("Validation")
                 } footer: {
                     Text("Uses the platform's Spatial Inspection engine. Cone = most tolerant of viewpoint; quick-shot = one frame plus your stance, and the operator is guided back to it with a ghost overlay.")
+                }
+
+                // ── Readings and text checks (AROMS-332) ─────────────────────
+                Section {
+                    ForEach($assertions) { $a in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(a.kind == "text-value" ? "Reading" : a.kind == "code" ? "Code" : "Text")
+                                    .font(.caption.bold()).foregroundStyle(.secondary)
+                                Spacer()
+                                Button(role: .destructive) { assertions.removeAll { $0.id == a.id } } label: { Image(systemName: "trash") }
+                                    .buttonStyle(.borderless)
+                            }
+                            if a.kind == "text-value" {
+                                Picker("Instrument", selection: Binding(get: { a.instrument ?? "other" }, set: { a.instrument = $0 })) {
+                                    Text("Multimeter").tag("multimeter"); Text("Torque tool").tag("torque"); Text("Leak checker").tag("leak-check"); Text("Other display").tag("other")
+                                }
+                                TextField("e.g. 80 Ω ±5 %  ·  12.0 N·m ± 0.5  ·  ≤ 1.0e-9 mbar·l/s", text: $a.expected)
+                                    .autocorrectionDisabled()
+                            } else {
+                                Picker("Compare", selection: Binding(get: { a.match ?? "exact" }, set: { a.match = $0 })) {
+                                    Text("is exactly").tag("exact"); Text("contains").tag("contains"); Text("is any of (a | b)").tag("any-of")
+                                }
+                                TextField(a.kind == "code" ? "expected code payload" : "expected text on the label or part", text: $a.expected)
+                                    .autocorrectionDisabled()
+                            }
+                            Picker("On a miss", selection: $a.onFail) {
+                                Text("Block the step").tag("block"); Text("Flag, step proceeds").tag("flag")
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    HStack(spacing: 10) {
+                        Button { addAssertion(kind: "text-value") } label: { Label("Reading", systemImage: "gauge.with.needle") }
+                        Button { addAssertion(kind: "text-match") } label: { Label("Text", systemImage: "textformat") }
+                        Button { addAssertion(kind: "code") } label: { Label("Code", systemImage: "barcode") }
+                    }
+                    .buttonStyle(.bordered)
+                } header: {
+                    Text("Readings and text checks")
+                } footer: {
+                    Text("Read from the camera on the floor: a multimeter, torque or leak-check display, a label, an engraved part number. Type the expectation as the work instruction says it; the frame is the evidence, and a typed value is recorded as typed.")
                 }
 
                 // ── Photo editing ─────────────────────────────────────────────
@@ -1244,6 +1288,7 @@ struct EditStepSheet: View {
                 trainedAt          = step.validationTrainedAt
                 trainedMode        = step.validationMode
                 validationPlan     = step.validationPlan ?? "cone"
+                assertions         = step.assertions ?? []"
                 evidenceOn         = step.evidenceRequired == true
                 // 3D model: pre-populate from step
                 // U4: slot 1 drives the existing picker; the rest are extras.
@@ -1322,6 +1367,13 @@ struct EditStepSheet: View {
         validationBusy = false
     }
 
+    /// AROMS-332: a new check with sensible defaults.
+    private func addAssertion(kind: String) {
+        assertions.append(StepAssertion(id: "as-\(UUID().uuidString.prefix(8).lowercased())", kind: kind, expected: "",
+                                        unit: nil, min: nil, max: nil, match: kind == "text-value" ? nil : "exact",
+                                        instrument: kind == "text-value" ? "multimeter" : nil, region: nil, onFail: "block", source: "author"))
+    }
+
     private func saveStep() async {
         isSaving = true
         error    = nil
@@ -1374,6 +1426,7 @@ struct EditStepSheet: View {
         req.validationRequired = validationOn
         req.evidenceRequired   = evidenceOn   // K5
         req.validationPlan     = validationOn ? validationPlan : nil   // AROMS-331
+        req.assertions         = assertions.filter { !$0.expected.trimmingCharacters(in: .whitespaces).isEmpty || $0.kind == "location" }   // AROMS-332: the list replaces; [] clears
 
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)

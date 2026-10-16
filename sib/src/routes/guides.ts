@@ -31,6 +31,7 @@ import { registerGeneratedGlb, deleteModel3D, MODELS_DIR } from './models.js';
 import type { LadderResult } from '../models/variants.js';
 import { findExistingGuide, existingStepIdsBySeq } from '../guides/dedup.js';
 import { buildPartIndex, rebindParts } from '../models/part-resolver.js';
+import { sanitizeAssertions } from '../oms/assertions.js';
 import { readGlbJson } from '../models/glb-nodes.js';
 import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
@@ -1262,6 +1263,8 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     evidenceRequired:   'evidenceRequired'   in body ? (body.evidenceRequired   || undefined) : step.evidenceRequired,
     // AROMS-331: the planned training mode is authored; the trained mode stays server-owned.
     validationPlan:     'validationPlan' in body ? (body.validationPlan === 'single' || body.validationPlan === 'cone' ? body.validationPlan : undefined) : step.validationPlan,
+    // AROMS-332: the list replaces; bounds are derived from the ME's wording when missing.
+    assertions:         'assertions' in body ? sanitizeAssertions(body.assertions) : step.assertions,
     updatedAt: now,
   };
   // W1: a validated step always yields an evidence photo - the validation

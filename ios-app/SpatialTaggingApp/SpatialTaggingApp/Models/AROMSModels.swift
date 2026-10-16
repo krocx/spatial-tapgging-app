@@ -175,6 +175,39 @@ struct GuideAssembly: Codable, Equatable {
 }
 
 /// One node-level presentation delta (mirrors GuideStepNode in shared).
+/// AROMS-332: a reading or text check on a step (docs/SPATIAL-READINGS.md).
+/// Mirrors `StepAssertion` in shared/src/index.ts.
+struct StepAssertion: Codable, Identifiable, Equatable {
+    var id:         String
+    var kind:       String          // "text-match" | "text-value" | "code" | "location"
+    var expected:   String          // the ME's wording: "80 Ω ±5 %", the label text, the code
+    var unit:       String?
+    var min:        Double?
+    var max:        Double?
+    var match:      String?         // "exact" | "contains" | "any-of" | "regex"
+    var instrument: String?         // "multimeter" | "torque" | "leak-check" | "other"
+    var region:     AssertionRegion?
+    var onFail:     String          // "block" | "flag"
+    var source:     String          // "author" | "import"
+
+    struct AssertionRegion: Codable, Equatable { var x: Double; var y: Double; var w: Double; var h: Double }
+
+    var isReading: Bool { kind == "text-value" }
+    var blocks:    Bool { onFail != "flag" }
+    /// The check in the operator's words.
+    var words: String {
+        switch kind {
+        case "text-value": return "\(instrumentWords): \(expected)"
+        case "code":       return "Code \(expected)"
+        case "location":   return "Label in the trained place"
+        default:           return "Reads \"\(expected)\""
+        }
+    }
+    var instrumentWords: String {
+        switch instrument { case "multimeter": return "Multimeter"; case "torque": return "Torque tool"; case "leak-check": return "Leak checker"; default: return "Display" }
+    }
+}
+
 struct GuideStepNode: Codable, Equatable {
     let node:         String            // "cmp:<name>" in the assembly model
     let show:         String?           // "hidden" | "ghost" | "solid"
@@ -327,6 +360,8 @@ struct GuideStep: Codable, Identifiable, Equatable {
     /// shot, "cone" = dome sweep) - set in the Designer or the Guide Library;
     /// the app offers it as the default when training.
     let validationPlan:      String?
+    /// AROMS-332: readings and text checks on this step.
+    let assertions:          [StepAssertion]?
     // K5: evidence photo mandatory before completion
     let evidenceRequired:    Bool?
     let createdAt:          String
@@ -419,6 +454,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         validationMode      = try c.decodeIfPresent(String.self, forKey: .validationMode)
         validationTagId     = try c.decodeIfPresent(String.self, forKey: .validationTagId)
         validationPlan      = try c.decodeIfPresent(String.self, forKey: .validationPlan)
+        assertions          = try c.decodeIfPresent([StepAssertion].self, forKey: .assertions)
         evidenceRequired    = try c.decodeIfPresent(Bool.self,   forKey: .evidenceRequired)
         createdAt          = try c.decode(String.self,              forKey: .createdAt)
         updatedAt          = try c.decode(String.self,              forKey: .updatedAt)
@@ -473,6 +509,7 @@ struct UpdateGuideStepRequest: Codable {
     var ttsText:            String?
     var completionRequired: Bool?
     var validationPlan:     String?    // AROMS-331: "single" | "cone"
+    var assertions:         [StepAssertion]?   // AROMS-332: the full list replaces
     // Note: send mediaBase64 = nil (JSON null) to clear an existing image.
     var mediaBase64:        String?
     // Phase 2: spatial placement

@@ -210,6 +210,13 @@ button { font: inherit; }
 .icon-btn:hover { background: var(--ax-paper-2); }
 .icon-btn.active { border-color: var(--accent); color: var(--accent); background: var(--ax-blue-fill); }
 
+/* ── Readings and text checks (AROMS-332) ─────────────────── */
+.assertion-row { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; margin-top: 6px; }
+.assertion-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.assertion-head select { font-size: 11px; padding: 3px 6px; }
+.assertion-row input { font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
+.assertion-add { display: flex; gap: 6px; margin-top: 6px; }
+
 /* ── Resize handle (AROMS-329): a side panel's inner edge ───── */
 .resize-handle { position: absolute; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 3; }
 .resize-handle--left { left: 0; }

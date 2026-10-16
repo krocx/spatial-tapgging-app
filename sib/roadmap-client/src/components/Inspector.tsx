@@ -5,9 +5,10 @@
 // Renders nothing when the selection is empty (canvas stays clutter-free).
 
 import { useState, useEffect, useRef } from 'react';
-import type { MindmapNodeStatus, MindmapNodeReview, MindmapNodeShape, MindmapEdgeRole, Model3D } from '@spatial/shared';
+import type { MindmapNodeStatus, MindmapNodeReview, MindmapNodeShape, MindmapEdgeRole, Model3D, StepAssertion } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import { ResizeHandle } from './ResizeHandle.js';
+import { parseExpectation, withBounds } from '../../../src/oms/assertions.js';
 import { ROLE_COLORS } from '../canvas/EdgeView.js';
 import { mindmapApi, fetchStepImageUrl } from '../api/mindmap-api.js';
 import {
@@ -375,11 +376,78 @@ function RequiresFirst({ nodeId }: { nodeId: string }): JSX.Element | null {
   );
 }
 
+/**
+ * AROMS-332: readings and text checks on the step (docs/SPATIAL-READINGS.md).
+ * The ME types the expectation in the work instruction's own form; the
+ * bounds shown underneath come from the same parser the operator's verdict
+ * uses, so what is previewed here is what is judged on the floor.
+ */
+function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: StepAssertion[] }): JSX.Element {
+  const patchStepMeta = useStore(s => s.patchStepMeta);
+  const save = (list: StepAssertion[]) => patchStepMeta(nodeId, { assertions: list.length ? list : null });
+  // A new wording re-derives the bounds and unit; any other change keeps them.
+  const update = (id: string, patch: Partial<StepAssertion>) => save(assertions.map(a => {
+    if (a.id !== id) return a;
+    const next = { ...a, ...patch };
+    if (patch.expected !== undefined) { delete next.min; delete next.max; delete next.unit; return withBounds(next); }
+    return next;
+  }));
+  const add = (kind: StepAssertion['kind']) => save([...assertions, { id: `as-${crypto.randomUUID().slice(0, 8)}`, kind, expected: '', onFail: 'block', source: 'author', ...(kind === 'text-value' ? { instrument: 'multimeter' as const } : {}) }]);
+  const remove = (id: string) => save(assertions.filter(a => a.id !== id));
+  const boundsWords = (a: StepAssertion) => {
+    if (a.kind !== 'text-value' || !a.expected) return '';
+    const b = parseExpectation(a.expected);
+    if (!b) return 'No number found - type the reading as it appears in the work instruction.';
+    const u = b.unit ? ` ${b.unit}` : '';
+    if (b.min !== undefined && b.max !== undefined) return b.min === b.max ? `Must read exactly ${b.min}${u}` : `Must read ${b.min} to ${b.max}${u}`;
+    if (b.max !== undefined) return `Must read at most ${b.max}${u}`;
+    if (b.min !== undefined) return `Must read at least ${b.min}${u}`;
+    return '';
+  };
+  return (
+    <div className="inspector-field">Readings and text checks
+      {assertions.map(a => (
+        <div key={a.id} className="assertion-row">
+          <div className="assertion-head">
+            <span className="chip">{a.kind === 'text-value' ? 'Reading' : a.kind === 'code' ? 'Code' : a.kind === 'location' ? 'Location' : 'Text'}</span>
+            {a.kind === 'text-value' && (
+              <select value={a.instrument ?? 'other'} onChange={e => update(a.id, { instrument: e.target.value as StepAssertion['instrument'] })} title="Which instrument the operator reads">
+                <option value="multimeter">Multimeter</option><option value="torque">Torque tool</option><option value="leak-check">Leak checker</option><option value="other">Other display</option>
+              </select>
+            )}
+            {a.kind !== 'text-value' && a.kind !== 'location' && (
+              <select value={a.match ?? 'exact'} onChange={e => update(a.id, { match: e.target.value as StepAssertion['match'] })} title="How the read text is compared">
+                <option value="exact">is exactly</option><option value="contains">contains</option><option value="any-of">is any of (a | b)</option><option value="regex">matches pattern</option>
+              </select>
+            )}
+            <select value={a.onFail} onChange={e => update(a.id, { onFail: e.target.value as StepAssertion['onFail'] })} title="What a miss means">
+              <option value="block">blocks the step</option><option value="flag">flags, step proceeds</option>
+            </select>
+            <button className="btn ghost" title="Remove" onClick={() => remove(a.id)}>✕</button>
+          </div>
+          {a.kind !== 'location' && (
+            <input value={a.expected} placeholder={a.kind === 'text-value' ? 'e.g. 80 Ω ±5 %  ·  12.0 N·m ± 0.5  ·  ≤ 1.0e-9 mbar·l/s' : a.kind === 'code' ? 'expected code payload' : 'expected text on the label or part'}
+                   onChange={e => update(a.id, { expected: e.target.value })} />
+          )}
+          {a.kind === 'text-value' && <span className="step-check-hint">{boundsWords(a)}</span>}
+          {a.kind === 'location' && <span className="step-check-hint">Checked against where the text was read when the step was trained on the iPad.</span>}
+        </div>
+      ))}
+      <div className="assertion-add">
+        <button className="btn ghost" onClick={() => add('text-value')}>+ Reading</button>
+        <button className="btn ghost" onClick={() => add('text-match')}>+ Text</button>
+        <button className="btn ghost" onClick={() => add('code')}>+ Code</button>
+      </div>
+      <span className="step-check-hint">Read from the camera on the floor - a multimeter, torque or leak-check display, a label, an engraved part number. The frame is the evidence; a typed value is recorded as typed.</span>
+    </div>
+  );
+}
+
 function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
   const isProcedure = useStore(s => s.map?.kind === 'procedure');
   const step = useStore(s =>
     (s.map?.nodes.find(n => n.id === nodeId)?.metadata?.step ?? {}) as {
-      ttsText?: string; optional?: boolean; evidenceRequired?: boolean; validationPlan?: 'single' | 'cone'; imageFile?: string; linkUrl?: string;
+      ttsText?: string; optional?: boolean; evidenceRequired?: boolean; validationPlan?: 'single' | 'cone'; assertions?: StepAssertion[]; imageFile?: string; linkUrl?: string;
       modelId?: string; modelScale?: number; modelOpacity?: number;
       models?: StepModelSlot[];
     });
@@ -514,6 +582,8 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
           <option value="cone">Cone - multi-angle sweep (recommended for assembly steps)</option>
         </select>
       </label>
+
+      <AssertionsEditor nodeId={nodeId} assertions={step.assertions ?? []} />
 
       <div className="inspector-field">Reference image
         {preview && <img className="step-image-preview" src={preview} alt="Step reference" />}
