@@ -567,6 +567,8 @@ struct GuideStepCompletion: Codable, Equatable {
     let durationSeconds:      Double   // elapsed from step entry to checkmark tap
     var evidencePhotoBase64:  String?  // request only - stripped by server on receipt
     var evidencePhotoPath:    String?  // response only - set by server after save
+    /// AROMS-338: the step's readings and text checks as judged on the device.
+    var readings:             [StepReadingResult]?
 }
 
 /// Full session record submitted atomically at sign-off.
@@ -618,6 +620,8 @@ struct GuideStepProgress {
     /// Optional evidence photo captured by the Operator at this step.
     /// Encoded as base64 JPEG and included in the sign-off submission.
     var evidencePhoto:   UIImage?  = nil
+    /// AROMS-338: results of the step's readings and text checks (one per assertion).
+    var readings:        [StepReadingResult] = []
 
     var durationSeconds: Double {
         guard let entered = enteredAt, let completed = completedAt else { return 0 }
@@ -650,7 +654,8 @@ struct GuideStepProgress {
             completedAt:         iso.string(from: completed),
             durationSeconds:     durationSeconds,
             evidencePhotoBase64: b64,
-            evidencePhotoPath:   nil   // server fills this in the response
+            evidencePhotoPath:   nil,  // server fills this in the response
+            readings:            readings.isEmpty ? nil : readings
         )
     }
 }

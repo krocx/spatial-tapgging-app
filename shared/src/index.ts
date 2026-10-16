@@ -1520,6 +1520,24 @@ export interface GuideStepCompletion {
    *  how long the index tip was within 15 cm of the step's parts, the share
    *  of the step spent there, and whether a hand was on the part at the check. */
   hands?: { tracked: boolean; inZoneSeconds: number; share: number; onPartAtCheck: boolean };
+  /** AROMS-332 (2026.4.50): the step's readings and text checks as judged on
+   *  the device - one entry per assertion, what was read, the parsed value,
+   *  whether it was typed instead of read, the verdict in words. */
+  readings?: StepReadingResult[];
+}
+
+export interface StepReadingResult {
+  assertionId: string;
+  kind:        StepAssertionKind;
+  pass:        boolean;
+  /** The text as recognised on the frame (or as typed). */
+  read:        string;
+  value?:      number;
+  /** True when the operator typed the value instead of reading it with the camera. */
+  typed:       boolean;
+  onFail:      'block' | 'flag';
+  words:       string;
+  at:          string;
 }
 
 /**
@@ -1667,6 +1685,8 @@ export interface OmsUsageStepEntry {
    *  overridden (V3): the verdict was FAIL but the operator chose to proceed -
    *  the step completed anyway, with this honest mark in the audit trail. */
   validation?: { mode: 'system' | 'manual'; result: 'pass' | 'fail'; score?: number; overridden?: boolean };
+  /** AROMS-338: readings and text checks judged on the device for this step - one per assertion, typed or read. */
+  readings?: { kind: string; result: 'pass' | 'fail'; read: string; value?: number; typed: boolean; onFail: 'block' | 'flag'; words: string }[];
   /** Live evidence photo uploaded for this step (served from the usage id). */
   evidence?: boolean;
   /** C1: roll-up of the observations streamed while on this visit. */

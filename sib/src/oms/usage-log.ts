@@ -122,9 +122,24 @@ export function usageRecordEvent(
       // Step-validation verdict (K4): attach to the newest entry for the
       // step (open or just-closed) - the app may complete the step in the
       // same breath as the verdict.
-      const pl = (req.payload ?? {}) as { mode?: string; result?: string; score?: number; overridden?: boolean };
-      if (pl.mode !== 'system' && pl.mode !== 'manual') return;
+      const pl = (req.payload ?? {}) as { mode?: string; result?: string; score?: number; overridden?: boolean; kind?: string; read?: string; value?: number; typed?: boolean; onFail?: string; words?: string };
       if (pl.result !== 'pass' && pl.result !== 'fail') return;
+      if (pl.mode === 'reading') {
+        // AROMS-338: one reading / text check, appended to the step's list; "typed" is kept so a
+        // measured value and a remembered one are never confused.
+        for (let i = rec.steps.length - 1; i >= 0; i--) {
+          if (!req.stepId || rec.steps[i].stepId === req.stepId) {
+            (rec.steps[i].readings ??= []).push({
+              kind: typeof pl.kind === 'string' ? pl.kind : 'text-match', result: pl.result, read: typeof pl.read === 'string' ? pl.read : '',
+              ...(typeof pl.value === 'number' ? { value: pl.value } : {}), typed: pl.typed === true,
+              onFail: pl.onFail === 'flag' ? 'flag' : 'block', words: typeof pl.words === 'string' ? pl.words : '',
+            });
+            break;
+          }
+        }
+        return;
+      }
+      if (pl.mode !== 'system' && pl.mode !== 'manual') return;
       for (let i = rec.steps.length - 1; i >= 0; i--) {
         if (!req.stepId || rec.steps[i].stepId === req.stepId) {
           rec.steps[i].validation = {

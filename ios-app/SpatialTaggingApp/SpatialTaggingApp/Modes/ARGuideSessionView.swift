@@ -248,6 +248,7 @@ struct ARGuideSessionView: View {
     @State private var hintHistory: [AIHint] = []
     @State private var showAssistTray = false
     @State private var showStepNavigator = false   // AROMS-330: jump to a step (navigation only)
+    @State private var readingIndex: Int? = nil     // AROMS-338: the step whose readings are being captured
     /// Guardrail: after a dismissal, no new hint for the same step for 30 s.
     @State private var lastHintDismissedAt: Date? = nil
     @State private var lastDismissedStepId: String? = nil
@@ -652,6 +653,24 @@ struct ARGuideSessionView: View {
             }
         }
         .task { await loadData() }
+        .sheet(isPresented: Binding(get: { readingIndex != nil }, set: { if !$0 { readingIndex = nil } })) {
+            if let i = readingIndex, i < sortedSteps.count {
+                ReadingCaptureSheet(step: sortedSteps[i],
+                                    frameSource: { arManager.sceneView.session.currentFrame.flatMap { HoneycombCaptureView.rawCameraImage(from: $0) } ?? arManager.sceneView.snapshot() },
+                                    onDone: { results, frameImg in
+                                        guard i < progresses.count else { return }
+                                        progresses[i].readings = results
+                                        // The frame with the read is the evidence (unless a photo was already taken).
+                                        if progresses[i].evidencePhoto == nil, let f = frameImg { progresses[i].evidencePhoto = f }
+                                        for r in results { pushReadingEvent(index: i, result: r) }
+                                        if ReadingJudge.stepPasses(results), results.count == (sortedSteps[i].assertions?.count ?? 0) {
+                                            showNotice(results.allSatisfy { $0.pass } ? "✓ Readings match" : "Readings recorded - some flagged")
+                                        }
+                                    })
+                .presentationDetents([.medium, .large])
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            }
+        }
         .sheet(isPresented: $showAssistTray) {
             NavigationStack {
                 List {
@@ -1409,7 +1428,9 @@ struct ARGuideSessionView: View {
                             onEvidence:      { openEvidencePicker(for: index) },
                             onMinimize:      { showContentPanel = false },
                             hasFailurePath:  step.nextOnFailure != nil,
-                            onFail:          { failConfirmIndex = index }
+                            onFail:          { failConfirmIndex = index },
+                            readings:        index < progresses.count ? progresses[index].readings : [],
+                            onRead:          { stopSpeaking(); readingIndex = index }
                         )
                     } else {
                         miniNavCard(step: step, index: index)
@@ -3034,6 +3055,17 @@ struct ARGuideSessionView: View {
             showEvidencePicker = true
             return
         }
+        // AROMS-338: readings and text checks - every blocking one must read right first.
+        if let checks = step.assertions, !checks.isEmpty, !progresses[index].isCompleted {
+            let done = progresses[index].readings
+            let blocking = checks.filter { $0.blocks }
+            let missing = blocking.filter { c in !(done.first { $0.assertionId == c.id }?.pass ?? false) }
+            if !missing.isEmpty {
+                showNotice(done.isEmpty ? "Read the \(checks.first?.isReading == true ? (checks.first?.instrumentWords.lowercased() ?? "display") : "label") to complete this step" : "A reading is outside what the step expects - read again")
+                readingIndex = index
+                return
+            }
+        }
         if step.needsValidation && !progresses[index].isCompleted {
             if step.coneTrained, step.worldPosition != nil {
                 startConeValidation(at: index)                   // V2: in-AR guided capture
@@ -3046,6 +3078,21 @@ struct ARGuideSessionView: View {
         }
         markComplete(at: index)
         autoAdvance(from: index)
+    }
+
+    /// AROMS-338: one reading's verdict onto the live stream (usage log), typed or read.
+    private func pushReadingEvent(index: Int, result r: StepReadingResult) {
+        guard let lsId = liveSessionId, index < sortedSteps.count else { return }
+        var payload: [String: AnyCodable] = [
+            "mode": AnyCodable("reading"), "result": AnyCodable(r.pass ? "pass" : "fail"),
+            "kind": AnyCodable(r.kind), "read": AnyCodable(r.read), "typed": AnyCodable(r.typed), "onFail": AnyCodable(r.onFail), "words": AnyCodable(r.words),
+        ]
+        if let v = r.value { payload["value"] = AnyCodable(v) }
+        Task {
+            await SIBClient(settings: settings).pushGuideSessionEvent(
+                liveSessionId: lsId,
+                event: PushGuideSessionEventRequest(type: .perceptionResult, stepId: sortedSteps[index].id, stepIndex: index, durationSeconds: nil, payload: payload))
+        }
     }
 
     /// Push the verdict onto the live stream (lands in the usage log).
@@ -3953,6 +4000,9 @@ struct GuideContentPanel: View {
     /// reachable - without this the failure path existed only on paper.
     let hasFailurePath:  Bool
     let onFail:          () -> Void
+    /// AROMS-338: the step's readings and text checks and their results so far.
+    let readings:        [StepReadingResult]
+    let onRead:          () -> Void
 
     var isCompleted: Bool { progress?.isCompleted ?? false }
     var isLastStep:  Bool { isTerminal }
@@ -4065,6 +4115,29 @@ struct GuideContentPanel: View {
                                 .padding(.vertical, 7)
                                 .background(Color.indigo.opacity(0.12))
                                 .clipShape(Capsule())
+                        }
+                        .padding(.horizontal, 16)
+                    }
+
+                    // AROMS-338: readings and text checks - one row, the verdicts in words.
+                    if let checks = step.assertions, !checks.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(checks) { c in
+                                let r = readings.first { $0.assertionId == c.id }
+                                HStack(spacing: 8) {
+                                    Image(systemName: r == nil ? "circle" : (r!.pass ? "checkmark.circle.fill" : (r!.onFail == "flag" ? "flag.fill" : "xmark.circle.fill")))
+                                        .foregroundStyle(r == nil ? Color.white.opacity(0.4) : (r!.pass ? .green : (r!.onFail == "flag" ? .orange : .red)))
+                                    Text(r?.words ?? c.words).font(.caption).foregroundStyle(.white.opacity(r == nil ? 0.8 : 1)).lineLimit(2)
+                                    if r?.typed == true { Text("typed").font(.caption2).foregroundStyle(.orange) }
+                                }
+                            }
+                            Button(action: onRead) {
+                                Label(readings.isEmpty ? (checks.first?.isReading == true ? "Read the \(checks.first?.instrumentWords.lowercased() ?? "display")" : "Read the label") : "Read again",
+                                      systemImage: "camera.viewfinder")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(readings.isEmpty ? AnyShapeStyle(Color.blue) : AnyShapeStyle(.secondary))
+                            }
+                            .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 16)
                     }
