@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Fixed
+- **AROMS-344: iOS build clean for TestFlight.** `UIScreen.main` replaced
+  by the scene view's own bounds (the points were projected into that
+  view), unused values and a `var` tidied, the project-level
+  `MARKETING_VERSION` set so the widget's version matches the app's, the
+  App Store icon flattened (no alpha channel, which App Store Connect
+  rejects) and three loose icon variants moved out of the icon set into
+  `ios-app/SpatialTaggingApp/Design/icon-variants`. The two
+  `hitTest(_:types:)` deprecations wait for a device regression test
+  (AROMS-345).
 - **AROMS-343: iOS build warnings.** All 53 `onChange(of:perform:)` uses
   moved to the iOS 17 two-parameter (or zero-parameter) form; behaviour
   unchanged, the build log is clean for TestFlight.

@@ -93,6 +93,8 @@ Newest at the bottom. `Updated` is the date the row last changed.
 | AROMS-341 | Import intelligence: recognise reading, label and part-number steps in iOMS / publication text and pre-fill the assertion for the ME to confirm | server, portal | PO | todo | | 2026-10-16 | | after 337 and 338 |
 | AROMS-342 | Instrument cases: digital torque displays, leak-check readouts (scientific notation, multi-line), reading stability across frames | ios, research | PO, AR Dev | todo | | 2026-10-16 | | |
 | AROMS-343 | iOS: onChange(of:perform:) deprecation (iOS 17) - all 53 sites moved to the two-parameter or zero-parameter form; clean build log for TestFlight | ios | PO | done | 2026.4.50 | 2026-10-16 | | Karthik to confirm the build |
+| AROMS-344 | iOS build warnings before TestFlight: UIScreen.main → the scene view's bounds (5), unused values, trailing-closure form, project-level MARKETING_VERSION so the widget's CFBundleShortVersionString matches, App Store icon without alpha, loose icon variants moved out of the icon set | ios | PO | done | 2026.4.50 | 2026-10-16 | | the two hitTest(_:types:) deprecations stay (AROMS-345) |
+| AROMS-345 | iOS: ARSCNView.hitTest(_:types:) (deprecated iOS 14) → raycastQuery in AuthorModeView and LocTagAuthorView; needs a placement regression test on device | ios | PO | todo | | 2026-10-16 | | behaviour change risk - not before a TestFlight build |
 ## 3. June 2026 import (AROMS-1 … 99): close-out
 
 Mark in Jira, do not re-import. Where an item is superseded, the key above

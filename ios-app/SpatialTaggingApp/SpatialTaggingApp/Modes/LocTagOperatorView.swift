@@ -782,7 +782,7 @@ struct LocTagOperatorView: View {
         let pt         = CGPoint(x: CGFloat(projected.x), y: CGFloat(projected.y))
         targetScreenPos  = pt
         // z < 1.0 means in front of camera; also check it's inside the viewport
-        targetIsOnScreen = UIScreen.main.bounds.contains(pt) && projected.z < 1.0
+        targetIsOnScreen = sv.bounds.contains(pt) && projected.z < 1.0
 
         // Update floating 3D arrow
         updateArrowNode(index: index, frame: frame)

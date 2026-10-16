@@ -683,7 +683,7 @@ struct GuideStepPlacementView: View {
     /// taps can't land on an invisible pin.
     private func applyStepVisibility() {
         if activeStepIndex < steps.count { focusStepId = steps[activeStepIndex].id }
-        if focusStepId == nil { focusStepId = steps.first { stepPositions[$0.id] != nil }?.id ?? steps.first?.id }
+        if focusStepId == nil { focusStepId = steps.first(where: { stepPositions[$0.id] != nil })?.id ?? steps.first?.id }
         let activeId = focusStepId
         let hideOthers = focusActiveOnly && activeId != nil
         for (stepId, node) in stepNodes  { node.isHidden = hideOthers && stepId != activeId }

@@ -184,7 +184,8 @@ struct ReadingCaptureSheet: View {
             out.append(r)
             // The line that carried the match (or, for a reading, the digits) - where the text is.
             let want = a.expected.lowercased()
-            if let hit = found.first(where: { a.isReading ? $0.text == numeric : (!want.isEmpty && $0.text.lowercased().contains(want)) }) ?? (a.isReading ? nil : found.max { $0.box.height < $1.box.height }) {
+            let tallest = a.isReading ? nil : found.max(by: { $0.box.height < $1.box.height })
+            if let hit = found.first(where: { a.isReading ? $0.text == numeric : (!want.isEmpty && $0.text.lowercased().contains(want)) }) ?? tallest {
                 matchedBoxes[a.id] = topLeft(hit.box)
             }
         }

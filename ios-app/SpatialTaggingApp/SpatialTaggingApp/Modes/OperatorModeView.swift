@@ -1960,9 +1960,9 @@ struct OperatorModeView: View {
 
             // ── Depth comparison ──────────────────────────────────────────────
             if let depthB64 = metaDouble(tag.metadata["cone_depth_width"]).flatMap({ w -> String? in
-                guard let h = metaDouble(tag.metadata["cone_depth_height"]),
+                guard metaDouble(tag.metadata["cone_depth_height"]) != nil,
                       let b = (tag.metadata["cone_depth_map"]?.value as? String),
-                      let lidar = tag.metadata["cone_depth_is_lidar"]?.value as? Bool
+                      tag.metadata["cone_depth_is_lidar"]?.value is Bool
                 else { return nil }
                 return b
             }) {
@@ -2075,7 +2075,7 @@ struct OperatorModeView: View {
                 // An explicit Author-marked ROI is a more precise region than the
                 // distance-normalised heuristic crop below - prefer it when present.
                 let cropSnapshot: UIImage
-                var trainingDist: Float = metaFloat(tag.metadata, key: "cone_dist_m") ?? 0.30
+                let trainingDist: Float = metaFloat(tag.metadata, key: "cone_dist_m") ?? 0.30
                 var liveDist: Float = trainingDist
                 var adjustedFraction: CGFloat = 0.50
                 if let roi = tag.roi {

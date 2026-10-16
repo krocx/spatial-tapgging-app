@@ -1913,7 +1913,7 @@ struct ARGuideSessionView: View {
     private func handleARTap(at point: CGPoint) {
         if demoPicking { placeDemo(at: point); return }
         // Only process taps during navigation
-        guard case .navigating(let currentIndex) = phase else { return }
+        guard case .navigating = phase else { return }
 
         // Use .all so every node at the tap point is returned - alpha-blended
         // planes don't write depth reliably, making .closest pick the wrong node.
@@ -2693,7 +2693,7 @@ struct ARGuideSessionView: View {
         // A point behind the camera projects MIRRORED - flip it back so the
         // chevron sits on the edge you actually have to turn towards.
         if behindCam {
-            let b = UIScreen.main.bounds
+            let b = arManager.sceneView.bounds   // the view the point was projected into
             pt = CGPoint(x: b.width - pt.x, y: b.height - pt.y)
         }
         // Horizontal angle between the camera's forward and the pin: past
@@ -2708,7 +2708,8 @@ struct ARGuideSessionView: View {
 
         targetScreenPos  = pt
         // "In view" = inside the central 85 % of the screen, in front of the camera.
-        let b = UIScreen.main.bounds.insetBy(dx: UIScreen.main.bounds.width * 0.075, dy: UIScreen.main.bounds.height * 0.075)
+        let vb = arManager.sceneView.bounds
+        let b = vb.insetBy(dx: vb.width * 0.075, dy: vb.height * 0.075)
         let onScreen = !behindCam && b.contains(pt)
         if onScreen { if targetOnScreenSince == nil { targetOnScreenSince = Date() } }
         else { targetOnScreenSince = nil }
