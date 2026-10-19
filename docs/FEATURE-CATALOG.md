@@ -169,3 +169,23 @@ the linked docs are the single source of truth.
 | Gemba Walk - findings, photos, markup | Reference or custom entries, Strength/OFI/NC, risk, six captioned photos, PencilKit markup, floating panels | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
 | Gemba Walk - sessions + Excel | Walk header, continue/join, summary, three-sheet Excel with every photo, filtered export | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
 | Gemba Walk - together, phone-down, checkpoint | Multi-auditor presence, Live Activity navigation, welcome-back checkpoint, drift check | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+
+## 9. Spatial readings - shipped in 2026.4.50
+
+What the camera reads on a step, judged on the device and said in words. Spec: [SPATIAL-READINGS](SPATIAL-READINGS.md); catalogue entry `spatial-readings`.
+
+| Feature | What it does | Status | Introduced | Docs |
+|---|---|---|---|---|
+| Readings and text checks on a step | A step carries assertions: an instrument reading, words on a label, a barcode; the ME types the expectation as the work instruction says it; SIB derives the bounds; one judge on both ends | Shipped | 2026.4.50 | [SPATIAL-READINGS §2](SPATIAL-READINGS.md#2-assertions) |
+| iPad reading sheet | Frame the display or label, tap Read; on-device Vision; verdict per check in words; the frame is the evidence; "Type it instead" recorded as typed | Shipped | 2026.4.50 | [SPATIAL-READINGS §4](SPATIAL-READINGS.md#4-operator-side) |
+| Label position | A Text check can also require the label where it was trained; the author reads it once in Place Steps in AR; untrained is flagged, never blocking | Shipped | 2026.4.50 | [SPATIAL-READINGS §8](SPATIAL-READINGS.md#8-author-journey-reviewed-2026-10-16-aroms-346) |
+| "Must say", not "says only" | Text and barcode checks pass when the label carries the words (contains; "a \| b" for either); a blank check is not saved and cannot strand the operator | Shipped | 2026.4.50 | [SPATIAL-READINGS §8.1](SPATIAL-READINGS.md#81-a-text-check-means-must-say-2026-10-19-aroms-349) |
+| Training captures the words | Reading the real label sets the expectation as the camera spells it (tap the line); blank checks filled from the label | Shipped | 2026.4.50 | [SPATIAL-READINGS §8.1a](SPATIAL-READINGS.md#81a-training-captures-the-words-2026-10-19-aroms-350) |
+| Try it as the operator | Any trained step's chip runs the operator's presence rule and reading sheet, nothing recorded | Shipped | 2026.4.50 | [SPATIAL-READINGS §8.2](SPATIAL-READINGS.md#82-try-it-as-the-operator-2026-10-19-aroms-351) |
+| Barcode checks | 1D, QR, Data Matrix, PDF417, Aztec decoded on the same frame; judged on the payload; printed digits as the said fallback | Shipped | 2026.4.50 | [SPATIAL-READINGS §8.3](SPATIAL-READINGS.md#83-barcodes-2026-10-19-aroms-340) |
+| Instrument displays | Three frames sampled, the recurring value kept, a settling display said so; scientific notation as leak checkers print it; split mantissa / exponent joined | Shipped | 2026.4.50 | [SPATIAL-READINGS §8.5](SPATIAL-READINGS.md#85-instrument-displays-2026-10-19-aroms-342) |
+| One validation on the floor | Presence first; the checks read on the cone's own frame; the sheet only when not legible from there | Shipped | 2026.4.50 | [SPATIAL-READINGS §8.4](SPATIAL-READINGS.md#84-one-validation-on-the-floor-2026-10-19-aroms-352) |
+| Labels in Korean, Japanese and Chinese | Scripts asked of Vision per line; the language named with the verdict and on the chips | Shipped | 2026.4.50 | [SPATIAL-READINGS §8.6](SPATIAL-READINGS.md#86-labels-in-korean-japanese-and-chinese-2026-10-19-aroms-355) |
+| Reads in the portal | Reading, label and barcode chips on the Completion Log and on every step visit in the Usage Log; notation printed as 1.2 × 10⁻⁹ | Shipped | 2026.4.50 | [SPATIAL-READINGS](SPATIAL-READINGS.md) |
+| Readings in Intelligence and Insights | First-time-right and typed-instead rates per step; measured values over runs | Proposed | - | [BACKLOG AROMS-354](BACKLOG.md) |
+| TestFlight notes from the repo | `npm run testflight:notes` sets What to Test and the Beta App Description through the App Store Connect API | Shipped | 2026.4.50 | [TESTFLIGHT](TESTFLIGHT.md) |

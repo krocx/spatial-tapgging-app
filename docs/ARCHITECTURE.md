@@ -161,7 +161,7 @@ flowchart LR
     GUIDES["guides/<br/>store · copy · bundle · ingest · assembly · step-models"]
     IMPORT["import/<br/>jobs · worker · cortona/*"]
     MODELSD["models/<br/>glb-geometry · variants · reduce-clustering · glb-nodes"]
-    OMS["oms/<br/>usage-log · insights · step-validation · signals"]
+    OMS["oms/<br/>usage-log · insights · step-validation · signals · assertions"]
     TAG["tag/ · uam/ · loto/ · gemba/"]
     PROC["procedure/<br/>compiler · parts · export"]
     CATALOG["catalog/ · ask/"]
@@ -226,6 +226,7 @@ flowchart LR
     C_HIT["ARSurfaceHit · ARFocusRing<br/>nearest-surface rule"]
     C_PLACE["PlacementTools · DemoSceneGestures<br/>UprightOrientation · tilt · pinch · rotate"]
     C_UI["Coach marks · HUD · sheets · cards"]
+    C_READ["ReadingCaptureSheet<br/>read a display, label or barcode · trial · training chips"]
   end
   subgraph SVC["Services/"]
     S_CLIENT["SIBClient<br/>REST + SSE · API key"]
@@ -233,6 +234,7 @@ flowchart LR
     S_STATE["AssemblyState<br/>step deltas → node state"]
     S_AR["ARSessionManager · ARCoordinateFrame<br/>WorldMapCache · AnchorEncryption"]
     S_STORE["GuideRunStore · GembaLibraryStore<br/>WalkProgressStore · AppLog"]
+    S_READ["ReadingEngine · ReadingJudge · PresenceScorer<br/>Vision text + barcodes · one judge with SIB · feature print ∨ SSIM"]
   end
   MAIN --> MODES
   SET --> S_GLB
@@ -250,6 +252,11 @@ flowchart LR
   S_GLB --> S_CLIENT
   S_STATE --> C_NODE
   MODES --> S_STORE
+  M_AR --> C_READ
+  M_LIB --> C_READ
+  C_READ --> S_READ
+  M_AR --> S_READ
+  S_READ --> S_CLIENT
 ```
 
 The assembly engine is three files: `AssemblyState` turns a step's deltas
