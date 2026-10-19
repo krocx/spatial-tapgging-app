@@ -212,6 +212,7 @@ body.lite header{background:var(--ax-solid);} body.lite #panel{background:var(--
 
 /* graph text */
 text.nlabel{font-size:9.5px;fill:var(--ax-ink-2);pointer-events:none;paint-order:stroke;stroke:var(--ax-bg);stroke-width:3px;stroke-linejoin:round;}
+svg.squares text.nlabel{font-size:11px;}   /* the squares read at a larger size; the collision box follows */
 text.nlabel.hot{font-size:11px;fill:var(--ax-ink);font-weight:600;}
 /* "Alive" breathing: pure CSS, so the idle render loop stays idle and the
    hit area travels with the node - ±1.5px against a 16px target never
@@ -454,6 +455,7 @@ let waferLook = localStorage.getItem('cat_look') !== 'disc';
 const R_WAFER = R_MAX + 82, DIE = 44;
 function setLook(name){
   waferLook = name === 'wafer';
+  svg.classList.toggle('squares', waferLook);
   localStorage.setItem('cat_look', waferLook ? 'wafer' : 'disc');
   document.querySelectorAll('#modeCtl button[data-look]').forEach(b => b.classList.toggle('on', b.dataset.look === (waferLook ? 'wafer' : 'disc')));
   document.querySelectorAll('div.legend .lg-shape').forEach(el => el.setAttribute('rx', waferLook ? '1.6' : '5'));
@@ -1288,13 +1290,13 @@ function draw(){
     // Squares: the label keeps its size on screen once zoomed in (ls = 1/k), so
     // zooming into a sector makes room and the names appear; at rest, as many as fit.
     const ls = waferLook ? 1 / Math.max(1, view.k) : 1;
-    const w = chars * (waferLook ? 5.6 : 5.3) * nd.ps * ls, h = 10 * nd.ps * ls, m = (waferLook ? 3 : 0) * nd.ps * ls;
+    const w = chars * (waferLook ? 6.4 : 5.3) * nd.ps * ls, h = (waferLook ? 11.5 : 10) * nd.ps * ls, m = (waferLook ? 3 : 0) * nd.ps * ls;
     // On the lattice a label goes below its die or nowhere: an "above" label
     // lands in the band of the label below the die above, and two labels
     // touching read worse than one missing.
     // The label's top edge sits just under its own die (never inside it); the
     // breathing room goes sideways and below, where the neighbours are.
-    for (const dy of (waferLook ? [r + 3 + 9 * ls] : [r + 12, -(r + 5)])){
+    for (const dy of (waferLook ? [r + 3 + 10.5 * ls] : [r + 12, -(r + 5)])){
       const sy = dy * nd.ps, box = { x0: nd.px - w/2 - m, x1: nd.px + w/2 + m, y0: nd.py + sy - h, y1: nd.py + sy + m };
       if (!placed.some(b => b.x0 < box.x1 && b.x1 > box.x0 && b.y0 < box.y1 && b.y1 > box.y0)){ placed.push(box); return dy; }
     }
@@ -1380,6 +1382,7 @@ document.getElementById('fxBtn').onclick = () => {
 applyFx();
 document.querySelectorAll('#modeCtl button[data-cam]').forEach(b => b.onclick = () => setCam(b.dataset.cam));
 document.querySelectorAll('#modeCtl button[data-look]').forEach(b => { b.onclick = () => setLook(b.dataset.look); b.classList.toggle('on', b.dataset.look === (waferLook ? 'wafer' : 'disc')); });
+svg.classList.toggle('squares', waferLook);
 document.querySelectorAll('div.legend .lg-shape').forEach(el => el.setAttribute('rx', waferLook ? '1.6' : '5'));
 window.addEventListener('keydown', ev => {
   if (ev.target.matches('input, textarea') || ev.metaKey || ev.ctrlKey) return;
