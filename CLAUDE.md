@@ -16,3 +16,4 @@ whoever or whatever writes the code.
 
 Other standing rules for this repo live in `docs/` (versioning, catalogue checker, IP sensitivity). When in doubt, propose before changing.
 - Work is tracked by AROMS key (`docs/BACKLOG.md`): quote the key in commit messages and changelog entries; `npm run backlog:jira -- --since <date>` makes the Friday Jira delta.
+- **TestFlight copy ships with the code.** Every iOS feature commit also updates `ios-app/SpatialTaggingApp/TestFlight/WhatToTest.en-US.txt` (version line first, what's new on top, then what to try, then known) - Xcode Cloud attaches it to the build, and it replaces the commit log Xcode would otherwise show testers. The standing app description lives in `docs/TESTFLIGHT.md`; the product is "Spatial Tagging for AR OMS". Karthik never drafts these by hand.

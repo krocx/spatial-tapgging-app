@@ -126,7 +126,7 @@ struct ModeSelectionView: View {
 
                     if settings.hasProduct("aroms") {
                         ProductDoor(
-                            title: "AR OMS", subtitle: "Spatial Inspection · AR work instructions",
+                            title: "AR OMS", subtitle: "AR OMS · Spatial Validation",
                             icon: settings.isAuthoringShift ? "pencil.circle.fill" : "qrcode.viewfinder",
                             accent: settings.isAuthoringShift ? .blue : .green,
                             context: settings.isAuthoringShift

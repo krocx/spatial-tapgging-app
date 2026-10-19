@@ -1,0 +1,31 @@
+Spatial Tagging for AR OMS · 2026.4.50
+
+NEW IN THIS BUILD
+
+Readings, labels and barcodes on a step. A step can now check what the camera reads: a value on an instrument display (multimeter, torque tool, leak checker), words on a label, or a barcode / QR / Data Matrix. The frame with the read is the step's evidence.
+
+• Label checks mean "must say", not "says only" - a real label carries more than the words that matter.
+• Barcodes: 1D, QR, Data Matrix, PDF417 and Aztec are decoded on the same frame as the text; several in frame are listed by kind.
+• Instrument displays: a reading is sampled three times over a second and the stable value kept; a display still settling says so. Scientific notation as leak checkers print it (1.2×10⁻⁹, 1.2E-09, mantissa and exponent on separate lines).
+• One validation on the floor: when presence validates in the cone, the label or display is read on that same frame; both pass in one go when it is legible from there, otherwise the reading sheet opens with presence kept.
+• Author mode: reading the real label in Place Steps in AR sets the words the way the camera spells them (tap the line); "Try it as the operator" on any trained step shows the operator's verdict without a save, publish or mode switch.
+• SIB: what the camera read shows on every step visit in the Usage Log, not only on completed runs.
+
+PLEASE TRY
+
+1. Operator: a step with a Text check on a printed label. Walk into the cone; expect one PASS covering presence and the label when the label is legible from where the cone fires, and "Presence OK - now read the label up close" otherwise.
+2. Operator: a step with a Reading check on a torque or leak-check display. Read while the display settles; expect "display still moving" with the texts seen, then a clean read once it holds.
+3. Operator: a Barcode check on a Luna label at working distance. Note how large the Data Matrix has to be in frame to decode.
+4. Author: Place Steps in AR → a trained step's chip → "Try it as the operator" → the verdict, nothing recorded.
+
+ALSO IN THIS BUILD
+
+• Every chamber shows in the Guide Library, even with no guides yet.
+• The danger zone (delete everything) needs its own key.
+• "Wrong QR" after creating a guide in the app is fixed.
+• Clean build for iOS 26 / Xcode 27.
+
+KNOWN
+
+• Position checks on a label are flagged, not blocking, until the author trains them in Place Steps in AR.
+• A leak-check step saved before this build keeps its old bounds until it is saved once more.
