@@ -260,7 +260,7 @@ text.livelbl.on{opacity:.95;font-weight:700;}
     <div id="matchCount"></div>
     <svg id="graph"></svg>
     <div id="altView" style="display:none"></div>
-    <div id="modeCtl"><button data-look="wafer" title="Wafer - the platform as a wafer, each feature a die (key W)">Wafer</button><button data-look="disc" title="Circles - the plain disc (key W)">Circles</button><span class="sep"></span><button data-cam="top" class="on" title="Top - the flat disc (key 1)">Top</button><button data-cam="stack" title="Stack - products as layers (key 2)">Stack</button><button data-cam="side" title="Side - floors edge-on, dependencies as wiring (key 3)">Side</button><button data-cam="under" title="Under - looking up the spine from SIB (key 4)">Under</button></div>
+    <div id="modeCtl"><button data-look="wafer" title="Squares - the platform as a wafer, each feature a die (key W)">Squares</button><button data-look="disc" title="Circles - the plain disc (key W)">Circles</button><span class="sep"></span><button data-cam="top" class="on" title="Top - the flat disc (key 1)">Top</button><button data-cam="stack" title="Stack - products as layers (key 2)">Stack</button><button data-cam="side" title="Side - floors edge-on, dependencies as wiring (key 3)">Side</button><button data-cam="under" title="Under - looking up the spine from SIB (key 4)">Under</button></div>
     <div id="modeHint"></div>
     <div id="focusBar" style="display:none"></div>
     <div id="tourCap" style="display:none"></div>
@@ -271,7 +271,7 @@ text.livelbl.on{opacity:.95;font-weight:700;}
       <button id="zoomReset" title="Reset layout (forget dragged positions)">↺</button>
       <button id="fxBtn" title="Effects" aria-label="Effects"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg></button>
     </div>
-    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan (3D: orbit + tilt, shift-drag pans) · scroll to zoom · keys 1–4 = Top · Stack · Side · Under · W = wafer / circles</div>
+    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan (3D: orbit + tilt, shift-drag pans) · scroll to zoom · keys 1–4 = Top · Stack · Side · Under · W = squares / circles</div>
   </div>
   <div id="panel"></div>
 </div>
@@ -537,7 +537,7 @@ const markDirty = () => { dirty = true; };
 // drawn (semantic labels at 0.85×, auto-focus at 1.35×).
 let lastK = 1;
 function viewChanged(){
-  const crossed = (view.k >= 0.85) !== (lastK >= 0.85) || (view.k >= 1.35) !== (lastK >= 1.35);
+  const crossed = (view.k >= 0.85) !== (lastK >= 0.85) || (view.k >= 1.35) !== (lastK >= 1.35) || (waferLook && Math.abs(view.k - lastK) > 0.04);
   lastK = view.k;
   if (crossed) { dirty = true; return; }      // (orbit/yaw marks dirty itself - that does need re-projection)
   if (scene) scene.world.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`);
@@ -1202,11 +1202,14 @@ function draw(){
   const labelPos = (nd, r, want) => {
     if (!want) return null;
     const chars = Math.min(nd.name.length, waferLook ? 22 : 28);
-    const w = chars * (waferLook ? 6.1 : 5.3) * nd.ps, h = 11 * nd.ps, m = (waferLook ? 3 : 0) * nd.ps;
+    // Squares: the label keeps its size on screen once zoomed in (ls = 1/k), so
+    // zooming into a sector makes room and the names appear; at rest, as many as fit.
+    const ls = waferLook ? 1 / Math.max(1, view.k) : 1;
+    const w = chars * (waferLook ? 5.6 : 5.3) * nd.ps * ls, h = 10 * nd.ps * ls, m = (waferLook ? 3 : 0) * nd.ps * ls;
     // On the lattice a label goes below its die or nowhere: an "above" label
     // lands in the band of the label below the die above, and two labels
     // touching read worse than one missing.
-    for (const dy of (waferLook ? [r + 12] : [r + 12, -(r + 5)])){
+    for (const dy of (waferLook ? [r + 12 * ls] : [r + 12, -(r + 5)])){
       const sy = dy * nd.ps, box = { x0: nd.px - w/2 - m, x1: nd.px + w/2 + m, y0: nd.py + sy - h - m, y1: nd.py + sy + m };
       if (!placed.some(b => b.x0 < box.x1 && b.x1 > box.x0 && b.y0 < box.y1 && b.y1 > box.y0)){ placed.push(box); return dy; }
     }
@@ -1217,7 +1220,7 @@ function draw(){
   const dyById = {};
   for (const nd of order){ const isSel = nd.id === selected, isHov = nd.id === hovered; if (isSel || isHov || neighbours.has(nd.id) || hov.has(nd.id)) dyById[nd.id] = labelPos(nd, isSel ? 11 : isHov ? 10 : 8, true); }
   for (const nd of order){ if (nd.id in dyById) continue;
-    const want = !focus && (showAll || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd)));
+    const want = !focus && (showAll || waferLook || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd)));
     dyById[nd.id] = labelPos(nd, 8, want); }
   // nodes
   const touchedAreas = (!flat && selected) ? new Set([...neighbours].map(i => byId[i].area)) : null;
@@ -1239,7 +1242,11 @@ function draw(){
     else A(N.shape, 'r', r);
     A(N.hsel, 'display', isSel ? '' : 'none'); A(N.hhov, 'display', isHov && !isSel ? '' : 'none');
     const dy = dyById[nd.id];
-    A(N.label, 'display', dy == null ? 'none' : ''); if (dy != null) A(N.label, 'y', dy);
+    A(N.label, 'display', dy == null ? 'none' : '');
+    if (dy != null){
+      if (waferLook){ const ls = 1 / Math.max(1, view.k); A(N.label, 'y', 0); A(N.label, 'transform', `translate(0,${(dy).toFixed(2)}) scale(${ls.toFixed(3)})`); }
+      else { A(N.label, 'y', dy); A(N.label, 'transform', ''); }
+    }
     A(N.label, 'class', 'nlabel' + (isSel || isHov ? ' hot' : ''));
     const onTrail = ts && ts.has(nd.id);
     A(N.badge, 'display', onTrail ? '' : 'none');
