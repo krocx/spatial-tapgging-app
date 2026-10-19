@@ -277,7 +277,7 @@ text.livelbl.on{opacity:.95;font-weight:700;}
 <div id="flowModal">
   <div class="fmtitle" id="fmTitle"></div>
   <div class="fmbody" id="fmBody"></div>
-  <div class="fmhint">click anywhere or press Esc to close</div>
+  <div class="fmhint" id="fmHint">click anywhere or press Esc to close</div>
 </div>
 
 <script>
@@ -1446,12 +1446,50 @@ function themed(code, color, size){
 // Mermaid emits width:100% + max-width:<natural>px. Use the natural size, so
 // the diagram is readable in the panel and scrolls sideways when wider.
 function naturalWidth(svg){ return parseFloat((svg.style.maxWidth || '').replace('px', '')) || svg.getBoundingClientRect().width || 600; }
+function naturalHeight(svg){ const vb = (svg.getAttribute('viewBox') || '').split(/\s+/); return parseFloat(vb[3]) || svg.getBoundingClientRect().height || 200; }
+
+// ── Readable at any width (2026.4.50) ─────────────────────────────────────────
+// A flow is a sentence per node; authors write it as one line and a six-node
+// chain comes out 3000 px wide, which the old lightbox then scaled down - text
+// included - to fit the screen. Text never shrinks now. Instead the diagram
+// changes shape: long labels wrap at ~34 characters, and a left-to-right
+// flowchart that is still far wider than the space it has is laid top-to-bottom,
+// which reads down the page on a phone and across on a monitor. The reader
+// can also take it back: a toggle in the lightbox, and the diagram scrolls
+// rather than shrinks.
+function wrapLabels(code, max = 34){
+  return code.replace(/(\[\(|\[\[|\(\(|\[|\(|\{)"([^"]{36,})"(\)\]|\]\]|\)\)|\]|\)|\})/g, (m, open, text, close) => {
+    if (/<br\s*\/?>/i.test(text)) return m;
+    const words = text.split(' '); const lines = []; let cur = '';
+    for (const w of words){
+      if ((cur + ' ' + w).trim().length > max && cur){ lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim();
+    }
+    if (cur) lines.push(cur);
+    return `${open}"${lines.join('<br/>')}"${close}`;
+  });
+}
+const isLR = code => /^\s*(?:%%\{[^]*?\}%%\s*)?(?:flowchart|graph)\s+LR\b/m.test(code);
+const toTB = code => code.replace(/^(\s*(?:flowchart|graph)\s+)LR\b/m, '$1TB');
+// Render once; if a left-to-right chart is more than `ratio` times wider than
+// the space and taller than nothing, render it again top-to-bottom.
+async function renderFit(code, color, size, space, { forceDir } = {}){
+  let src = wrapLabels(code);
+  if (forceDir === 'TB' && isLR(src)) src = toTB(src);
+  let { svg: out } = await window.mermaid.render('mm' + (++mermaidSeq), themed(src, color, size));
+  let tmp = document.createElement('div'); tmp.innerHTML = out; let svg = tmp.querySelector('svg');
+  const w = naturalWidth(svg), h = naturalHeight(svg);
+  const reflowed = !forceDir && isLR(src) && w > space * 1.6 && w / Math.max(h, 1) > 2.2;
+  if (reflowed){
+    ({ svg: out } = await window.mermaid.render('mm' + (++mermaidSeq), themed(toTB(src), color, size)));
+  }
+  return { out, reflowed, dir: (reflowed || forceDir === 'TB') ? 'TB' : (isLR(src) ? 'LR' : 'other') };
+}
 async function renderFlow(el, code, title, color){
   if (!code){ el.style.display = 'none'; return; }
   if (color) el.style.setProperty('--fc', color);
   if (!mermaidReady){ el.innerHTML = '<pre style="font-size:11px;color:var(--ax-ink-3);margin:0;">' + esc(code) + '</pre>'; return; }
   try {
-    const { svg: out } = await window.mermaid.render('mm' + (++mermaidSeq), themed(code, color, 15));
+    const { out } = await renderFit(code, color, 15, el.clientWidth - 24);
     el.innerHTML = out + '<span class="expandhint">⤢ enlarge</span>' +
       (color ? `<div class="fclegend"><i></i>${esc(title || '')} · click to enlarge</div>` : '');
     const svg = el.querySelector('svg');
@@ -1461,7 +1499,8 @@ async function renderFlow(el, code, title, color){
   el.onclick = () => openFlowModal(code, title || '', color);
 }
 const flowModal = document.getElementById('flowModal');
-async function openFlowModal(code, title, color){
+let flowModalDir = null;   // the reader's choice for this lightbox: 'LR' | 'TB' | null (auto)
+async function openFlowModal(code, title, color, dir){
   document.getElementById('fmTitle').textContent = title;
   const body = document.getElementById('fmBody');
   body.style.setProperty('--fc', color || 'var(--accent)');
@@ -1469,13 +1508,21 @@ async function openFlowModal(code, title, color){
   flowModal.classList.add('open');
   if (mermaidReady){
     try {
-      const { svg: out } = await window.mermaid.render('mmx' + (++mermaidSeq), themed(code, color, 17));
-      body.innerHTML = out;
+      const space = window.innerWidth * 0.9 - 60;
+      const r = await renderFit(code, color, 17, space, dir ? { forceDir: dir } : {});
+      body.innerHTML = r.out;
       const svg = body.querySelector('svg');
       if (svg){
-        // Reading size: at least 1.4× natural, never narrower than 760 px, capped to the viewport.
-        const w = Math.min(window.innerWidth * 0.9, Math.max(760, naturalWidth(svg) * 1.4));
+        // Reading size, never smaller: natural (17 px type) up to 1.4× when the
+        // screen has room; wider than the screen scrolls, it does not shrink.
+        const nat = naturalWidth(svg);
+        const w = nat * Math.max(1, Math.min(1.4, space / nat));
         svg.style.maxWidth = 'none'; svg.style.width = w + 'px';
+      }
+      const hint = document.getElementById('fmHint');
+      if (hint && isLR(code)){
+        const across = r.dir === 'LR';
+        hint.innerHTML = `${r.reflowed ? 'Laid top-to-bottom to stay readable on this screen · ' : ''}<button class="btn" style="padding:3px 10px;font-size:11.5px" onclick="event.stopPropagation();openFlowModal(${JSON.stringify(code)}, ${JSON.stringify(title)}, ${JSON.stringify(color || '')}, '${across ? 'TB' : 'LR'}')">${across ? 'Read it top-to-bottom' : 'Read it left-to-right'}</button> · scroll to pan · click outside or press Esc to close`;
       }
     } catch { /* keep the <pre> fallback */ }
   }

@@ -11,6 +11,21 @@ spec: SPATIAL-READINGS.md
 api: |
   PATCH /guides/:id/steps/:stepId - { assertions } the readings, label and barcode checks on a step: kind text-value | text-match | code | location, the ME's expectation in the work instruction's own words ("a | b" for either), bounds re-derived server-side from the wording on every save, contains by default, block or flag on a miss (designer · app · portal · API key)
   POST /guide-sessions/live/:id/events - perception:result with mode reading, one check's verdict onto the Usage Log, shown on the Completion Log and on every step visit (app · API key)
+arch: |
+  flowchart LR
+    subgraph Author["Author · Designer or iPad step page"]
+      ME["expectation as the work instruction says it<br/>80 Ω ±5 % · ≤ 1.0 × 10⁻⁹ mbar·l/s · PIXMA · LUNA-4471"] --> SA["SIB oms/assertions<br/>bounds re-derived on every save · contains by default"]
+      PL["Place Steps in AR<br/>read the real label → words + position · Try it as the operator"] --> SA
+    end
+    subgraph Device["iPad · ReadingEngine"]
+      CF["cone validation frame<br/>(PresenceScorer: feature print ∨ SSIM ≥ 0.60)"] --> RE["Vision: text (en · ko · ja · zh) + barcodes<br/>3 frames for a reading · exponent join · language per line"]
+      RS["reading sheet<br/>only when not legible from the cone"] --> RE
+      RE --> RJ["ReadingJudge<br/>same rule as SIB · verdict in words · block or flag"]
+    end
+    SA -->|"step.assertions"| RJ
+    RJ -->|"perception:result · mode reading"| UL["SIB usage-log<br/>readings on the step visit"]
+    RJ -->|"frame = evidence"| EV["evidence · Completion Log"]
+    UL --> PT["portal: Usage Log · Completion Log chips<br/>Intelligence · Insights (AROMS-354)"]
 flow: |
   flowchart LR
     ME["ME types the expectation on the step (Designer or iPad)"] --> B["SIB derives min / max and the unit"]
