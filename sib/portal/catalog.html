@@ -1520,9 +1520,18 @@ async function openFlowModal(code, title, color, dir){
         svg.style.maxWidth = 'none'; svg.style.width = w + 'px';
       }
       const hint = document.getElementById('fmHint');
-      if (hint && isLR(code)){
-        const across = r.dir === 'LR';
-        hint.innerHTML = `${r.reflowed ? 'Laid top-to-bottom to stay readable on this screen · ' : ''}<button class="btn" style="padding:3px 10px;font-size:11.5px" onclick="event.stopPropagation();openFlowModal(${JSON.stringify(code)}, ${JSON.stringify(title)}, ${JSON.stringify(color || '')}, '${across ? 'TB' : 'LR'}')">${across ? 'Read it top-to-bottom' : 'Read it left-to-right'}</button> · scroll to pan · click outside or press Esc to close`;
+      if (hint){
+        hint.textContent = '';
+        if (isLR(code)){
+          const across = r.dir === 'LR';
+          if (r.reflowed) hint.append('Laid top-to-bottom to stay readable on this screen · ');
+          const b = document.createElement('button');
+          b.className = 'btn'; b.style.cssText = 'padding:3px 10px;font-size:11.5px';
+          b.textContent = across ? 'Read it top-to-bottom' : 'Read it left-to-right';
+          b.onclick = ev => { ev.stopPropagation(); openFlowModal(code, title, color, across ? 'TB' : 'LR'); };
+          hint.append(b, ' · ');
+        }
+        hint.append('scroll to pan · click outside or press Esc to close');
       }
     } catch { /* keep the <pre> fallback */ }
   }
