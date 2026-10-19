@@ -133,6 +133,25 @@ body.lite header{background:var(--ax-solid);} body.lite #panel{background:var(--
 .flowbox .expandhint{position:absolute;right:8px;top:6px;font-size:10.5px;color:var(--muted);
   background:var(--chip);padding:2px 8px;border-radius:10px;pointer-events:none;}
 
+/* ── Welcome (2026.4.50): first visit, back after a while, or just back ── */
+#welcome{position:fixed;inset:0;display:none;z-index:90;background:var(--ax-scrim);align-items:center;justify-content:center;padding:4vh 4vw;}
+#welcome.open{display:flex;}
+#welcome .wcard{width:min(560px,100%);padding:26px 28px 22px;}
+#welcome .wcard h3{margin:6px 0 8px;font:var(--ax-h3);color:var(--ax-ink);}
+#welcome .wcard p{margin:0 0 14px;font:var(--ax-body);color:var(--ax-ink-2);line-height:1.5;}
+#welcome .wsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 18px;}
+#welcome .wstep{padding:12px 12px 10px;border-radius:var(--ax-r-field);background:var(--ax-paper);border-top:2px solid var(--ax-blue);}
+#welcome .wstep b{display:block;font:var(--ax-label);color:var(--ax-ink);margin-bottom:4px;}
+#welcome .wstep span{font:var(--ax-label-s);color:var(--ax-ink-3);}
+#welcome .wnew{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;}
+#welcome .wrow{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+#welcomeToast{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:6;display:none;padding:8px 14px;font:var(--ax-label);color:var(--ax-ink);background:var(--ax-solid);border:1px solid var(--border);border-radius:var(--ax-r-cta);}
+#welcomeToast.open{display:inline-flex;gap:8px;align-items:center;}
+#asOf{display:inline-flex;align-items:center;gap:8px;margin-left:8px;font:var(--ax-label-s);color:var(--muted);}
+#asOf input[type=range]{width:120px;accent-color:var(--ax-blue);}
+#asOf .asofv{font-family:var(--ax-mono);color:var(--ax-ink-2);min-width:74px;}
+#asOf button{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:2px 7px;cursor:pointer;font-size:11px;}
+
 /* ── Flow lightbox ── */
 #flowModal{position:fixed;inset:0;display:none;z-index:100;background:var(--ax-scrim);
   align-items:center;justify-content:center;flex-direction:column;padding:4vh 3vw;cursor:zoom-out;}
@@ -276,6 +295,21 @@ text.livelbl.on{opacity:.95;font-weight:700;}
   <div id="panel"></div>
 </div>
 <div id="tip"></div>
+<div id="welcome" role="dialog" aria-modal="true" aria-labelledby="wTitle">
+  <div class="ax-card wcard">
+    <span class="ax-eyebrow"><span class="ax-mark"><i></i><em></em></span> <span id="wEyebrow">Feature catalogue</span></span>
+    <h3 id="wTitle"></h3>
+    <p id="wBody"></p>
+    <div id="wNew" class="wnew"></div>
+    <div id="wSteps" class="wsteps">
+      <div class="wstep"><b>1 · Pick a product</b><span>Click a name on the rim - the sector zooms and every feature shows its name.</span></div>
+      <div class="wstep"><b>2 · Open a square</b><span>Click any feature for its card: how it flows, how it is built, the spec, the words.</span></div>
+      <div class="wstep"><b>3 · Find anything</b><span>Press / and type. Filters above the map narrow by status or release.</span></div>
+    </div>
+    <div class="wrow" id="wRow"></div>
+  </div>
+</div>
+<div id="welcomeToast"></div>
 <div id="flowModal">
   <div class="fmtitle" id="fmTitle"></div>
   <div class="fmbody" id="fmBody"></div>
@@ -345,9 +379,10 @@ async function boot(){
   DATA.areas.forEach(a => { if (PC[a.id]) a.color = cssVar(PC[a.id]) || a.color; areaById[a.id] = a; });
   buildGraph(); computeLayers();
   refreshStats();
-  renderAreaChips(); renderFilterChips();
+  renderAreaChips(); renderFilterChips(); wireAsOf();
   renderHome();
   startSim();
+  showWelcome();
   // Renderers: vendored copies first (sib/portal/vendor/ - run `npm run
   // catalog:vendor` once and commit), CDN only as fallback. Cards fall back
   // to <pre> until either loads.
@@ -611,6 +646,52 @@ function startSim(){
     }
     requestAnimationFrame(loop);
   });
+}
+// ── Welcome (2026.4.50) ───────────────────────────────────────────────────────
+// Three arrivals, three gestures. First time: what this is and three things to
+// do. Back after a fortnight or a release: what arrived while you were away,
+// with a one-click filter to see it. Just back: a one-line hello. Remembered
+// per browser; the Reset layout button does not touch it.
+function showWelcome(){
+  const KEY_AT = 'cat_last_visit', KEY_V = 'cat_last_version';
+  const now = Date.now(), lastAt = +localStorage.getItem(KEY_AT) || 0, lastV = localStorage.getItem(KEY_V);
+  const cur = DATA.platformVersion;
+  const versions = [...new Set(nodes.map(n => n.version))].filter(v => v !== 'baseline').sort();
+  const days = lastAt ? Math.floor((now - lastAt) / 86400000) : null;
+  const arrived = lastV ? nodes.filter(n => n.version !== 'baseline' && n.version > lastV) : [];
+  localStorage.setItem(KEY_AT, String(now)); localStorage.setItem(KEY_V, cur);
+  const kind = !lastAt ? 'first' : (arrived.length || days >= 14) ? 'back' : 'hello';
+  if (kind === 'hello'){
+    const t = document.getElementById('welcomeToast');
+    t.innerHTML = `<span class="ax-mark"><i></i><em></em></span> Welcome back · ${nodes.length} features · v${esc(cur)}`;
+    t.classList.add('open'); setTimeout(() => t.classList.remove('open'), 2600);
+    return;
+  }
+  const w = document.getElementById('welcome');
+  const title = document.getElementById('wTitle'), body = document.getElementById('wBody'), list = document.getElementById('wNew'), row = document.getElementById('wRow'), steps = document.getElementById('wSteps');
+  const close = () => { w.classList.remove('open'); };
+  if (kind === 'first'){
+    title.textContent = 'Welcome to the feature catalogue';
+    body.textContent = `Every capability of the platform - ${nodes.length} of them across ${DATA.areas.length} products - on one map, generated from the same files the code ships with. Three things to do:`;
+    list.innerHTML = ''; steps.style.display = '';
+    row.innerHTML = `<button class="ax-btn ax-btn--outline" id="wTrail">Start with a guided trail</button><button class="ax-btn ax-btn--primary" id="wGo">Explore the map</button>`;
+  } else {
+    const since = lastV && lastV !== cur ? `since v${lastV}` : `in the last ${days} days`;
+    title.textContent = 'Welcome back';
+    body.textContent = arrived.length
+      ? `${arrived.length} feature${arrived.length === 1 ? '' : 's'} arrived ${since}${days != null ? ` - you were last here ${days === 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago'}` : ''}. Now v${cur}.`
+      : `You were last here ${days} days ago. Nothing new has shipped since - v${cur} is still current.`;
+    list.innerHTML = arrived.slice(0, 8).map(n => `<span class="ax-chip" style="border:1px solid ${areaById[n.area].color};color:${areaById[n.area].color};text-transform:none;letter-spacing:0;cursor:pointer" data-go="${n.id}">${esc(n.name.length > 40 ? n.name.slice(0, 39) + '…' : n.name)}</span>`).join('') + (arrived.length > 8 ? `<span class="ax-chip">+${arrived.length - 8} more</span>` : '');
+    steps.style.display = 'none';
+    row.innerHTML = (arrived.length ? `<button class="ax-btn ax-btn--outline" id="wNewBtn">Show what's new</button>` : '') + `<button class="ax-btn ax-btn--primary" id="wGo">Explore the map</button>`;
+  }
+  w.classList.add('open');
+  document.getElementById('wGo').onclick = close;
+  const tb = document.getElementById('wTrail'); if (tb) tb.onclick = () => { close(); startTour(); };
+  const nb = document.getElementById('wNewBtn'); if (nb) nb.onclick = () => { close(); versionFilter = lastV && lastV !== cur ? 'since:' + (versions.find(v => v > lastV) || cur) : cur; applyFilters(); };
+  list.querySelectorAll('[data-go]').forEach(c => c.onclick = () => { close(); selectFeature(c.dataset.go); zoomToFeature(c.dataset.go); });
+  w.onclick = ev => { if (ev.target === w) close(); };
+  document.addEventListener('keydown', function esc(ev){ if (ev.key === 'Escape'){ close(); document.removeEventListener('keydown', esc); } });
 }
 function reheat(){ if (waferLook) return; alpha = Math.max(alpha, 0.5); dirty = true; }
 function resetLayout(){
@@ -985,6 +1066,8 @@ let versionFilter = null;         // exact version string, or 'since:<v>', or nu
 function versionOk(nd){
   if (!versionFilter) return true;
   if (versionFilter.startsWith('since:')) return nd.version !== 'baseline' && nd.version >= versionFilter.slice(6);
+  // "As of": the platform as it stood at that release - everything that existed then.
+  if (versionFilter.startsWith('asof:')) return nd.version === 'baseline' || nd.version <= versionFilter.slice(5);
   return nd.version === versionFilter;
 }
 function nodeVisible(nd){
@@ -1457,12 +1540,39 @@ function renderFilterChips(){
   el.innerHTML =
     ['shipped', 'beta', 'planned'].map(st => chip(st, statusFilter === st, 'fstatus', `data-status="${st}"`)).join('') +
     chip('New in ' + cur, versionFilter === cur, 'fver', `data-version="${cur}"`) +
-    (prev ? chip('since ' + prev, versionFilter === 'since:' + prev, 'fver', `data-version="since:${prev}"`) : '');
+    (prev ? chip('since ' + prev, versionFilter === 'since:' + prev, 'fver', `data-version="since:${prev}"`) : '') +
+    asOfScrubber(['baseline', ...versions]);
   el.querySelectorAll('[data-status]').forEach(c => c.onclick = () => { statusFilter = statusFilter === c.dataset.status ? null : c.dataset.status; applyFilters(); });
   el.querySelectorAll('[data-version]').forEach(c => c.onclick = () => { versionFilter = versionFilter === c.dataset.version ? null : c.dataset.version; applyFilters(); });
 }
+// The platform as it grew: a scrubber over the releases, and ▶ plays them.
+// Squares appear as their release arrives; the counts follow.
+let asOfTimer = null;
+function asOfScrubber(all){
+  const cur = versionFilter && versionFilter.startsWith('asof:') ? versionFilter.slice(5) : null;
+  const idx = cur ? Math.max(0, all.indexOf(cur)) : all.length - 1;
+  return `<span id="asOf" title="The platform as it stood at a release - drag, or press play">
+    <button id="asOfPlay" title="Play the releases">${asOfTimer ? '■' : '▶'}</button>
+    <input id="asOfRange" type="range" min="0" max="${all.length - 1}" value="${idx}" aria-label="As of release">
+    <span class="asofv">${cur ? (cur === 'baseline' ? 'baseline' : 'as of ' + esc(cur)) : 'as of today'}</span></span>`;
+}
+function asOfSet(all, i){
+  versionFilter = i >= all.length - 1 ? null : 'asof:' + all[i];
+  applyFilters();
+}
+function wireAsOf(){
+  const all = ['baseline', ...[...new Set(nodes.map(n => n.version))].filter(v => v !== 'baseline').sort()];
+  const range = document.getElementById('asOfRange'), play = document.getElementById('asOfPlay');
+  if (!range) return;
+  range.oninput = () => asOfSet(all, +range.value);
+  play.onclick = () => {
+    if (asOfTimer){ clearInterval(asOfTimer); asOfTimer = null; renderFilterChips(); wireAsOf(); return; }
+    let i = 0; asOfSet(all, i);
+    asOfTimer = setInterval(() => { i++; if (i >= all.length){ clearInterval(asOfTimer); asOfTimer = null; asOfSet(all, all.length - 1); return; } asOfSet(all, i); }, 1400);
+  };
+}
 function applyFilters(){
-  renderFilterChips(); markDirty();
+  renderFilterChips(); wireAsOf(); markDirty();
   if (currentView !== 'map') renderAltView();
   const n = nodes.filter(nodeVisible).length, mc = document.getElementById('matchCount');
   if (statusFilter || versionFilter){ mc.style.display = 'block'; mc.textContent = `${n} of ${nodes.length} features`; }

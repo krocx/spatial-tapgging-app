@@ -59,12 +59,20 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-358 / 359: the catalogue says hello, and shows how it grew.** A
+  first visit gets what the map is and three things to do, with a guided
+  trail one click away; coming back after a fortnight or a release lists
+  what arrived meanwhile with a "Show what's new" filter; just back is a
+  one-line hello. An "as of" scrubber above the map replays the releases,
+  squares appearing as theirs arrives.
 - **AROMS-357: the catalogue as a wafer.** The feature map is drawn as a
   wafer - a die grid under the product sectors, the edge-exclusion ring and
   the notch - and every feature is a die, a rounded square in place of the
   dot, with the same solid / outlined / dashed meaning for shipped / beta /
-  planned and the same colours. Default in 2D; "Circles" sits beside it in
-  the view control (key W) and is remembered per browser.
+  planned and the same colours. One square per cell; names keep their screen
+  size once zoomed in, so a sector zoom shows every name. Default in 2D as
+  "Squares"; "Circles" sits beside it in the view control (key W) and is
+  remembered per browser.
 - **AROMS-355: labels in Korean, Japanese and Chinese.** The reader asks
   Vision for Hangul, kana, kanji and both Chinese scripts and names each
   line's language; the verdict says "· Japanese" on a pass and "label is in
