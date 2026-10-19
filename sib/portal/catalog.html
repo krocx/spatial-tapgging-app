@@ -1052,7 +1052,8 @@ function buildScene(){
     const breathe = lite ? '' : `animation:${bi % 2 ? 'breatheA' : 'breatheB'} ${3.2 + (bi % 5) * 0.6}s ease-in-out ${(bi % 7) * 0.4}s infinite alternate;`;
     const ring = Math.max(0, Math.min(2, Math.round((Math.hypot(nd.x - CX, nd.y - CY) - R_MIN) / ((R_MAX - R_MIN) / 2))));
     const shape = dieShape(nd.status, c);
-    const name = nd.name.length > 28 ? nd.name.slice(0, 27) + '…' : nd.name;
+    const maxChars = waferLook ? 22 : 28;
+    const name = nd.name.length > maxChars ? nd.name.slice(0, maxChars - 1) + '…' : nd.name;
     // The breathe animation lives on an INNER wrapper: a CSS transform on the
     // positioned group would override its transform attribute (all nodes at 0,0).
     return `<g class="node" data-id="${nd.id}" style="cursor:pointer;--ring:${ring}"><g class="breathe" style="${breathe}">
@@ -1193,9 +1194,15 @@ function draw(){
   ensureFlow(lit);
   // label collision - greedy, nearest / outermost first
   const placed = [];
+  // On the wafer the dies sit 44 px apart, so a label must also clear the
+  // dies around it, not just other labels: every die claims its cell first,
+  // and a label that cannot find clear room stays hidden until hover - the
+  // map reads clean, and nothing is lost, only deferred to the pointer.
+  if (waferLook) for (const nd of nodes){ const d = 9 * nd.ps; placed.push({ x0: nd.px - d, x1: nd.px + d, y0: nd.py - d, y1: nd.py + d }); }
   const labelPos = (nd, r, want) => {
     if (!want) return null;
-    const w = Math.min(nd.name.length, 28) * 5.3 * nd.ps, h = 11 * nd.ps;
+    const chars = Math.min(nd.name.length, waferLook ? 22 : 28);
+    const w = chars * (waferLook ? 6.1 : 5.3) * nd.ps, h = 11 * nd.ps;
     for (const dy of [r + 12, -(r + 5)]){
       const sy = dy * nd.ps, box = { x0: nd.px - w/2, x1: nd.px + w/2, y0: nd.py + sy - h, y1: nd.py + sy };
       if (!placed.some(b => b.x0 < box.x1 && b.x1 > box.x0 && b.y0 < box.y1 && b.y1 > box.y0)){ placed.push(box); return dy; }
