@@ -1,5 +1,5 @@
 {
-  "next": 201,
+  "next": 205,
   "byId": {
     "adapter-architecture": 100,
     "adaptive-instructions": 101,
@@ -101,7 +101,11 @@
     "version-history": 197,
     "versioning": 198,
     "voice-scripts": 199,
-    "xr-kit": 200
+    "xr-kit": 200,
+    "demo-mode": 201,
+    "insights": 202,
+    "readings-analytics": 203,
+    "spatial-readings": 204
   },
   "jira": {}
 }
