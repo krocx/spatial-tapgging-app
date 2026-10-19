@@ -50,6 +50,13 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-350: training captures the words.** After the author reads the
+  label in Place Steps in AR, the lines the camera recognised are chips; the
+  one carrying the typed expectation is pre-selected, and tapping another
+  makes it the expectation. Save as trained writes the position and the
+  words as the camera spells them, so a step expects what the camera reads;
+  a blank check is filled from the real label. "Read the label to set the
+  words" is offered for text-only checks too.
 - **AROMS-351: "Try it as the operator" in Place Steps in AR.** Any step's
   Train chip offers it once something is trained: presence is scored from
   where the author stands with the operator's own rule and said in a toast

@@ -22,11 +22,21 @@ struct ReadingCaptureSheet: View {
     /// AROMS-339: Author mode - "Save as trained" hands back where each text
     /// was read (top-left normalised), to be stored as the assertion's region.
     var authoring:   Bool = false
-    var onTrained:   ((_ regions: [String: StepAssertion.AssertionRegion]) -> Void)? = nil
+    /// AROMS-350: what training hands back - where each label check's text sits
+    /// and the words the camera actually read for it (the expectation from now on).
+    struct LabelTraining { var regions: [String: StepAssertion.AssertionRegion] = [:]; var expected: [String: String] = [:] }
+    var onTrained:   ((_ training: LabelTraining) -> Void)? = nil
     /// AROMS-351: Author mode "Try it" - the operator's sheet, the operator's
     /// verdict, nothing recorded. The one button is Done.
     var trial:       Bool = false
+    /// AROMS-350: the checks as saved by label training this session, when the
+    /// caller's `step` is older than that; nil means the step's own.
+    var assertionsOverride: [StepAssertion]? = nil
     @State private var matchedBoxes: [String: CGRect] = [:]
+    /// AROMS-350: in Author mode, the recognised line picked for each label check
+    /// (index into `recognised`). Pre-filled with the line that carries the
+    /// typed expectation; the author taps another to make it the expectation.
+    @State private var picked: [String: Int] = [:]
 
     @Environment(\.dismiss) private var dismiss
     @State private var phase: Phase = .framing
@@ -40,7 +50,7 @@ struct ReadingCaptureSheet: View {
     private enum Phase { case framing, reading, review }
     private struct Recognised { let text: String; let box: CGRect }
 
-    private var assertions: [StepAssertion] { step.assertions ?? [] }
+    private var assertions: [StepAssertion] { assertionsOverride ?? step.assertions ?? [] }
     private var allPass: Bool { ReadingJudge.stepPasses(results) && results.count == assertions.count }
 
     var body: some View {
@@ -85,6 +95,7 @@ struct ReadingCaptureSheet: View {
                                 }
                             }
                     }
+                    if authoring { labelPicker }
                     ForEach(results) { r in
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: r.pass ? "checkmark.circle.fill" : (r.onFail == "flag" ? "flag.fill" : "xmark.circle.fill"))
@@ -107,12 +118,18 @@ struct ReadingCaptureSheet: View {
                         Spacer()
                         if authoring {
                             Button {
-                                var regions: [String: StepAssertion.AssertionRegion] = [:]
-                                for (id, b) in matchedBoxes { regions[id] = StepAssertion.AssertionRegion(x: b.minX, y: b.minY, w: b.width, h: b.height) }
-                                onTrained?(regions); dismiss()
+                                // AROMS-350: the picked line is both the place and the words.
+                                var t = LabelTraining()
+                                for a in labelChecks {
+                                    guard let i = picked[a.id], i < recognised.count else { continue }
+                                    let b = topLeft(recognised[i].box)
+                                    t.regions[a.id]  = StepAssertion.AssertionRegion(x: b.minX, y: b.minY, w: b.width, h: b.height)
+                                    t.expected[a.id] = recognised[i].text
+                                }
+                                onTrained?(t); dismiss()
                             } label: { Text("Save as trained").font(.headline) }
                                 .buttonStyle(.borderedProminent).tint(.green)
-                                .disabled(matchedBoxes.isEmpty)
+                                .disabled(labelChecks.contains { picked[$0.id] == nil })
                         } else if trial {
                             Button { dismiss() } label: { Text(allPass ? "Works - done" : "Done").font(.headline) }
                                 .buttonStyle(.borderedProminent).tint(allPass ? .green : .orange)
@@ -143,6 +160,70 @@ struct ReadingCaptureSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+
+    // ── AROMS-350: training captures the words ───────────────────────────────
+
+    private var labelChecks: [StepAssertion] { assertions.filter { $0.kind == "text-match" || $0.kind == "code" } }
+    private func fold(_ s: String) -> String {
+        s.precomposedStringWithCompatibilityMapping.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ").lowercased()
+    }
+    /// Vision boxes are bottom-left normalised; the app stores top-left normalised.
+    private func topLeft(_ b: CGRect) -> CGRect { CGRect(x: b.minX, y: 1 - b.maxY, width: b.width, height: b.height) }
+
+    /// The recognised lines as chips, one row per label check. The line that
+    /// carries the typed expectation is pre-selected; tapping another makes it
+    /// the expectation - so the step expects what the camera reads, in the
+    /// camera's spelling, and a blank check is filled from the real label.
+    @ViewBuilder
+    private var labelPicker: some View {
+        ForEach(labelChecks) { a in
+            VStack(alignment: .leading, spacing: 6) {
+                if recognised.isEmpty {
+                    Text("Nothing readable in the frame - move closer to the label and Read again.")
+                        .font(.footnote).foregroundStyle(Color.orange)
+                } else if let i = picked[a.id], i < recognised.count {
+                    Text(fold(recognised[i].text) == fold(a.expected)
+                         ? "The step will expect \"\(recognised[i].text)\" - as the camera reads it."
+                         : a.expected.isEmpty
+                            ? "The step will expect \"\(recognised[i].text)\"."
+                            : "The step will expect \"\(recognised[i].text)\" (was \"\(a.expected)\").")
+                        .font(.footnote).foregroundStyle(.white.opacity(0.8))
+                } else {
+                    Text(a.expected.isEmpty
+                         ? "Tap the line the label must say."
+                         : "The camera didn't read \"\(a.expected)\" - tap the line it did read, or Read again.")
+                        .font(.footnote).foregroundStyle(Color.orange)
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(Array(recognised.enumerated()), id: \.offset) { i, line in
+                            let on = picked[a.id] == i
+                            Button { pick(a, index: i) } label: {
+                                Label(line.text, systemImage: on ? "checkmark.circle.fill" : "textformat")
+                                    .font(.caption.weight(on ? .bold : .regular)).lineLimit(1)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(on ? Color.green.opacity(0.25) : Color.white.opacity(0.08), in: Capsule())
+                                    .overlay(Capsule().strokeBorder(on ? Color.green : Color.white.opacity(0.15)))
+                                    .foregroundStyle(on ? Color.green : .white)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func pick(_ a: StepAssertion, index: Int) {
+        picked[a.id] = index
+        matchedBoxes[a.id] = topLeft(recognised[index].box)
+        // The verdict follows the pick, so the author sees the operator's words for this choice.
+        var chosen = a; chosen.expected = recognised[index].text; chosen.match = "contains"
+        let r = ReadingJudge.evaluate(chosen, read: recognised.map(\.text).joined(separator: " "), typed: false)
+        results.removeAll { $0.assertionId == a.id }; results.append(r)
+        results.sort { lhs, rhs in (assertions.firstIndex { $0.id == lhs.assertionId } ?? 0) < (assertions.firstIndex { $0.id == rhs.assertionId } ?? 0) }
+        UISelectionFeedbackGenerator().selectionChanged()
     }
 
     private var framingHint: String {
@@ -184,19 +265,24 @@ struct ReadingCaptureSheet: View {
         let joined = recognised.map(\.text).joined(separator: " ")
         // A reading: the tallest line that carries a number is the display's main digits.
         let numeric = found.filter { ReadingJudge.parseReading($0.text) != nil }.max { $0.box.height < $1.box.height }?.text
-        // Vision boxes are bottom-left normalised; the app stores top-left normalised.
-        let topLeft = { (b: CGRect) in CGRect(x: b.minX, y: 1 - b.maxY, width: b.width, height: b.height) }
         matchedBoxes = [:]
+        picked = [:]
         var out: [StepReadingResult] = []
         for a in assertions where a.kind != "location" {
             let read = a.isReading ? (numeric ?? joined) : joined
             let r = ReadingJudge.evaluate(a, read: read, typed: false)
             out.append(r)
             // The line that carried the match (or, for a reading, the digits) - where the text is.
-            let want = a.expected.lowercased()
+            let want = fold(a.expected)
             let tallest = a.isReading ? nil : found.max(by: { $0.box.height < $1.box.height })
-            if let hit = found.first(where: { a.isReading ? $0.text == numeric : (!want.isEmpty && $0.text.lowercased().contains(want)) }) ?? tallest {
+            if let hit = found.first(where: { a.isReading ? $0.text == numeric : (!want.isEmpty && fold($0.text).contains(want)) }) ?? tallest {
                 matchedBoxes[a.id] = topLeft(hit.box)
+            }
+            // AROMS-350: in Author mode, pre-select the line that carries the typed
+            // expectation; a blank or unread one waits for the author's tap.
+            if authoring && !a.isReading, !want.isEmpty,
+               let i = recognised.firstIndex(where: { fold($0.text).contains(want) }) {
+                picked[a.id] = i
             }
         }
         // AROMS-339: location - the text's place now against where it was trained

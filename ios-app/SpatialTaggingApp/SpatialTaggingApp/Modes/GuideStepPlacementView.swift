@@ -191,6 +191,9 @@ struct GuideStepPlacementView: View {
     /// AROMS-351: "Try it" - the step whose label checks run in the operator's
     /// sheet with nothing recorded.
     @State private var trialStep: GuideStep? = nil
+    /// AROMS-350: assertions as saved by label training this session (`steps`
+    /// is the list the view was opened with). Read through `withTraining`.
+    @State private var trainedAssertions: [String: [StepAssertion]] = [:]
     /// U4: steps whose models are hidden while the author works on the pin.
     @State private var hiddenModelStepIds: Set<String> = []
     @State private var showCopySheet:   Bool = false
@@ -885,7 +888,8 @@ struct GuideStepPlacementView: View {
                                         frameSource: { arManager.sceneView.session.currentFrame.flatMap { HoneycombCaptureView.rawCameraImage(from: $0) } ?? arManager.sceneView.snapshot() },
                                         onDone: { _, _ in },
                                         authoring: true,
-                                        onTrained: { regions in Task { await saveLabelRegions(step: st, regions: regions) } })
+                                        onTrained: { training in Task { await saveLabelTraining(step: st, training: training) } },
+                                        assertionsOverride: trainedAssertions[st.id])
                     .presentationDetents([.medium, .large])
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                 }
@@ -897,7 +901,8 @@ struct GuideStepPlacementView: View {
                     ReadingCaptureSheet(step: st,
                                         frameSource: { arManager.sceneView.session.currentFrame.flatMap { HoneycombCaptureView.rawCameraImage(from: $0) } ?? arManager.sceneView.snapshot() },
                                         onDone: { _, _ in },
-                                        trial: true)
+                                        trial: true,
+                                        assertionsOverride: trainedAssertions[st.id])
                     .presentationDetents([.medium, .large])
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                 }
@@ -924,6 +929,10 @@ struct GuideStepPlacementView: View {
                 }
                 if wantsPosition(step) && !labelChecks(step).isEmpty {
                     Button(labelTrained(step) ? "Re-read the label where it should be" : "Read the label where it should be" + (step.needsValidation && !trained ? "" : " · needed")) { labelTrainStep = step }
+                } else if !labelChecks(step).isEmpty {
+                    // AROMS-350: text alone needs no training, but reading the real
+                    // label sets the words the way the camera spells them.
+                    Button(labelChecks(step).contains { $0.expected.isEmpty } ? "Read the label to set the words · needed" : "Read the label to set the words") { labelTrainStep = step }
                 }
                 // AROMS-351: the operator's check on this step, from here, nothing
                 // recorded - so a trained step can be tried again any time, not
@@ -1001,7 +1010,7 @@ struct GuideStepPlacementView: View {
             // One chip for everything the step's plan needs trained in AR
             // (presence by cone / quick shot, label position): the words are the
             // state, the tap opens one sheet with each half and its own button.
-            if (step.needsValidation || (wantsPosition(step) && !labelChecks(step).isEmpty)) && placed {
+            if (step.needsValidation || !labelChecks(step).isEmpty) && placed {
                 let chip = trainChipWords(step)
                 Button { trainingChoiceStep = step } label: {
                     Label(chip.text, systemImage: chip.done ? "checkmark.seal.fill" : "seal")
@@ -1205,17 +1214,26 @@ struct GuideStepPlacementView: View {
     /// Cone (multi-angle) training - presents ConeCaptureView at the pin.
     @MainActor
     // ── What a step needs trained, in one place (the chip, the sheet and the chain read this) ──
-    private func labelChecks(_ step: GuideStep) -> [StepAssertion] { (step.assertions ?? []).filter { $0.kind == "text-match" || $0.kind == "code" } }
-    private func wantsPosition(_ step: GuideStep) -> Bool { (step.assertions ?? []).contains { $0.kind == "location" } }
-    private func labelTrained(_ step: GuideStep) -> Bool { labelTrainedStepIds.contains(step.id) || (step.assertions ?? []).contains { $0.kind == "text-match" && $0.region != nil } }
-    /// Only a position check needs the label read in AR; text alone is checked live.
-    private func labelNeedsTraining(_ step: GuideStep) -> Bool { wantsPosition(step) && !labelChecks(step).isEmpty && !labelTrained(step) }
+    /// AROMS-350: the step's checks, with this session's label training applied.
+    private func checks(_ step: GuideStep) -> [StepAssertion] { trainedAssertions[step.id] ?? step.assertions ?? [] }
+    private func labelChecks(_ step: GuideStep) -> [StepAssertion] { checks(step).filter { $0.kind == "text-match" || $0.kind == "code" } }
+    private func wantsPosition(_ step: GuideStep) -> Bool { checks(step).contains { $0.kind == "location" } }
+    private func labelTrained(_ step: GuideStep) -> Bool { labelTrainedStepIds.contains(step.id) || checks(step).contains { $0.kind == "text-match" && $0.region != nil } }
+    /// A position check needs the label read in AR; text alone is checked live,
+    /// unless its words are blank (AROMS-350: the label read sets them).
+    private func labelNeedsTraining(_ step: GuideStep) -> Bool {
+        (wantsPosition(step) && !labelChecks(step).isEmpty && !labelTrained(step)) || labelChecks(step).contains { $0.expected.isEmpty }
+    }
     private func presenceTrained(_ step: GuideStep) -> Bool { coneTrainedStepIds.contains(step.id) || step.validationTrained }
     /// Chip text: "Train · cone + label", "Trained · label needs reading", "Trained".
     private func trainChipWords(_ step: GuideStep) -> (text: String, done: Bool) {
         var todo: [String] = [], done: [String] = []
         if step.needsValidation { if presenceTrained(step) { done.append(coneTrainedStepIds.contains(step.id) || step.coneTrained ? "cone" : "quick shot") } else { todo.append((step.validationPlan ?? "cone") == "cone" ? "cone" : "quick shot") } }
         if wantsPosition(step) && !labelChecks(step).isEmpty { if labelTrained(step) { done.append("label") } else { todo.append("label") } }
+        else if !labelChecks(step).isEmpty {
+            // AROMS-350: text alone - the words are what matter; blank ones need the label read.
+            if labelChecks(step).contains(where: { $0.expected.isEmpty }) { todo.append("label words") } else { done.append("label") }
+        }
         if todo.isEmpty { return ("Trained" + (done.isEmpty ? "" : " · \(done.joined(separator: " · "))"), true) }
         return ((done.isEmpty ? "Train · " : "Trained · ") + (done.isEmpty ? todo.joined(separator: " + ") : "\(todo.joined(separator: " + ")) needs training"), false)
     }
@@ -1266,21 +1284,30 @@ struct GuideStepPlacementView: View {
         }
         if wantsPosition(step) && !labelChecks(step).isEmpty {
             parts.append(labelTrained(step) ? "Label: position known." : "Label: read it once where it should be so the operator's position check has something to compare with.")
+        } else if !labelChecks(step).isEmpty {
+            let words = labelChecks(step).map { $0.expected.isEmpty ? "(blank)" : "\"\($0.expected)\"" }.joined(separator: ", ")
+            parts.append("Label: must say \(words) - checked live. Reading the real label sets the words as the camera spells them.")
         }
         return parts.joined(separator: "\n")
     }
 
-    /// AROMS-339: store where each text was read as the assertion's region (PATCH replaces the list).
-    private func saveLabelRegions(step: GuideStep, regions: [String: StepAssertion.AssertionRegion]) async {
-        guard var list = step.assertions, !regions.isEmpty else { return }
-        for i in list.indices { if let r = regions[list[i].id] { list[i].region = r } }
+    /// AROMS-339 / 350: store where each text was read as the assertion's region
+    /// and the words the camera read as its expectation (PATCH replaces the list).
+    private func saveLabelTraining(step: GuideStep, training: ReadingCaptureSheet.LabelTraining) async {
+        var list = checks(step)
+        guard !list.isEmpty, !training.regions.isEmpty else { return }
+        for i in list.indices {
+            if let r = training.regions[list[i].id] { list[i].region = r }
+            if let e = training.expected[list[i].id], !e.isEmpty { list[i].expected = e; list[i].match = "contains" }
+        }
         var req = UpdateGuideStepRequest()
         req.assertions = list
         do {
             _ = try await SIBClient(settings: settings).updateGuideStep(guideId: guide.id, stepId: step.id, req: req)
             labelTrainedStepIds.insert(step.id)
+            trainedAssertions[step.id] = list   // Try it and a re-read see the new words at once
         } catch {
-            saveError = "Could not save the label position: \(friendlyMessage(for: error))"
+            saveError = "Could not save the label training: \(friendlyMessage(for: error))"
         }
     }
 

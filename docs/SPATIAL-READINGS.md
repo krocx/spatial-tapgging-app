@@ -136,7 +136,22 @@ words that matter, so:
   both drop it on save, and a position with no label text left to anchor it
   goes with it. A blank that reaches a device from an older save is
   **flagged** ("No expected text on this step - skipped"), never blocking.
-- Next: training captures the words (AROMS-350).
+### 8.1a Training captures the words (2026-10-19, AROMS-350)
+
+The label reading in Place Steps in AR used to keep only the box of the
+line that matched and throw the words away - at the one moment the
+expectation should be captured. Now, after Read, the recognised lines are
+chips under the photo, one row per Text or Code check. The chip that
+carries the typed expectation is pre-selected; tapping another makes it the
+expectation. Save as trained writes both the position and the words, as the
+camera spells them ("AchromaLife100", not "ChromaLife100"), with `match:
+contains`. A blank check must have a chip picked before Save is enabled.
+
+The honest path for an author is therefore: add a Text check, go to AR,
+read the real label, tap the line; typing is the shortcut. The Train chip
+offers "Read the label to set the words" on text-only checks too (no
+position switch), and a blank one is chained after presence training the
+way an untrained position is. Text alone still needs no training to run.
 
 ### 8.2 Try it as the operator (2026-10-19, AROMS-351)
 
