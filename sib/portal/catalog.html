@@ -136,7 +136,7 @@ body.lite header{background:var(--ax-solid);} body.lite #panel{background:var(--
 /* ── Welcome (2026.4.50): first visit, back after a while, or just back ── */
 #welcome{position:fixed;inset:0;display:none;z-index:90;background:var(--ax-scrim);align-items:center;justify-content:center;padding:4vh 4vw;}
 #welcome.open{display:flex;}
-#welcome .wcard{width:min(560px,100%);padding:26px 28px 22px;}
+#welcome .wcard{width:min(560px,100%);padding:26px 28px 22px;background:var(--ax-solid);border:1px solid var(--border);}
 #welcome .wcard h3{margin:6px 0 8px;font:var(--ax-h3);color:var(--ax-ink);}
 #welcome .wcard p{margin:0 0 14px;font:var(--ax-body);color:var(--ax-ink-2);line-height:1.5;}
 #welcome .wsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 18px;}
@@ -1281,7 +1281,7 @@ function draw(){
   // dies around it, not just other labels: every die claims its cell first,
   // and a label that cannot find clear room stays hidden until hover - the
   // map reads clean, and nothing is lost, only deferred to the pointer.
-  if (waferLook) for (const nd of nodes){ const d = 9 * nd.ps; placed.push({ x0: nd.px - d, x1: nd.px + d, y0: nd.py - d, y1: nd.py + d }); }
+  if (waferLook) for (const nd of nodes){ const d = 7.6 * nd.ps; placed.push({ x0: nd.px - d, x1: nd.px + d, y0: nd.py - d, y1: nd.py + d }); }
   const labelPos = (nd, r, want) => {
     if (!want) return null;
     const chars = Math.min(nd.name.length, waferLook ? 22 : 28);
@@ -1292,8 +1292,10 @@ function draw(){
     // On the lattice a label goes below its die or nowhere: an "above" label
     // lands in the band of the label below the die above, and two labels
     // touching read worse than one missing.
-    for (const dy of (waferLook ? [r + 12 * ls] : [r + 12, -(r + 5)])){
-      const sy = dy * nd.ps, box = { x0: nd.px - w/2 - m, x1: nd.px + w/2 + m, y0: nd.py + sy - h - m, y1: nd.py + sy + m };
+    // The label's top edge sits just under its own die (never inside it); the
+    // breathing room goes sideways and below, where the neighbours are.
+    for (const dy of (waferLook ? [r + 3 + 9 * ls] : [r + 12, -(r + 5)])){
+      const sy = dy * nd.ps, box = { x0: nd.px - w/2 - m, x1: nd.px + w/2 + m, y0: nd.py + sy - h, y1: nd.py + sy + m };
       if (!placed.some(b => b.x0 < box.x1 && b.x1 > box.x0 && b.y0 < box.y1 && b.y1 > box.y0)){ placed.push(box); return dy; }
     }
     return null;
