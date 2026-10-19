@@ -1174,7 +1174,10 @@ function draw(){
   const focusId = selected || hovered, lit = [];
   edges.forEach((e, i) => {
     const vis = nodeVisible(e.s) && nodeVisible(e.t);
-    let op = vis ? (waferLook ? 0.16 : 0.22) : 0.03;
+    // At rest on the wafer, only in-sector wiring shows; a cross-sector edge
+    // is all but hidden until a die is hovered, selected or searched - then it
+    // lights exactly as before, so nothing is lost, only the idle tangle.
+    let op = vis ? (waferLook ? (e.s.area === e.t.area ? 0.16 : 0.035) : 0.22) : 0.03;
     const touches = set => set.has(e.s.id) && set.has(e.t.id);
     if (ts) op = touches(ts) ? 0.7 : 0.04;
     else if (selected) op = touches(neighbours) && (e.s.id === selected || e.t.id === selected) ? 0.95 : 0.06;
