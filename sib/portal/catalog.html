@@ -422,7 +422,47 @@ function setLook(name){
   localStorage.setItem('cat_look', waferLook ? 'wafer' : 'disc');
   document.querySelectorAll('#modeCtl button[data-look]').forEach(b => b.classList.toggle('on', b.dataset.look === (waferLook ? 'wafer' : 'disc')));
   document.querySelectorAll('div.legend .lg-shape').forEach(el => el.setAttribute('rx', waferLook ? '1.6' : '5'));
+  // Wafer: settle, then one die per cell. Circles: the relaxation runs again from the slots.
+  buildGraph(); alpha = 1; for (let i = 0; i < 420; i++) tick();
+  if (waferLook){ snapToWafer(); alpha = 0; }
   buildStatic(); rebuildScene(); draw();
+}
+// One die per cell. After the relaxation settles, every node moves to the
+// nearest free cell centre that lies inside its own sector band, nearest-first
+// so the layout keeps its shape; a dragged node snaps on release. The grid is
+// then implied by the dies, as scribe lines are on a wafer, and drawn only
+// faintly behind them.
+function snapToWafer(){
+  if (!waferLook) return;
+  const taken = new Set();
+  const cellOf = (x, y) => [Math.round((x - CX) / DIE), Math.round((y - CY) / DIE)];
+  const centre = (i, j) => ({ x: CX + i * DIE, y: CY + j * DIE });
+  const inSector = (a, x, y) => {
+    const r = Math.hypot(x - CX, y - CY);
+    if (r < R_MIN - 2 || r > R_MAX + 2) return false;
+    let th = Math.atan2(y - CY, x - CX);
+    const pad = 0.045;
+    for (const k of [-2, 0, 2]){ const t = th + k * Math.PI; if (t >= a.g0 + pad && t <= a.g1 - pad) return true; }
+    return false;
+  };
+  const order = nodes.map(nd => ({ nd, d: Math.hypot(nd.x - nd.tx, nd.y - nd.ty) })).sort((p, q) => p.d - q.d).map(p => p.nd);
+  for (const nd of order){
+    const a = areaById[nd.area];
+    const [ci, cj] = cellOf(nd.x, nd.y);
+    let best = null;
+    for (let ring = 0; ring <= 6 && !best; ring++){
+      let cand = [];
+      for (let i = ci - ring; i <= ci + ring; i++) for (let j = cj - ring; j <= cj + ring; j++){
+        if (Math.max(Math.abs(i - ci), Math.abs(j - cj)) !== ring) continue;
+        const key = i + ',' + j; if (taken.has(key)) continue;
+        const c = centre(i, j); if (!inSector(a, c.x, c.y)) continue;
+        cand.push({ key, c, d: Math.hypot(c.x - nd.x, c.y - nd.y) });
+      }
+      cand.sort((p, q) => p.d - q.d);
+      if (cand.length) best = cand[0];
+    }
+    if (best){ taken.add(best.key); nd.x = nd.tx = best.c.x; nd.y = nd.ty = best.c.y; nd.vx = nd.vy = 0; }
+  }
 }
 function dieShape(status, c, r = 8){
   // The die: a rounded square the size of the old dot; the planned one is a dashed outline, beta an outlined fill.
@@ -538,6 +578,7 @@ let igniting = false, loopPrev = 0;
 function startSim(){
   alpha = 1;
   for (let i = 0; i < 420; i++) tick();     // fully settled before the first paint
+  snapToWafer(); alpha = 0;                  // on cells, and the relaxation stops there
   buildStatic();
   // Ignite - once per browser session: the core lights, wedges sweep in,
   // nodes pop ring by ring. Any input skips it. Reduced-motion users get the
@@ -553,7 +594,7 @@ function startSim(){
   dirty = true;
   requestAnimationFrame(function loop(now){
     if (!igniting){
-      if (alpha > 0.02){ tick(); dirty = true; }
+      if (alpha > 0.02){ tick(); dirty = true; if (waferLook && alpha <= 0.02){ snapToWafer(); dirty = true; } }
       // 4: the stack drifts on its own after 4 s idle, and leans a few degrees
       // with the mouse (Full tier, 3D only). Both are re-projections, so they
       // are skipped entirely in Lite and while a flight or drag is running.
@@ -571,10 +612,10 @@ function startSim(){
     requestAnimationFrame(loop);
   });
 }
-function reheat(){ alpha = Math.max(alpha, 0.5); dirty = true; }
+function reheat(){ if (waferLook) return; alpha = Math.max(alpha, 0.5); dirty = true; }
 function resetLayout(){
   savedPos = {}; localStorage.removeItem(POS_KEY);
-  buildGraph(); alpha = 1; for (let i = 0; i < 420; i++) tick(); buildStatic(); rebuildScene(); fitAll();
+  buildGraph(); alpha = 1; for (let i = 0; i < 420; i++) tick(); snapToWafer(); alpha = 0; buildStatic(); rebuildScene(); fitAll();
 }
 
 /* ═══════════════ 3D stack (2026.4.46) ═══════════════ */
@@ -863,11 +904,13 @@ function buildStatic(){
     // The wafer: a faint disc, the die grid (reticle pitch) clipped to it, the
     // edge-exclusion ring, and the notch at the bottom that every wafer carries.
     let grid = '';
-    for (let x = CX - R_WAFER; x <= CX + R_WAFER; x += DIE) grid += `M${x.toFixed(0)},${(CY - R_WAFER).toFixed(0)}V${(CY + R_WAFER).toFixed(0)}`;
-    for (let y = CY - R_WAFER; y <= CY + R_WAFER; y += DIE) grid += `M${(CX - R_WAFER).toFixed(0)},${y.toFixed(0)}H${(CX + R_WAFER).toFixed(0)}`;
+    // Scribe lines sit between cells: cell centres are CX + i·DIE, so lines at CX + (i + ½)·DIE.
+    const n = Math.ceil(R_WAFER / DIE);
+    for (let i = -n; i < n; i++){ const x = CX + (i + 0.5) * DIE, y = CY + (i + 0.5) * DIE;
+      grid += `M${x.toFixed(0)},${(CY - R_WAFER).toFixed(0)}V${(CY + R_WAFER).toFixed(0)}M${(CX - R_WAFER).toFixed(0)},${y.toFixed(0)}H${(CX + R_WAFER).toFixed(0)}`; }
     out += `<g class="wafer" pointer-events="none">
       <circle cx="${CX}" cy="${CY}" r="${R_WAFER}" fill="var(--ax-ink)" fill-opacity=".028" stroke="var(--ax-ink-3)" stroke-opacity=".35" stroke-width="1.2"/>
-      <path d="${grid}" clip-path="url(#waferClip)" fill="none" stroke="var(--ax-ink-3)" stroke-opacity=".11" stroke-width="1"/>
+      <path d="${grid}" clip-path="url(#waferClip)" fill="none" stroke="var(--ax-ink-3)" stroke-opacity=".055" stroke-width="1"/>
       <circle cx="${CX}" cy="${CY}" r="${R_WAFER - 10}" fill="none" stroke="var(--ax-ink-3)" stroke-opacity=".18" stroke-dasharray="1 4"/>
       <circle cx="${CX}" cy="${CY + R_WAFER}" r="9" fill="var(--ax-bg)" stroke="var(--ax-ink-3)" stroke-opacity=".35" stroke-width="1.2"/>
       <text class="ring" x="${CX + 14}" y="${CY + R_WAFER - 14}" opacity=".7">${esc(DATA.platformVersion)}</text>
@@ -1131,7 +1174,7 @@ function draw(){
   const focusId = selected || hovered, lit = [];
   edges.forEach((e, i) => {
     const vis = nodeVisible(e.s) && nodeVisible(e.t);
-    let op = vis ? 0.22 : 0.03;
+    let op = vis ? (waferLook ? 0.16 : 0.22) : 0.03;
     const touches = set => set.has(e.s.id) && set.has(e.t.id);
     if (ts) op = touches(ts) ? 0.7 : 0.04;
     else if (selected) op = touches(neighbours) && (e.s.id === selected || e.t.id === selected) ? 0.95 : 0.06;
@@ -1302,7 +1345,9 @@ svg.addEventListener('pointerup', ev => {
     if (!drag.moved || mode3d) selectFeature(drag.nd.id);
     else { drag.nd.tx = drag.nd.fx; drag.nd.ty = drag.nd.fy; savedPos[drag.nd.id] = { x: drag.nd.fx, y: drag.nd.fy };
            try { localStorage.setItem(POS_KEY, JSON.stringify(savedPos)); } catch {} }
-    drag.nd.fx = drag.nd.fy = null; markDirty();
+    drag.nd.fx = drag.nd.fy = null;
+    if (waferLook && drag.moved && !mode3d){ drag.nd.x = drag.nd.tx; drag.nd.y = drag.nd.ty; snapToWafer(); alpha = 0; savedPos[drag.nd.id] = { x: drag.nd.x, y: drag.nd.y }; try { localStorage.setItem(POS_KEY, JSON.stringify(savedPos)); } catch {} }
+    markDirty();
   } else if (drag && drag.type === 'area'){
     showArea(drag.id); zoomToArea(drag.id);
   } else if (drag && !drag.moved){
