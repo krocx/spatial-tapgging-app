@@ -1202,9 +1202,12 @@ function draw(){
   const labelPos = (nd, r, want) => {
     if (!want) return null;
     const chars = Math.min(nd.name.length, waferLook ? 22 : 28);
-    const w = chars * (waferLook ? 6.1 : 5.3) * nd.ps, h = 11 * nd.ps;
-    for (const dy of [r + 12, -(r + 5)]){
-      const sy = dy * nd.ps, box = { x0: nd.px - w/2, x1: nd.px + w/2, y0: nd.py + sy - h, y1: nd.py + sy };
+    const w = chars * (waferLook ? 6.1 : 5.3) * nd.ps, h = 11 * nd.ps, m = (waferLook ? 3 : 0) * nd.ps;
+    // On the lattice a label goes below its die or nowhere: an "above" label
+    // lands in the band of the label below the die above, and two labels
+    // touching read worse than one missing.
+    for (const dy of (waferLook ? [r + 12] : [r + 12, -(r + 5)])){
+      const sy = dy * nd.ps, box = { x0: nd.px - w/2 - m, x1: nd.px + w/2 + m, y0: nd.py + sy - h - m, y1: nd.py + sy + m };
       if (!placed.some(b => b.x0 < box.x1 && b.x1 > box.x0 && b.y0 < box.y1 && b.y1 > box.y0)){ placed.push(box); return dy; }
     }
     return null;
