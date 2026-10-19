@@ -23,6 +23,9 @@ struct ReadingCaptureSheet: View {
     /// was read (top-left normalised), to be stored as the assertion's region.
     var authoring:   Bool = false
     var onTrained:   ((_ regions: [String: StepAssertion.AssertionRegion]) -> Void)? = nil
+    /// AROMS-351: Author mode "Try it" - the operator's sheet, the operator's
+    /// verdict, nothing recorded. The one button is Done.
+    var trial:       Bool = false
     @State private var matchedBoxes: [String: CGRect] = [:]
 
     @Environment(\.dismiss) private var dismiss
@@ -43,6 +46,10 @@ struct ReadingCaptureSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 14) {
+                if trial {
+                    Label("Trial - what the operator will see; nothing is recorded", systemImage: "eye")
+                        .font(.caption).foregroundStyle(Color.orange)
+                }
                 // What to frame, in words.
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(assertions) { a in
@@ -106,6 +113,9 @@ struct ReadingCaptureSheet: View {
                             } label: { Text("Save as trained").font(.headline) }
                                 .buttonStyle(.borderedProminent).tint(.green)
                                 .disabled(matchedBoxes.isEmpty)
+                        } else if trial {
+                            Button { dismiss() } label: { Text(allPass ? "Works - done" : "Done").font(.headline) }
+                                .buttonStyle(.borderedProminent).tint(allPass ? .green : .orange)
                         } else {
                             Button { onDone(results, frame); dismiss() } label: { Text(allPass ? "Use this" : "Keep this").font(.headline) }
                                 .buttonStyle(.borderedProminent).tint(allPass ? .green : .orange)

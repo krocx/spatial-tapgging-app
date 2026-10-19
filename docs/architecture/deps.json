@@ -932,6 +932,7 @@
    "Services/ARSessionManager.swift",
    "Services/AnchorEncryption.swift",
    "Services/AppLog.swift",
+   "Services/PresenceScorer.swift",
    "Services/PresenceService.swift",
    "Services/SIBClient.swift",
    "Services/TagFeaturePrint.swift",
@@ -1258,6 +1259,13 @@
    "Services/SIBClient.swift"
   ],
   "Services/InspectionDebugLog.swift": [],
+  "Services/PresenceScorer.swift": [
+   "App/AppSettings.swift",
+   "Models/SIBTypes.swift",
+   "Services/AppLog.swift",
+   "Services/SIBClient.swift",
+   "Services/TagFeaturePrint.swift"
+  ],
   "Services/PresenceService.swift": [
    "App/AppSettings.swift",
    "Services/ARCoordinateFrame.swift",

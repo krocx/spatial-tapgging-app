@@ -50,6 +50,13 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-351: "Try it as the operator" in Place Steps in AR.** Any step's
+  Train chip offers it once something is trained: presence is scored from
+  where the author stands with the operator's own rule and said in a toast
+  ("Presence would pass · score 0.82 · nothing recorded"), then the label
+  checks open in the operator's reading sheet on trial. No save, publish,
+  mode switch or walk to the QR to re-check a step trained last week; nothing
+  is written. The rule now lives in one place (`PresenceScorer`).
 - **AROMS-337: readings and text checks on a step (spatial readings,
   docs/SPATIAL-READINGS.md).** A step carries `assertions`: a reading from
   an instrument display (multimeter, torque tool, leak checker), text on a

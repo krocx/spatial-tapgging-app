@@ -136,5 +136,22 @@ words that matter, so:
   both drop it on save, and a position with no label text left to anchor it
   goes with it. A blank that reaches a device from an older save is
   **flagged** ("No expected text on this step - skipped"), never blocking.
-- Next: training captures the words (AROMS-350) and "Try it" on the trained
-  chip (AROMS-351).
+- Next: training captures the words (AROMS-350).
+
+### 8.2 Try it as the operator (2026-10-19, AROMS-351)
+
+An author adding step 12 wants to know step 4, trained last week, still
+passes - without save, publish, a mode switch and a walk to the QR. Every
+step's Train chip in Place Steps in AR offers "Try it as the operator" once
+anything is in place: presence is scored from where the author stands with
+the operator's rule (`PresenceScorer`: on-device feature print or server
+SSIM, whichever is higher, PASS at 0.60) and said in a toast ("Presence
+would pass · score 0.82 · nothing recorded", or why not); then the label
+checks open in the operator's own reading sheet marked "Trial - nothing is
+recorded", with one button, Done. `/validate` is a pure compare and the
+sheet on trial calls nothing, so no run, evidence or event is written. The
+Operator mode remains the test of the whole guide.
+
+Open (AROMS-352): on the floor presence and the label are two validations;
+the merge is to read the label on the cone's own frame and only open the
+sheet when it is not legible from there.

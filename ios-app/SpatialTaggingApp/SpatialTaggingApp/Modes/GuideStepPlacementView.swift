@@ -183,9 +183,14 @@ struct GuideStepPlacementView: View {
     /// happen instead of a silent chip flip. Same toast for quick-shot and cone.
     private enum TrainingToast: Equatable {
         case holdSteady, training(String), trained, failed(String)
+        /// AROMS-351: the operator's presence verdict on a trial - pass, score, words.
+        case trial(pass: Bool, score: Double, words: String)
     }
     @State private var trainingToast: TrainingToast? = nil
     @State private var trainingToastSeq = 0
+    /// AROMS-351: "Try it" - the step whose label checks run in the operator's
+    /// sheet with nothing recorded.
+    @State private var trialStep: GuideStep? = nil
     /// U4: steps whose models are hidden while the author works on the pin.
     @State private var hiddenModelStepIds: Set<String> = []
     @State private var showCopySheet:   Bool = false
@@ -885,6 +890,18 @@ struct GuideStepPlacementView: View {
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                 }
             }
+            // AROMS-351: the operator's reading sheet on trial - same code, same
+            // words, the verdict shown and thrown away.
+            .sheet(isPresented: Binding(get: { trialStep != nil }, set: { if !$0 { trialStep = nil } })) {
+                if let st = trialStep {
+                    ReadingCaptureSheet(step: st,
+                                        frameSource: { arManager.sceneView.session.currentFrame.flatMap { HoneycombCaptureView.rawCameraImage(from: $0) } ?? arManager.sceneView.snapshot() },
+                                        onDone: { _, _ in },
+                                        trial: true)
+                    .presentationDetents([.medium, .large])
+                    .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                }
+            }
             // AROMS-331: one place to choose the training, with the author's
             // plan first. Retrain is explicit and asks; nothing is hidden
             // behind the word "Trained".
@@ -907,6 +924,12 @@ struct GuideStepPlacementView: View {
                 }
                 if wantsPosition(step) && !labelChecks(step).isEmpty {
                     Button(labelTrained(step) ? "Re-read the label where it should be" : "Read the label where it should be" + (step.needsValidation && !trained ? "" : " · needed")) { labelTrainStep = step }
+                }
+                // AROMS-351: the operator's check on this step, from here, nothing
+                // recorded - so a trained step can be tried again any time, not
+                // only the moment it was trained.
+                if canTry(step) {
+                    Button("Try it as the operator") { Task { await tryStep(step) } }
                 }
                 Button("Cancel", role: .cancel) { }
             } message: { step in
@@ -987,7 +1010,7 @@ struct GuideStepPlacementView: View {
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Color.black.opacity(0.35), in: Capsule())
                 }
-                .accessibilityLabel(chip.done ? "Trained - tap to retrain" : "Train what this step checks")
+                .accessibilityLabel(chip.done ? "Trained - tap to try it as the operator or retrain" : "Train what this step checks")
                 .disabled(isPreparingTraining)
             }
 
@@ -1195,6 +1218,43 @@ struct GuideStepPlacementView: View {
         if wantsPosition(step) && !labelChecks(step).isEmpty { if labelTrained(step) { done.append("label") } else { todo.append("label") } }
         if todo.isEmpty { return ("Trained" + (done.isEmpty ? "" : " · \(done.joined(separator: " · "))"), true) }
         return ((done.isEmpty ? "Train · " : "Trained · ") + (done.isEmpty ? todo.joined(separator: " + ") : "\(todo.joined(separator: " + ")) needs training"), false)
+    }
+
+    // ── AROMS-351: "Try it as the operator" ──────────────────────────────────
+
+    /// Anything the operator would check is in place: presence trained, or a
+    /// label check (text is read live, so it can be tried even untrained).
+    private func canTry(_ step: GuideStep) -> Bool {
+        (step.needsValidation && presenceTrained(step)) || !labelChecks(step).isEmpty
+    }
+
+    /// Presence first, from where the author stands, with the operator's rule
+    /// and a verdict toast; then the label checks in the operator's own sheet.
+    /// Nothing is recorded: /validate is a compare, the sheet is on trial.
+    @MainActor
+    private func tryStep(_ step: GuideStep) async {
+        guard !isPreparingTraining else { return }
+        if step.needsValidation && presenceTrained(step) {
+            isPreparingTraining = true
+            showTrainingToast(.holdSteady)
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            guard let frame = arManager.sceneView.session.currentFrame,
+                  let img = HoneycombCaptureView.rawCameraImage(from: frame) else {
+                isPreparingTraining = false
+                showTrainingToast(.failed("Camera frame unavailable - try again."), autoHide: false); return
+            }
+            showTrainingToast(.training("Checking presence for step \(step.sequenceNumber) - trial"))
+            var tag: Tag? = nil
+            if let tagId = sessionTagIds[step.id] ?? step.validationTagId {
+                tag = try? await SIBClient(settings: settings).fetchTag(id: tagId)
+            }
+            let v = await PresenceScorer.score(image: img, tag: tag, guideId: guide.id, stepId: step.id, settings: settings)
+            isPreparingTraining = false
+            showTrainingToast(.trial(pass: v.pass, score: v.score, words: v.words), autoHide: labelChecks(step).isEmpty ? false : true)
+            UINotificationFeedbackGenerator().notificationOccurred(v.pass ? .success : .warning)
+            if !labelChecks(step).isEmpty { try? await Task.sleep(nanoseconds: 1_200_000_000) }
+        }
+        if !labelChecks(step).isEmpty { trialStep = step }
     }
 
     private func trainingSheetWords(_ step: GuideStep) -> String {
@@ -1718,6 +1778,13 @@ struct GuideStepPlacementView: View {
                 Text(msg).font(.caption).foregroundStyle(.white).multilineTextAlignment(.center)
                 Button("OK") { withAnimation { trainingToast = nil } }
                     .font(.subheadline.bold()).foregroundStyle(.cyan)
+            case .trial(let pass, let score, let words):
+                Image(systemName: pass ? "checkmark.circle.fill" : "xmark.circle.fill").font(.system(size: 34)).foregroundStyle(pass ? .green : .orange)
+                Text(pass ? "Presence would pass" : "Presence would fail").font(.headline).foregroundStyle(.white)
+                Text("Trial · score \(String(format: "%.2f", score)) · nothing recorded").font(.caption).foregroundStyle(.white.opacity(0.7))
+                if !words.isEmpty { Text(words).font(.caption).foregroundStyle(.white).multilineTextAlignment(.center) }
+                Button("OK") { withAnimation { trainingToast = nil } }
+                    .font(.subheadline.bold()).foregroundStyle(.cyan)
             }
         }
         .padding(.horizontal, 26).padding(.vertical, 20)
@@ -1725,7 +1792,7 @@ struct GuideStepPlacementView: View {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.12)))
         .transition(.scale(scale: 0.92).combined(with: .opacity))
-        .allowsHitTesting({ if case .failed = t { return true } else { return false } }())
+        .allowsHitTesting({ switch t { case .failed, .trial: return true; default: return false } }())
     }
 
     // ─────────────────────────────────────────────────────────────────────────
