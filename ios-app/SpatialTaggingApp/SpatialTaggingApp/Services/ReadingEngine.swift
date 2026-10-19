@@ -10,12 +10,44 @@
 
 import UIKit
 import Vision
+import NaturalLanguage
 
 enum ReadingEngine {
 
     /// A recognised line, or a decoded barcode (`symbology` set, `text` the payload).
-    /// Boxes are top-left normalised, as the app stores them.
-    struct Line: Equatable { let text: String; let box: CGRect; var symbology: String? = nil }
+    /// Boxes are top-left normalised, as the app stores them. `language` (AROMS-355)
+    /// is the script the line is written in, in words ("Korean", "Japanese",
+    /// "Chinese (Simplified)"), nil for English, digits and codes.
+    struct Line: Equatable { let text: String; let box: CGRect; var symbology: String? = nil; var language: String? = nil }
+
+    /// AROMS-355: the languages a label on the floor is printed in. Vision reads
+    /// Latin by default; Korean, Japanese and both Chinese scripts have to be
+    /// asked for, and then the recogniser picks per line.
+    static let recognitionLanguages = ["en-US", "ko-KR", "ja-JP", "zh-Hans", "zh-Hant", "de-DE", "fr-FR"]
+
+    /// The language of a line, in words - nil for English, numbers and codes,
+    /// so only what matters on the floor is said.
+    static func languageWords(_ text: String) -> String? {
+        let letters = text.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+        guard letters.count >= 2 else { return nil }
+        // Script first: it is unambiguous for Hangul and the kana, and NLLanguageRecognizer
+        // alone mistakes short Japanese for Chinese when a line is all kanji.
+        if letters.contains(where: { (0xAC00...0xD7AF).contains($0.value) || (0x1100...0x11FF).contains($0.value) || (0x3130...0x318F).contains($0.value) }) { return "Korean" }
+        if letters.contains(where: { (0x3040...0x30FF).contains($0.value) }) { return "Japanese" }
+        let r = NLLanguageRecognizer()
+        r.languageConstraints = [.english, .korean, .japanese, .simplifiedChinese, .traditionalChinese, .german, .french]
+        r.processString(text)
+        guard let lang = r.dominantLanguage, (r.languageHypotheses(withMaximum: 1)[lang] ?? 0) >= 0.5 else { return nil }
+        switch lang {
+        case .korean:             return "Korean"
+        case .japanese:           return "Japanese"
+        case .simplifiedChinese:  return "Chinese (Simplified)"
+        case .traditionalChinese: return "Chinese (Traditional)"
+        case .german:             return "German"
+        case .french:             return "French"
+        default:                  return nil
+        }
+    }
 
     /// One frame's recognition.
     struct Frame {
@@ -48,6 +80,10 @@ enum ReadingEngine {
                 let text = VNRecognizeTextRequest()
                 text.recognitionLevel = .accurate
                 text.usesLanguageCorrection = false        // digits and part numbers must not be "corrected"
+                // AROMS-355: ask for the scripts a label may carry; Vision picks per line.
+                let supported = (try? VNRecognizeTextRequest().supportedRecognitionLanguages()) ?? []
+                text.recognitionLanguages = recognitionLanguages.filter { supported.contains($0) }
+                text.automaticallyDetectsLanguage = true
                 let codes = VNDetectBarcodesRequest()
                 codes.symbologies = codeSymbologies
                 let handler = VNImageRequestHandler(cgImage: cg, options: [:])
@@ -55,7 +91,7 @@ enum ReadingEngine {
                 var f = Frame()
                 f.lines = (text.results ?? []).compactMap { o -> Line? in
                     guard let s = o.topCandidates(1).first?.string, !s.isEmpty else { return nil }
-                    return Line(text: s, box: topLeft(o.boundingBox))
+                    return Line(text: s, box: topLeft(o.boundingBox), language: languageWords(s))
                 }.sorted { $0.box.minY < $1.box.minY }
                 if wantsCodes {
                     f.codes = (codes.results ?? []).compactMap { o -> Line? in
@@ -175,12 +211,16 @@ enum ReadingEngine {
                 if let b = readingBox { j.matchedBoxes[a.id] = b }
                 continue
             }
-            let r = ReadingJudge.evaluate(a, read: joined, typed: false)
-            j.results.append(r)
-            // The line that carried the match - where the text is.
-            if let hit = f.lines.first(where: { !want.isEmpty && fold($0.text).contains(want) }) ?? tallestText {
-                j.matchedBoxes[a.id] = hit.box
+            var r = ReadingJudge.evaluate(a, read: joined, typed: false)
+            // The line that carried the match - where the text is, and (AROMS-355) what language it is in.
+            let match = f.lines.first(where: { !want.isEmpty && fold($0.text).contains(want) })
+            if let hit = match ?? tallestText { j.matchedBoxes[a.id] = hit.box }
+            if r.pass, let lang = match?.language { r = reword(r, read: r.read, words: r.words + " · \(lang)") }
+            else if !r.pass {
+                let langs = Array(Set(f.lines.compactMap(\.language))).sorted()
+                if !langs.isEmpty { r = reword(r, read: r.read, words: r.words + " · label is in \(langs.joined(separator: " and "))") }
             }
+            j.results.append(r)
             // AROMS-350: in Author mode, pre-select the line that carries the typed expectation.
             if authoring, !want.isEmpty, let i = f.lines.firstIndex(where: { fold($0.text).contains(want) }) { j.picked[a.id] = i }
         }

@@ -9,6 +9,7 @@ Readings, labels and barcodes on a step. A step can now check what the camera re
 • Instrument displays: a reading is sampled three times over a second and the stable value kept; a display still settling says so. Scientific notation as leak checkers print it (1.2×10⁻⁹, 1.2E-09, mantissa and exponent on separate lines).
 • One validation on the floor: when presence validates in the cone, the label or display is read on that same frame; both pass in one go when it is legible from there, otherwise the reading sheet opens with presence kept.
 • Author mode: reading the real label in Place Steps in AR sets the words the way the camera spells them (tap the line); "Try it as the operator" on any trained step shows the operator's verdict without a save, publish or mode switch.
+• Labels in Korean, Japanese and Chinese: the reader recognises Hangul, kana, kanji and both Chinese scripts, and says which language the line is in ("Label says "注意" - found · Japanese").
 • SIB: what the camera read shows on every step visit in the Usage Log, not only on completed runs.
 
 PLEASE TRY
@@ -17,6 +18,7 @@ PLEASE TRY
 2. Operator: a step with a Reading check on a torque or leak-check display. Read while the display settles; expect "display still moving" with the texts seen, then a clean read once it holds.
 3. Operator: a Barcode check on a Luna label at working distance. Note how large the Data Matrix has to be in frame to decode.
 4. Author: Place Steps in AR → a trained step's chip → "Try it as the operator" → the verdict, nothing recorded.
+5. A label printed in Korean, Japanese or Chinese: read it in Author mode and check the chip names the right language; a Text check typed as "注意 | CAUTION" passes on either.
 
 ALSO IN THIS BUILD
 

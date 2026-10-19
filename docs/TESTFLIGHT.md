@@ -27,7 +27,8 @@ What it does
 - Readings and checks: an instrument value, the words on a label, a barcode
   - read by the camera, judged on the device, said in plain words, and
   recorded with the frame as evidence. Typed only when the camera cannot
-  read, and recorded as typed.
+  read, and recorded as typed. Labels in Korean, Japanese and Chinese are
+  read in their own script, and the language is named with the verdict.
 - Gemba Audit: walk an area, tag findings where they are.
 - iLOTO: lockout / tagout on control panels, point by point.
 - Sessions, evidence and verdicts flow to the SIB portal for the engineer

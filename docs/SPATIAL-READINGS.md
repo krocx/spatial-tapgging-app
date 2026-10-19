@@ -168,6 +168,19 @@ scuffed label still has a way through. In training the chips are the decoded
 codes with their kind, and Save writes the payload as the expectation. The
 symbology is not yet in the run record (a `shared` type change).
 
+### 8.6 Labels in Korean, Japanese and Chinese (2026-10-19, AROMS-355)
+
+Vision reads Latin unless told otherwise. The reader now asks for ko, ja,
+zh-Hans, zh-Hant (and de, fr) with per-line detection, and names each line's
+language: by script first (Hangul is Korean, kana is Japanese - a line of
+kanji alone is where a recogniser guesses wrong), then NLLanguageRecognizer
+for Chinese Simplified vs Traditional and the European ones. English, digits
+and codes are not named. The verdict carries it ("Label says "注意" - found ·
+Japanese"; on a miss, "label is in Korean"), the chips show it, and "a | b"
+in a Text check takes either script. Mandarin and Cantonese are spoken
+languages; what a label carries is Simplified or Traditional, which is what
+is named.
+
 ### 8.2 Try it as the operator (2026-10-19, AROMS-351)
 
 An author adding step 12 wants to know step 4, trained last week, still

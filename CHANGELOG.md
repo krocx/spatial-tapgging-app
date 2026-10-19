@@ -59,6 +59,13 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-355: labels in Korean, Japanese and Chinese.** The reader asks
+  Vision for Hangul, kana, kanji and both Chinese scripts and names each
+  line's language; the verdict says "· Japanese" on a pass and "label is in
+  Korean" on a miss, and the training chips show it.
+- **AROMS-356: TestFlight notes from the repo.** `npm run testflight:notes`
+  sets What to Test on the newest build and the Beta App Description from
+  the files in the repo, through the App Store Connect API.
 - **AROMS-352: one validation on the floor.** When presence validates in
   the cone, the step's label, barcode or reading is read on that same frame;
   all right and the step completes in one go ("Validated PASS - presence and

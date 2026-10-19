@@ -207,7 +207,7 @@ struct ReadingCaptureSheet: View {
                         ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
                             let on = picked[a.id] == i
                             Button { pick(a, index: i) } label: {
-                                Label(line.symbology.map { "\($0) · \(line.text)" } ?? line.text, systemImage: on ? "checkmark.circle.fill" : (isCode ? "barcode" : "textformat"))
+                                Label(line.symbology.map { "\($0) · \(line.text)" } ?? (line.language.map { "\(line.text) · \($0)" } ?? line.text), systemImage: on ? "checkmark.circle.fill" : (isCode ? "barcode" : "textformat"))
                                     .font(.caption.weight(on ? .bold : .regular)).lineLimit(1)
                                     .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(on ? Color.green.opacity(0.25) : Color.white.opacity(0.08), in: Capsule())
