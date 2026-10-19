@@ -973,7 +973,7 @@ struct EditStepSheet: View {
                         // One status line: what is trained in AR and what still needs it.
                         // The plan above says what; Place Steps in AR is where; nothing else to do here.
                         Label(trainingStatusWords, systemImage: "arkit")
-                            .font(.footnote).foregroundStyle(trainingComplete ? .secondary : .orange)
+                            .font(.footnote).foregroundStyle(trainingComplete ? Color.secondary : Color.orange)
                         if trainedAt != nil {
                             Button("Remove training", role: .destructive) {
                                 Task { await removeValidationTraining() }
@@ -1013,11 +1013,19 @@ struct EditStepSheet: View {
                                 TextField("e.g. 80 Ω ±5 %  ·  12.0 N·m ± 0.5  ·  ≤ 1.0e-9 mbar·l/s", text: $a.expected)
                                     .autocorrectionDisabled()
                             } else {
-                                Picker("Compare", selection: Binding(get: { a.match ?? "exact" }, set: { a.match = $0 })) {
-                                    Text("is exactly").tag("exact"); Text("contains").tag("contains"); Text("is any of (a | b)").tag("any-of")
-                                }
-                                TextField(a.kind == "code" ? "expected code payload" : "expected text on the label or part", text: $a.expected)
+                                // AROMS-349: a check means "must say", never "says only" - a real
+                                // label carries more words than the one that matters. No compare
+                                // picker; "a | b" means either. (exact / regex stay for imports.)
+                                TextField(a.kind == "code" ? "what the code must carry" : "what the label must say  ·  a | b for either", text: $a.expected)
                                     .autocorrectionDisabled()
+                                if a.expected.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    Label(a.kind == "code" ? "Type what the code must carry - a blank check is not saved" : "Type what the label must say - a blank check is not saved",
+                                          systemImage: "exclamationmark.triangle")
+                                        .font(.footnote).foregroundStyle(Color.orange)
+                                } else {
+                                    Text(a.kind == "code" ? "Passes when the code carries this." : "Passes when the label carries this, whatever else is printed on it.")
+                                        .font(.footnote).foregroundStyle(.secondary)
+                                }
                             }
                             Picker("On a miss", selection: $a.onFail) {
                                 Text("Block the step").tag("block"); Text("Flag, step proceeds").tag("flag")
@@ -1043,10 +1051,10 @@ struct EditStepSheet: View {
                         Button { addAssertion(kind: "text-match") } label: { Label("Text", systemImage: "textformat") }
                         Button { addAssertion(kind: "code") } label: { Label("Code", systemImage: "barcode") }
                     }
-                    if !assertions.isEmpty {
-                        Label(labelTrainingWords, systemImage: "arkit").font(.footnote).foregroundStyle(labelTrainingNeeded ? .orange : .secondary)
-                    }
                     .buttonStyle(.bordered)
+                    if !assertions.isEmpty {
+                        Label(labelTrainingWords, systemImage: "arkit").font(.footnote).foregroundStyle(labelTrainingNeeded ? Color.orange : Color.secondary)
+                    }
                 } header: {
                     Text("Readings and text checks")
                 } footer: {
@@ -1406,8 +1414,30 @@ struct EditStepSheet: View {
     /// AROMS-332: a new check with sensible defaults.
     private func addAssertion(kind: String) {
         assertions.append(StepAssertion(id: "as-\(UUID().uuidString.prefix(8).lowercased())", kind: kind, expected: "",
-                                        unit: nil, min: nil, max: nil, match: kind == "text-value" ? nil : "exact",
+                                        unit: nil, min: nil, max: nil, match: kind == "text-value" ? nil : "contains",   // AROMS-349: "must say"
                                         instrument: kind == "text-value" ? "multimeter" : nil, region: nil, onFail: "block", source: "author"))
+    }
+
+    /// AROMS-349: what goes on the wire. A blank check is not saved (the row says
+    /// so); a position with no label text left to anchor it goes with it; a text
+    /// or code check typed as "a | b" is any-of, otherwise it means "must say"
+    /// (contains) - an "exact" from an older save is folded in, since the step
+    /// page no longer offers it; a regex only an import sets, and it is kept.
+    private func cleanAssertions(_ list: [StepAssertion]) -> [StepAssertion] {
+        var out: [StepAssertion] = []
+        for var a in list {
+            let text = a.expected.trimmingCharacters(in: .whitespaces)
+            if a.kind == "location" { continue }
+            if text.isEmpty { continue }
+            if a.kind == "text-match" || a.kind == "code" {
+                if a.match == nil || a.match == "exact" || a.match == "contains" || a.match == "any-of" {
+                    a.match = text.contains("|") ? "any-of" : "contains"
+                }
+            }
+            out.append(a)
+        }
+        if out.contains(where: { $0.kind == "text-match" }), let loc = list.first(where: { $0.kind == "location" }) { out.append(loc) }
+        return out
     }
 
     private func saveStep() async {
@@ -1462,7 +1492,7 @@ struct EditStepSheet: View {
         req.validationRequired = validationOn
         req.evidenceRequired   = evidenceOn   // K5
         req.validationPlan     = validationOn ? validationPlan : nil   // AROMS-331
-        req.assertions         = assertions.filter { !$0.expected.trimmingCharacters(in: .whitespaces).isEmpty || $0.kind == "location" }   // AROMS-332: the list replaces; [] clears
+        req.assertions         = cleanAssertions(assertions)   // AROMS-332: the list replaces; [] clears
 
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)

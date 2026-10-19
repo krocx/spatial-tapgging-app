@@ -3,6 +3,7 @@
 // Tap it to open the explanation; QA Mode itself is toggled in Settings.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 
 struct QAModeBadge: View {
     @State private var on = AppLog.qaMode

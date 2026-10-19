@@ -184,7 +184,7 @@ struct StepAssertion: Codable, Identifiable, Equatable {
     var unit:       String?
     var min:        Double?
     var max:        Double?
-    var match:      String?         // "exact" | "contains" | "any-of" | "regex"
+    var match:      String?         // "exact" | "contains" | "any-of" | "regex" - nil reads as contains (AROMS-349)
     var instrument: String?         // "multimeter" | "torque" | "leak-check" | "other"
     var region:     AssertionRegion?
     var onFail:     String          // "block" | "flag"
@@ -198,9 +198,9 @@ struct StepAssertion: Codable, Identifiable, Equatable {
     var words: String {
         switch kind {
         case "text-value": return "\(instrumentWords): \(expected)"
-        case "code":       return "Code \(expected)"
+        case "code":       return expected.isEmpty ? "Code - nothing expected" : "Code carries \(expected)"
         case "location":   return "Label where it should be"
-        default:           return "Reads \"\(expected)\""
+        default:           return expected.isEmpty ? "Label - nothing expected" : "Label says \"\(expected)\""
         }
     }
     var instrumentWords: String {

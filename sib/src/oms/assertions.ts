@@ -84,15 +84,18 @@ export function evaluate(a: StepAssertion, read: string): AssertionResult {
     return { ...base, pass, value: v, words: pass ? `Read ${v}${unit} - within ${a.expected}` : `Read ${v}${unit} - outside ${a.expected}` };
   }
   const got = fold(read); const want = fold(a.expected);
+  // AROMS-349: a blank expectation is a configuration slip, never a wall - flagged, not blocking.
+  if (!want) return { ...base, pass: false, onFail: 'flag', words: 'No expected text on this step - skipped (the author types it on the step)' };
   let pass = false;
-  switch (a.match ?? 'exact') {
+  switch (a.match ?? 'contains') {           // "must say", not "says only" (AROMS-349)
     case 'exact':    pass = got === want; break;
-    case 'contains': pass = got.includes(want); break;
     case 'any-of':   pass = want.split(/\s*[|,;]\s*/).filter(Boolean).some(w => got === w || got.includes(w)); break;
     case 'regex':    try { pass = new RegExp(a.expected, 'i').test(read); } catch { pass = false; } break;
+    default:         pass = got.includes(want); break;
   }
   const what = a.kind === 'code' ? 'Code' : 'Read';
-  return { ...base, pass, words: pass ? `${what} "${read}" - matches` : `${what} "${read}" - expected ${a.expected}` };
+  if (pass) return { ...base, pass, words: `${what} "${a.expected}" - found` };
+  return { ...base, pass, words: got ? `${what} "${read}" - "${a.expected}" not on it` : `Nothing readable in the frame - expected "${a.expected}"` };
 }
 
 /** Fill min/max/unit from `expected` for text-value assertions that lack them (authoring helper). */
@@ -135,5 +138,7 @@ export function sanitizeAssertions(raw: unknown): StepAssertion[] | undefined {
     if (g && ['x', 'y', 'w', 'h'].every(k => typeof g[k] === 'number')) a.region = { x: g.x as number, y: g.y as number, w: g.w as number, h: g.h as number };
     out.push(withBounds(a));
   }
-  return out.length ? out : undefined;
+  // AROMS-349: a position with no label text left to anchor it goes with the blank check.
+  const kept = out.some(a => a.kind === 'text-match') ? out : out.filter(a => a.kind !== 'location');
+  return kept.length ? kept : undefined;
 }

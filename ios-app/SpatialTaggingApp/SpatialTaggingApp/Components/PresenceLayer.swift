@@ -14,6 +14,7 @@
 // the way: everything is small, semi-transparent and world-locked.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 import SceneKit
 import ARKit
 

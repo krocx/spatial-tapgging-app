@@ -64,15 +64,21 @@ enum ReadingJudge {
             return base(pass, v, pass ? "Read \(fmt(v))\(unit) - within \(a.expected)" : "Read \(fmt(v))\(unit) - outside \(a.expected)")
         }
         let got = fold(read), want = fold(a.expected)
+        // AROMS-349: a blank expectation is a configuration slip, never a wall -
+        // flagged in words so the operator is not stuck on a check nobody wrote.
+        if want.isEmpty {
+            return StepReadingResult(assertionId: a.id, kind: a.kind, pass: false, read: read, value: nil, typed: typed, onFail: "flag", words: "No expected text on this step - skipped (the author types it on the step)", at: now)
+        }
         var pass = false
-        switch a.match ?? "exact" {
-        case "contains": pass = got.contains(want)
+        switch a.match ?? "contains" {
+        case "exact":    pass = got == want
         case "any-of":   pass = want.components(separatedBy: CharacterSet(charactersIn: "|,;")).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.contains { got == $0 || got.contains($0) }
         case "regex":    pass = (try? NSRegularExpression(pattern: a.expected, options: .caseInsensitive))?.firstMatch(in: read, range: NSRange(read.startIndex..., in: read)) != nil
-        default:         pass = got == want
+        default:         pass = got.contains(want)       // "must say", not "says only" (AROMS-349)
         }
         let what = a.kind == "code" ? "Code" : "Read"
-        return base(pass, nil, pass ? "\(what) \"\(read)\" - matches" : "\(what) \"\(read)\" - expected \(a.expected)")
+        if pass { return base(true, nil, "\(what) \"\(a.expected)\" - found") }
+        return base(false, nil, got.isEmpty ? "Nothing readable in the frame - expected \"\(a.expected)\"" : "\(what) \"\(read)\" - \"\(a.expected)\" not on it")
     }
 
     /// AROMS-339: a `location` assertion - the text the step reads sits where it

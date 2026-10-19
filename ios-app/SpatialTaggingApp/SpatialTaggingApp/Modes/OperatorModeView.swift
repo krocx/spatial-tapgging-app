@@ -14,6 +14,7 @@
 //   • No QR scanning happens inside Operator mode - session origin is already locked.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 import ARKit
 import SceneKit
 import CoreImage

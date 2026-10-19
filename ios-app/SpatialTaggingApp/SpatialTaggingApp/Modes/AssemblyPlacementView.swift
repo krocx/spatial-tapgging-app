@@ -15,6 +15,7 @@
 // chamber configuration already knows the pose; PartFrame will add its own.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 import ARKit
 import SceneKit
 import simd

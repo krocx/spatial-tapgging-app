@@ -43,7 +43,7 @@ struct ScanStatusBanner: View {
         switch scanState {
         case .scanning:        return "Scanning for QR Code…"
         case .detected:        return "QR Detected - Locking…"
-        case .locked(let ctx): return "Anchor Locked ✓"
+        case .locked:          return "Anchor Locked ✓"
         }
     }
 

@@ -10,6 +10,7 @@
 //   5. After all tags completed, show done screen.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 import ARKit
 import SceneKit
 import simd

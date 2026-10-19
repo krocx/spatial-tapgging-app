@@ -16,6 +16,7 @@
 //  the 7-viewpoint walk-to-bubble paradigm remain unchanged.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 import ARKit
 import simd
 

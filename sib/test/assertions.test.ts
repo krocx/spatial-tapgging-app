@@ -32,7 +32,16 @@ test('evaluate: readings within and outside, text exact / contains / any-of, ver
   assert.equal(evaluate(r, 'OL').pass, false);
   const label = { id: 'b', kind: 'text-match' as const, expected: 'WARNING HOT SURFACE', onFail: 'flag' as const, source: 'author' as const };
   assert.equal(evaluate(label, 'warning  hot surface').pass, true);
-  assert.equal(evaluate({ ...label, match: 'contains' }, 'CAUTION WARNING HOT SURFACE INSIDE').pass, true);
+  // AROMS-349: "must say", not "says only" - the default is contains; a real label carries more than the expected words.
+  assert.equal(evaluate(label, 'CAUTION WARNING HOT SURFACE INSIDE').pass, true);
+  assert.equal(evaluate(label, 'CAUTION WARNING HOT SURFACE INSIDE').words, 'Read "WARNING HOT SURFACE" - found');
+  assert.equal(evaluate({ ...label, match: 'exact' }, 'CAUTION WARNING HOT SURFACE INSIDE').pass, false);
+  assert.equal(evaluate(label, 'GENUINE 731 PIXMA').words, 'Read "GENUINE 731 PIXMA" - "WARNING HOT SURFACE" not on it');
+  assert.equal(evaluate(label, '').words, 'Nothing readable in the frame - expected "WARNING HOT SURFACE"');
+  // A blank expectation never blocks: flagged and said in words, whatever onFail says.
+  const blank = evaluate({ ...label, expected: '', onFail: 'block' }, 'anything');
+  assert.equal(blank.pass, false); assert.equal(blank.onFail, 'flag');
+  assert.equal(stepVerdict([blank]).pass, true);
   assert.equal(evaluate({ ...label, match: 'any-of', expected: '注意 | WARNING' }, 'WARNING').pass, true);
   const v = stepVerdict([evaluate(r, '90'), evaluate(label, 'nope')]);
   assert.equal(v.pass, false); assert.equal(v.blocked.length, 1); assert.equal(v.flagged.length, 1);

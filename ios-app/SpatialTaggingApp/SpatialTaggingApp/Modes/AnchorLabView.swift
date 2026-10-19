@@ -22,6 +22,7 @@
 // Visible only to users explicitly entitled to `lab` (UAM products).
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 import ARKit
 import SceneKit
 import simd

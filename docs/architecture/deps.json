@@ -479,6 +479,7 @@
    "stores/json-file-store.ts"
   ],
   "routes/tags.ts": [
+   "oms/assertions.ts",
    "routes/anchors.ts",
    "stores/json-file-store.ts",
    "stores/pass-state-store.ts",
@@ -635,6 +636,10 @@
   "Components/QAModeBadge.swift": [
    "Services/AppLog.swift"
   ],
+  "Components/ReadingCaptureSheet.swift": [
+   "Models/AROMSModels.swift",
+   "Services/ReadingJudge.swift"
+  ],
   "Components/ResumeCheckpointOverlay.swift": [],
   "Components/ScanStatusBanner.swift": [
    "Models/AppState.swift"
@@ -657,7 +662,8 @@
    "Modes/OperatorModeView.swift"
   ],
   "Models/AROMSModels.swift": [
-   "Models/SIBTypes.swift"
+   "Models/SIBTypes.swift",
+   "Services/ReadingJudge.swift"
   ],
   "Models/AppState.swift": [
    "Models/SIBTypes.swift",
@@ -672,6 +678,7 @@
    "Models/SIBTypes.swift"
   ],
   "Models/SIBTypes.swift": [
+   "Models/AROMSModels.swift",
    "Models/LocTagModels.swift",
    "Services/ARCoordinateFrame.swift"
   ],
@@ -687,12 +694,14 @@
    "Components/ObjectShapeGhost.swift",
    "Components/OnboardingSheet.swift",
    "Components/PresenceLayer.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Components/StepNavigatorSheet.swift",
    "Models/AROMSModels.swift",
    "Models/AppState.swift",
    "Models/SIBTypes.swift",
    "Modes/ARFocusRing.swift",
    "Modes/ConeARGuide.swift",
+   "Modes/HoneycombCaptureView.swift",
    "Modes/KioskStartView.swift",
    "Modes/ObjectScanView.swift",
    "Services/ARCoordinateFrame.swift",
@@ -704,6 +713,7 @@
    "Services/GLBLoader.swift",
    "Services/GuideRunStore.swift",
    "Services/PresenceService.swift",
+   "Services/ReadingJudge.swift",
    "Services/SIBClient.swift",
    "Services/TagFeaturePrint.swift",
    "Services/WorldMapCache.swift"
@@ -755,10 +765,10 @@
    "Components/ARTapCoach.swift",
    "Components/AnchorLabOverlay.swift",
    "Components/PlacementTools.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Models/AppState.swift",
    "Models/SIBTypes.swift",
    "Modes/ARFocusRing.swift",
-   "Modes/ARGuideSessionView.swift",
    "Modes/QRGeneratorView.swift",
    "Modes/QRScanGateView.swift",
    "Services/ARCoordinateFrame.swift",
@@ -783,8 +793,8 @@
    "App/AppSettings.swift",
    "Components/AssemblyNode.swift",
    "Components/PlacementTools.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Models/AROMSModels.swift",
-   "Modes/ARGuideSessionView.swift",
    "Services/ARSessionManager.swift",
    "Services/AppLog.swift",
    "Services/AssemblyModelCache.swift",
@@ -824,6 +834,7 @@
    "App/AppSettings.swift",
    "App/GuidedTourManager.swift",
    "Components/ARContainerView.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Models/AROMSModels.swift",
    "Models/AppState.swift",
    "Models/LocTagModels.swift",
@@ -838,9 +849,9 @@
   "Modes/ConeARGuide.swift": [],
   "Modes/ConeCaptureView.swift": [
    "App/AppSettings.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Models/AppState.swift",
    "Models/SIBTypes.swift",
-   "Modes/ARGuideSessionView.swift",
    "Modes/ConeARGuide.swift",
    "Modes/ROIPickerView.swift",
    "Modes/TrainingDomeGuide.swift",
@@ -907,12 +918,14 @@
    "Components/ObjectShapeGhost.swift",
    "Components/PlacementTools.swift",
    "Components/PresenceLayer.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Components/StepReadCard.swift",
    "Models/AROMSModels.swift",
    "Models/AppState.swift",
    "Models/SIBTypes.swift",
    "Modes/ARFocusRing.swift",
    "Modes/ConeCaptureView.swift",
+   "Modes/HoneycombCaptureView.swift",
    "Modes/ObjectScanView.swift",
    "Services/ARCoordinateFrame.swift",
    "Services/ARFrameImage.swift",
@@ -1002,10 +1015,10 @@
    "App/AppSettings.swift",
    "Components/ARContainerView.swift",
    "Components/FindingPanelNode.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Components/ResumeCheckpointOverlay.swift",
    "Models/AppState.swift",
    "Models/LocTagModels.swift",
-   "Modes/ARGuideSessionView.swift",
    "Modes/LocTagOperatorSheet.swift",
    "Services/ARFrameImage.swift",
    "Services/ARSessionManager.swift",
@@ -1054,8 +1067,8 @@
   ],
   "Modes/LotoTrainingView.swift": [
    "App/AppSettings.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Models/LotoModels.swift",
-   "Modes/ARGuideSessionView.swift",
    "Modes/LotoFlowViews.swift",
    "Services/SIBClient.swift"
   ],
@@ -1083,8 +1096,8 @@
    "App/AppSettings.swift",
    "Components/ModelNodeStyle.swift",
    "Components/PlacementTools.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Models/AROMSModels.swift",
-   "Modes/ARGuideSessionView.swift",
    "Services/ARSessionManager.swift",
    "Services/SIBClient.swift",
    "Services/WorldMapCache.swift"
@@ -1103,9 +1116,10 @@
   ],
   "Modes/OCRCaptureView.swift": [
    "App/AppSettings.swift",
+   "Components/ReadingCaptureSheet.swift",
+   "Models/AROMSModels.swift",
    "Models/AppState.swift",
    "Models/SIBTypes.swift",
-   "Modes/ARGuideSessionView.swift",
    "Modes/ConeCaptureView.swift",
    "Modes/HoneycombCaptureView.swift",
    "Services/ARSessionManager.swift",
@@ -1125,10 +1139,10 @@
    "Components/AnchorLabOverlay.swift",
    "Components/CoachMarkOverlay.swift",
    "Components/OnboardingSheet.swift",
+   "Components/ReadingCaptureSheet.swift",
    "Models/AppState.swift",
    "Models/InspectionSession.swift",
    "Models/SIBTypes.swift",
-   "Modes/ARGuideSessionView.swift",
    "Modes/AnchorDirectoryView.swift",
    "Modes/ConeARGuide.swift",
    "Modes/ConeCaptureView.swift",
@@ -1252,6 +1266,9 @@
   ],
   "Services/QRScannerService.swift": [
    "Models/SIBTypes.swift"
+  ],
+  "Services/ReadingJudge.swift": [
+   "Models/AROMSModels.swift"
   ],
   "Services/SIBClient.swift": [
    "App/AppSettings.swift",

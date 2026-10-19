@@ -23,7 +23,7 @@ Each has a kind, an expectation, where to look, and what a miss means.
 | Kind | Reads | Expectation | Example |
 |---|---|---|---|
 | `presence` | the trained appearance (quick shot / cone, as today) | match | the bracket is installed |
-| `text-match` | printed or engraved text | expected text (exact / contains / any of; case and whitespace folded) | the label says WARNING - HOT SURFACE; the part is engraved PT76545; the Japanese label, not the English one |
+| `text-match` | printed or engraved text | what the label must say (contains by default, "a \| b" for either; case and whitespace folded - §8.1) | the label says WARNING - HOT SURFACE; the part is engraved PT76545; the Japanese label, not the English one |
 | `text-value` | a number on an instrument display | expected value, unit, tolerance (± or range) | multimeter 80 Ω ±5 %; torque 12.0 N·m ±0.5; leak check ≤ 1.0e-9 mbar·l/s |
 | `code` | a barcode / QR / Data Matrix | expected payload (exact / prefix / regex) | the Luna label's serial |
 | `location` | where the read text sits in the frame against the trained reference | within tolerance of the trained region | the label is on the left door, not the right |
@@ -116,3 +116,25 @@ One rule: the step page says **what** the step checks, Place Steps in AR is
 - Portal: the Guide Library's "Reads …" chip says "· position needs
   training"; the Designer's Text row carries the same switch and the same
   orange hint.
+
+### 8.1 A Text check means "must say" (2026-10-19, AROMS-349)
+
+Found on device with a Canon ink box: a Text check for PIXMA failed, because
+the camera read the whole label ("GENUINE Made In Japan 731 … PIXMA 59280")
+and the default compare was exact. A real label always carries more than the
+words that matter, so:
+
+- `match` defaults to `contains` on both ends (`a.match ?? 'contains'`), case
+  and whitespace folded. Neither the step page nor the Designer offers a
+  compare picker any more: the field says "what the label must say"; typing
+  "a | b" means either (`any-of`). An older `exact` is folded into `contains`
+  on the next save; `regex` is only ever set by an import and is kept.
+- Verdict words: "Read "PIXMA" - found" / "Read "GENUINE …" - "PIXMA" not on
+  it" / "Nothing readable in the frame - expected "PIXMA"".
+- A blank check cannot strand the operator. The row says in orange "Type
+  what the label must say - a blank check is not saved"; the iPad and SIB
+  both drop it on save, and a position with no label text left to anchor it
+  goes with it. A blank that reaches a device from an older save is
+  **flagged** ("No expected text on this step - skipped"), never blocking.
+- Next: training captures the words (AROMS-350) and "Try it" on the trained
+  chip (AROMS-351).

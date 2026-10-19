@@ -15,6 +15,7 @@
 // guided, never "tracking lost"). Orange = Gemba identity.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 
 enum ResumeCheckpointState: Equatable {
     case relocalizing(since: Date)

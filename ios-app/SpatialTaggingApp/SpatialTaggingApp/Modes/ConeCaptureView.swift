@@ -27,6 +27,7 @@
 //  metadata so OperatorModeView can score against the best matching angle.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 import ARKit
 import SceneKit
 import CoreImage

@@ -55,7 +55,7 @@ final class QRScannerService {
         do { try handler.perform([request]) } catch { handleNoDetection(); return }
 
         guard
-            let qr = (request.results as? [VNBarcodeObservation])?.first(where: { $0.symbology == .qr }),
+            let qr = request.results?.first(where: { $0.symbology == .qr }),
             let payload = qr.payloadStringValue
         else { handleNoDetection(); return }
 

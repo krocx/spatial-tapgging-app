@@ -389,10 +389,16 @@ function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: 
   const update = (id: string, patch: Partial<StepAssertion>) => save(assertions.map(a => {
     if (a.id !== id) return a;
     const next = { ...a, ...patch };
-    if (patch.expected !== undefined) { delete next.min; delete next.max; delete next.unit; return withBounds(next); }
+    if (patch.expected !== undefined) {
+      delete next.min; delete next.max; delete next.unit;
+      // AROMS-349: a text or code check means "must say", never "says only"; "a | b" means either.
+      // An older "exact" is folded in; a regex only an import sets, and it is kept.
+      if (next.kind !== 'text-value' && next.match !== 'regex') next.match = next.expected.includes('|') ? 'any-of' : 'contains';
+      return withBounds(next);
+    }
     return next;
   }));
-  const add = (kind: StepAssertion['kind']) => save([...assertions, { id: `as-${crypto.randomUUID().slice(0, 8)}`, kind, expected: '', onFail: 'block', source: 'author', ...(kind === 'text-value' ? { instrument: 'multimeter' as const } : {}) }]);
+  const add = (kind: StepAssertion['kind']) => save([...assertions, { id: `as-${crypto.randomUUID().slice(0, 8)}`, kind, expected: '', onFail: 'block', source: 'author', ...(kind === 'text-value' ? { instrument: 'multimeter' as const } : { match: 'contains' as const }) }]);
   const remove = (id: string) => save(assertions.filter(a => a.id !== id));
   const boundsWords = (a: StepAssertion) => {
     if (a.kind !== 'text-value' || !a.expected) return '';
@@ -415,21 +421,21 @@ function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: 
                 <option value="multimeter">Multimeter</option><option value="torque">Torque tool</option><option value="leak-check">Leak checker</option><option value="other">Other display</option>
               </select>
             )}
-            {a.kind !== 'text-value' && a.kind !== 'location' && (
-              <select value={a.match ?? 'exact'} onChange={e => update(a.id, { match: e.target.value as StepAssertion['match'] })} title="How the read text is compared">
-                <option value="exact">is exactly</option><option value="contains">contains</option><option value="any-of">is any of (a | b)</option><option value="regex">matches pattern</option>
-              </select>
-            )}
             <select value={a.onFail} onChange={e => update(a.id, { onFail: e.target.value as StepAssertion['onFail'] })} title="What a miss means">
               <option value="block">blocks the step</option><option value="flag">flags, step proceeds</option>
             </select>
             <button className="btn ghost" title="Remove" onClick={() => remove(a.id)}>✕</button>
           </div>
           {a.kind !== 'location' && (
-            <input value={a.expected} placeholder={a.kind === 'text-value' ? 'e.g. 80 Ω ±5 %  ·  12.0 N·m ± 0.5  ·  ≤ 1.0e-9 mbar·l/s' : a.kind === 'code' ? 'expected code payload' : 'expected text on the label or part'}
+            <input value={a.expected} placeholder={a.kind === 'text-value' ? 'e.g. 80 Ω ±5 %  ·  12.0 N·m ± 0.5  ·  ≤ 1.0e-9 mbar·l/s' : a.kind === 'code' ? 'what the code must carry' : 'what the label must say  ·  a | b for either'}
                    onChange={e => update(a.id, { expected: e.target.value })} />
           )}
           {a.kind === 'text-value' && <span className="step-check-hint">{boundsWords(a)}</span>}
+          {a.kind !== 'text-value' && (
+            !a.expected.trim()
+              ? <span className="step-check-hint" style={{ color: 'var(--ax-orange)' }}>Type what the {a.kind === 'code' ? 'code must carry' : 'label must say'} - a blank check is not saved.</span>
+              : <span className="step-check-hint">{a.kind === 'code' ? 'Passes when the code carries this.' : 'Passes when the label carries this, whatever else is printed on it.'}</span>
+          )}
           {a.kind === 'text-match' && (
             <label className="step-check">
               <input type="checkbox" checked={assertions.some(x => x.kind === 'location')}

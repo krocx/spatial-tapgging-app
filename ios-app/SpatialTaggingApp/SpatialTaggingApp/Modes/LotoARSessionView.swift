@@ -17,6 +17,7 @@
 // the author physically at the panel, ever writes LotoPoint.position.
 
 import SwiftUI
+import Combine   // Timer.publish(...).autoconnect() - Xcode 27 no longer re-exports Combine through SwiftUI
 import SceneKit
 import ARKit
 

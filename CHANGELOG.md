@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Fixed
+- **AROMS-349: a Text check means "must say", not "says only".** A check
+  for PIXMA failed on a real box because the camera reads the whole label
+  and the compare defaulted to exact. Text and Code checks now pass when
+  the label carries the words, whatever else is printed on it (contains,
+  case and whitespace folded; "a | b" for either); the compare picker is
+  gone from the step page and the Designer. A blank check is said in
+  orange and not saved, and one that reaches a device from an older save is
+  flagged and skipped, so the operator is never stuck on a check nobody
+  wrote. Verdicts read "Read "PIXMA" - found" / "- "PIXMA" not on it".
 - **AROMS-344: iOS build clean for TestFlight.** `UIScreen.main` replaced
   by the scene view's own bounds (the points were projected into that
   view), unused values and a `var` tidied, the project-level
@@ -50,6 +59,21 @@ it, it gets a line.
   the bounds ("80 Ω ±5 %" → 76 to 84) with one parser both ends use; the
   compiler, import and re-sync carry them; the Guide Library says "Reads …"
   on the step. The iPad capture and verdict follow (AROMS-338).
+- **AROMS-338 / 339: the iPad reads and judges.** On a step with checks the
+  operator frames the display or label above a half-height sheet and taps
+  Read; the frame goes through on-device text recognition, every check is
+  judged with the same words SIB uses, and the frame is the evidence. "Type
+  it instead" is the fallback and is recorded as typed. A Text check can
+  also carry the label's position: the author reads the label once in Place
+  Steps in AR, and the operator's read must sit within a fifth of the frame
+  of it.
+- **AROMS-346: the author journey for readings and labels.** Position is a
+  switch on the Text check, not a check of its own; one status line on the
+  step page says what is trained in AR and what is not; Place Steps in AR
+  has one chip per step whose words are the state and one sheet with the
+  cone and the label halves, the label reading opening on its own after a
+  cone sweep. An untrained position is flagged for operators, never
+  blocking. Spec §8 in docs/SPATIAL-READINGS.md.
 - **AROMS-335: every chamber in the Guide Library.** A chamber with no
   guides yet is listed in its configuration block with "No guides on this
   chamber yet" and the next step: Import a guide (the chamber preselected),

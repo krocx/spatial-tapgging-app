@@ -190,7 +190,7 @@ final class GuidedTourManager: ObservableObject {
 
     /// Device owner name extracted from UIDevice.current.name.
     /// "Karthik's iPhone" → "Karthik"; bare "iPhone" → "there".
-    nonisolated var ownerName: String {
+    var ownerName: String {
         let raw = UIDevice.current.name
         for sep in ["'s ", "\u{2019}s "] {           // straight + curly apostrophe
             if let range = raw.range(of: sep) {
