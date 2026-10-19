@@ -4,7 +4,7 @@ name: Step validation - cone, quick-shot, never-stuck
 area: guides
 status: shipped
 sensitivity: restricted
-version: 2026.4.45
+version: 2026.4.50
 depends: [spatial-steps, patch-scoring, training-capture, usage-log]
 terms: [SSIM Validation, Train in App, Evidence Capture, Pass State]
 spec: CONNECTED-WORKER.md#step-validation-ssim-cone-quick-shot-never-stuck
@@ -40,3 +40,9 @@ dwell or image alignment, and a "Capture anyway" escape after eight seconds so
 a moved QR can never trap them. A validated step always yields evidence (the
 validation frame itself), FAILs can be overridden with an audit trail, and a
 pose check at "I'm Here" flags scene drift before pins mislead anyone.
+
+2026.4.50: the author plans the training per step - `validationPlan` (quick
+shot or cone) set in the Designer inspector and on the iPad step page - and
+Place Steps in AR offers the planned method first (AROMS-331). "Try it as the
+operator" on any trained step runs this same rule from where the author
+stands, with nothing recorded (AROMS-351, see spatial-readings).

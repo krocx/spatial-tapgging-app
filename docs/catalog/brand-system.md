@@ -40,3 +40,8 @@ a non-brand font or a corner the app doesn't use, and `CLAUDE.md` at the repo ro
 the doctrine for anyone - or any assistant - writing a page here. Pages
 migrate onto the system in slices (portal and catalogue first); until a page
 migrates it keeps its old look and is not yet governed.
+
+2026.4.50: the portal's dialogs are on the design system - `axAlert`,
+`axConfirm`, `axPrompt`, `axChoose`, `axForm` replace every browser alert,
+confirm and prompt, so a destructive action asks in the product's own voice
+and look (AROMS-327).

@@ -29,3 +29,7 @@ arch: |
 Guide steps are pinned in 3D space with floating instruction panels - the operator is
 physically guided to where the work happens, in order. Panels carry title,
 instruction, reference image, evidence camera and the step's Reference link.
+
+2026.4.50: the step navigator - tap the progress ring in an AR OMS (or AR OJT)
+run for a list of every step with done / current / to-do state and jump to
+any of them (AROMS-330).

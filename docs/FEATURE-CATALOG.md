@@ -169,6 +169,13 @@ the linked docs are the single source of truth.
 | Gemba Walk - findings, photos, markup | Reference or custom entries, Strength/OFI/NC, risk, six captioned photos, PencilKit markup, floating panels | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
 | Gemba Walk - sessions + Excel | Walk header, continue/join, summary, three-sheet Excel with every photo, filtered export | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
 | Gemba Walk - together, phone-down, checkpoint | Multi-auditor presence, Live Activity navigation, welcome-back checkpoint, drift check | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+| Contextual intelligence | 1 Hz observations from the run, signals → hints with operator controls, effectiveness loop and per-guide Intelligence page (step heat, hints that helped, retirement) | Shipped | 2026.4.46 | [CONTEXTUAL-INTELLIGENCE](CONTEXTUAL-INTELLIGENCE.md) |
+| Insights | The leadership view: tiles with sparkline and delta, runs per day, hints that helped, time per guide, heat strip to the hottest step; 7/30/90 days, filters, Save as image, Excel | Shipped | 2026.4.46 | [CONTEXTUAL-INTELLIGENCE §3](CONTEXTUAL-INTELLIGENCE.md#part-3---effectiveness-loop-portal-shipped) |
+| Demo / training mode per guide | Floors only, patient hints, runs never counted as production | Shipped | 2026.4.46 | [CONTEXTUAL-INTELLIGENCE](CONTEXTUAL-INTELLIGENCE.md) |
+| Validation plan per step | Quick shot or cone chosen by the author in the Designer and on the iPad; Place Steps offers the plan first | Shipped | 2026.4.50 | [CONNECTED-WORKER](CONNECTED-WORKER.md#step-validation-ssim-cone-quick-shot-never-stuck) |
+| Step navigator | Tap the progress ring for every step with its state; jump to any | Shipped | 2026.4.50 | [APP-FEATURES](APP-FEATURES.md) |
+| Danger zone key | Wipe-all routes behind `SIB_DANGER_KEY` on top of the Owner / admin gate; refusals logged | Shipped | 2026.4.50 | [SERVER-REFERENCE](SERVER-REFERENCE.md) |
+| Portal dialogs on the design system | axAlert / axConfirm / axPrompt / axChoose / axForm replace browser dialogs | Shipped | 2026.4.50 | [BRAND](BRAND.md) |
 
 ## 9. Spatial readings - shipped in 2026.4.50
 
