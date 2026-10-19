@@ -25,7 +25,7 @@ Each has a kind, an expectation, where to look, and what a miss means.
 | `presence` | the trained appearance (quick shot / cone, as today) | match | the bracket is installed |
 | `text-match` | printed or engraved text | what the label must say (contains by default, "a \| b" for either; case and whitespace folded - §8.1) | the label says WARNING - HOT SURFACE; the part is engraved PT76545; the Japanese label, not the English one |
 | `text-value` | a number on an instrument display | expected value, unit, tolerance (± or range) | multimeter 80 Ω ±5 %; torque 12.0 N·m ±0.5; leak check ≤ 1.0e-9 mbar·l/s |
-| `code` | a barcode / QR / Data Matrix | expected payload (exact / prefix / regex) | the Luna label's serial |
+| `code` | a barcode / QR / Data Matrix ("Barcode" wherever people read it) | what the payload must carry (contains by default, "a \| b" for either; §8.3) | the Luna label's serial |
 | `location` | where the read text sits in the frame against the trained reference | within tolerance of the trained region | the label is on the left door, not the right |
 
 Fields: `{ kind, expected, unit?, min?, max?, match?: 'exact'|'contains'|'any-of'|'regex', region?, onFail: 'block'|'flag', source: 'author'|'import' }`.
@@ -152,6 +152,21 @@ read the real label, tap the line; typing is the shortcut. The Train chip
 offers "Read the label to set the words" on text-only checks too (no
 position switch), and a blank one is chained after presence training the
 way an untrained position is. Text alone still needs no training to run.
+
+### 8.3 Barcodes (2026-10-19, AROMS-340)
+
+A Barcode check (kind `code` on the wire - the word people use is barcode,
+so that is what the step page, the Designer, the library chip and every
+verdict say) is read with Vision's barcode detector on the same frame as the
+text: Code 128 / 39, EAN, UPC, ITF-14, QR, Data Matrix, PDF417, Aztec. The
+check is judged on the decoded payload - the one that carries the
+expectation, else all of them are listed by kind ("Barcodes read: Data
+Matrix "LUNA-4471", QR "https://…" - "LUNA-4472" not among them"). With
+nothing decoded, the digits printed under the code are the fallback and the
+verdict says so ("No barcode decoded; the printed text carries …"), so a
+scuffed label still has a way through. In training the chips are the decoded
+codes with their kind, and Save writes the payload as the expectation. The
+symbology is not yet in the run record (a `shared` type change).
 
 ### 8.2 Try it as the operator (2026-10-19, AROMS-351)
 

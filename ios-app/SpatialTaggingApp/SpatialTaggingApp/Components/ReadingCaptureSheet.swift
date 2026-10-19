@@ -48,7 +48,10 @@ struct ReadingCaptureSheet: View {
     @State private var flash = 0.0
 
     private enum Phase { case framing, reading, review }
-    private struct Recognised { let text: String; let box: CGRect }
+    /// A recognised line, or (AROMS-340) a decoded code - `symbology` set, `text` the payload.
+    private struct Recognised { let text: String; let box: CGRect; var symbology: String? = nil }
+    /// AROMS-340: the codes decoded from the frame, judged and offered for Code checks.
+    @State private var decodedCodes: [Recognised] = []
 
     private var assertions: [StepAssertion] { assertionsOverride ?? step.assertions ?? [] }
     private var allPass: Bool { ReadingJudge.stepPasses(results) && results.count == assertions.count }
@@ -121,10 +124,11 @@ struct ReadingCaptureSheet: View {
                                 // AROMS-350: the picked line is both the place and the words.
                                 var t = LabelTraining()
                                 for a in labelChecks {
-                                    guard let i = picked[a.id], i < recognised.count else { continue }
-                                    let b = topLeft(recognised[i].box)
+                                    let lines = candidates(for: a)
+                                    guard let i = picked[a.id], i < lines.count else { continue }
+                                    let b = topLeft(lines[i].box)
                                     t.regions[a.id]  = StepAssertion.AssertionRegion(x: b.minX, y: b.minY, w: b.width, h: b.height)
-                                    t.expected[a.id] = recognised[i].text
+                                    t.expected[a.id] = lines[i].text
                                 }
                                 onTrained?(t); dismiss()
                             } label: { Text("Save as trained").font(.headline) }
@@ -175,32 +179,38 @@ struct ReadingCaptureSheet: View {
     /// carries the typed expectation is pre-selected; tapping another makes it
     /// the expectation - so the step expects what the camera reads, in the
     /// camera's spelling, and a blank check is filled from the real label.
+    /// The lines a check can pick from: decoded barcodes for a Barcode check, recognised text otherwise (AROMS-340).
+    private func candidates(for a: StepAssertion) -> [Recognised] { a.kind == "code" ? decodedCodes : recognised }
+
     @ViewBuilder
     private var labelPicker: some View {
         ForEach(labelChecks) { a in
+            let lines = candidates(for: a)
+            let isCode = a.kind == "code"
             VStack(alignment: .leading, spacing: 6) {
-                if recognised.isEmpty {
-                    Text("Nothing readable in the frame - move closer to the label and Read again.")
+                if lines.isEmpty {
+                    Text(isCode ? "No barcode decoded in the frame - fill the camera with it and Read again."
+                                : "Nothing readable in the frame - move closer to the label and Read again.")
                         .font(.footnote).foregroundStyle(Color.orange)
-                } else if let i = picked[a.id], i < recognised.count {
-                    Text(fold(recognised[i].text) == fold(a.expected)
-                         ? "The step will expect \"\(recognised[i].text)\" - as the camera reads it."
+                } else if let i = picked[a.id], i < lines.count {
+                    Text(fold(lines[i].text) == fold(a.expected)
+                         ? "The step will expect \"\(lines[i].text)\" - as the camera reads it."
                          : a.expected.isEmpty
-                            ? "The step will expect \"\(recognised[i].text)\"."
-                            : "The step will expect \"\(recognised[i].text)\" (was \"\(a.expected)\").")
+                            ? "The step will expect \"\(lines[i].text)\"."
+                            : "The step will expect \"\(lines[i].text)\" (was \"\(a.expected)\").")
                         .font(.footnote).foregroundStyle(.white.opacity(0.8))
                 } else {
                     Text(a.expected.isEmpty
-                         ? "Tap the line the label must say."
-                         : "The camera didn't read \"\(a.expected)\" - tap the line it did read, or Read again.")
+                         ? (isCode ? "Tap the barcode the step must find." : "Tap the line the label must say.")
+                         : "The camera didn't read \"\(a.expected)\" - tap the \(isCode ? "barcode" : "line") it did read, or Read again.")
                         .font(.footnote).foregroundStyle(Color.orange)
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        ForEach(Array(recognised.enumerated()), id: \.offset) { i, line in
+                        ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
                             let on = picked[a.id] == i
                             Button { pick(a, index: i) } label: {
-                                Label(line.text, systemImage: on ? "checkmark.circle.fill" : "textformat")
+                                Label(line.symbology.map { "\($0) · \(line.text)" } ?? line.text, systemImage: on ? "checkmark.circle.fill" : (isCode ? "barcode" : "textformat"))
                                     .font(.caption.weight(on ? .bold : .regular)).lineLimit(1)
                                     .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(on ? Color.green.opacity(0.25) : Color.white.opacity(0.08), in: Capsule())
@@ -216,11 +226,13 @@ struct ReadingCaptureSheet: View {
     }
 
     private func pick(_ a: StepAssertion, index: Int) {
+        let lines = candidates(for: a)
+        guard index < lines.count else { return }
         picked[a.id] = index
-        matchedBoxes[a.id] = topLeft(recognised[index].box)
+        matchedBoxes[a.id] = topLeft(lines[index].box)
         // The verdict follows the pick, so the author sees the operator's words for this choice.
-        var chosen = a; chosen.expected = recognised[index].text; chosen.match = "contains"
-        let r = ReadingJudge.evaluate(chosen, read: recognised.map(\.text).joined(separator: " "), typed: false)
+        var chosen = a; chosen.expected = lines[index].text; chosen.match = "contains"
+        let r = ReadingJudge.evaluate(chosen, read: a.kind == "code" ? lines[index].text : recognised.map(\.text).joined(separator: " "), typed: false)
         results.removeAll { $0.assertionId == a.id }; results.append(r)
         results.sort { lhs, rhs in (assertions.firstIndex { $0.id == lhs.assertionId } ?? 0) < (assertions.firstIndex { $0.id == rhs.assertionId } ?? 0) }
         UISelectionFeedbackGenerator().selectionChanged()
@@ -231,6 +243,12 @@ struct ReadingCaptureSheet: View {
             let inst = assertions.first { $0.isReading }?.instrumentWords.lowercased() ?? "display"
             return "Hold the \(inst) display steady in the camera above, close enough to read the digits, then tap Read."
         }
+        if assertions.contains(where: { $0.kind == "code" }) && !assertions.contains(where: { $0.kind == "text-match" }) {
+            return "Fill the camera above with the barcode, QR or Data Matrix, square on, then tap Read."
+        }
+        if assertions.contains(where: { $0.kind == "code" }) {
+            return "Frame the label with its barcode in the camera above, then tap Read."
+        }
         return "Frame the label or the engraved number in the camera above, then tap Read."
     }
 
@@ -240,28 +258,48 @@ struct ReadingCaptureSheet: View {
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
+    /// AROMS-340: the symbologies a Luna label or a part tag carries - 1D
+    /// (Code 128 / 39, EAN, UPC, ITF-14), QR, Data Matrix, PDF417, Aztec.
+    private static let codeSymbologies: [VNBarcodeSymbology] = [.qr, .dataMatrix, .code128, .code39, .ean13, .ean8, .upce, .itf14, .pdf417, .aztec]
+
     private func read() {
         guard let img = frameSource(), let cg = img.cgImage else { return }
         frame = img; phase = .reading
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        let request = VNRecognizeTextRequest { req, _ in
-            let obs = (req.results as? [VNRecognizedTextObservation]) ?? []
-            let found = obs.compactMap { o -> Recognised? in
+        let wantsCodes = assertions.contains { $0.kind == "code" }
+        let text = VNRecognizeTextRequest()
+        text.recognitionLevel = .accurate
+        text.usesLanguageCorrection = false        // digits and part numbers must not be "corrected"
+        let codes = VNDetectBarcodesRequest()
+        codes.symbologies = Self.codeSymbologies
+        DispatchQueue.global(qos: .userInitiated).async {
+            let handler = VNImageRequestHandler(cgImage: cg, options: [:])
+            try? handler.perform(wantsCodes ? [text, codes] : [text])
+            let found = (text.results ?? []).compactMap { o -> Recognised? in
                 guard let s = o.topCandidates(1).first?.string, !s.isEmpty else { return nil }
                 return Recognised(text: s, box: o.boundingBox)
             }
-            DispatchQueue.main.async { finish(with: found) }
-        }
-        request.recognitionLevel = .accurate
-        request.usesLanguageCorrection = false        // digits and part numbers must not be "corrected"
-        DispatchQueue.global(qos: .userInitiated).async {
-            let handler = VNImageRequestHandler(cgImage: cg, options: [:])
-            try? handler.perform([request])
+            // A decoded code is a line like any other, prefixed so the author sees
+            // what kind it was; the payload alone is what is judged and saved.
+            let decoded = wantsCodes ? (codes.results ?? []).compactMap { o -> Recognised? in
+                guard let p = o.payloadStringValue, !p.isEmpty else { return nil }
+                return Recognised(text: p, box: o.boundingBox, symbology: Self.symbologyWords(o.symbology))
+            } : []
+            DispatchQueue.main.async { finish(with: found, codes: decoded) }
         }
     }
 
-    private func finish(with found: [Recognised]) {
+    private static func symbologyWords(_ s: VNBarcodeSymbology) -> String {
+        switch s {
+        case .qr: return "QR"; case .dataMatrix: return "Data Matrix"; case .code128: return "Code 128"; case .code39: return "Code 39"
+        case .ean13: return "EAN-13"; case .ean8: return "EAN-8"; case .upce: return "UPC-E"; case .itf14: return "ITF-14"
+        case .pdf417: return "PDF417"; case .aztec: return "Aztec"; default: return "code"
+        }
+    }
+
+    private func finish(with found: [Recognised], codes: [Recognised]) {
         recognised = found.sorted { $0.box.maxY > $1.box.maxY }
+        decodedCodes = codes
         let joined = recognised.map(\.text).joined(separator: " ")
         // A reading: the tallest line that carries a number is the display's main digits.
         let numeric = found.filter { ReadingJudge.parseReading($0.text) != nil }.max { $0.box.height < $1.box.height }?.text
@@ -269,11 +307,38 @@ struct ReadingCaptureSheet: View {
         picked = [:]
         var out: [StepReadingResult] = []
         for a in assertions where a.kind != "location" {
+            let want = fold(a.expected)
+            if a.kind == "code" {
+                // AROMS-340: a Code check is judged on the decoded payloads - the
+                // one that carries the expectation, else all of them in words. With
+                // nothing decoded, the digits printed under the code are the fallback,
+                // said as such, so a scuffed barcode still has a way through.
+                let hit = codes.first { !want.isEmpty && fold($0.text).contains(want) } ?? codes.first
+                if let hit {
+                    var r = ReadingJudge.evaluate(a, read: hit.text, typed: false)
+                    if !r.pass && codes.count > 1 {
+                        r = StepReadingResult(assertionId: r.assertionId, kind: r.kind, pass: false, read: codes.map(\.text).joined(separator: " | "), value: nil, typed: false, onFail: r.onFail,
+                                              words: "Barcodes read: \(codes.map { "\($0.symbology ?? "barcode") \"\($0.text)\"" }.joined(separator: ", ")) - \"\(a.expected)\" not among them", at: r.at)
+                    } else if r.pass {
+                        r = StepReadingResult(assertionId: r.assertionId, kind: r.kind, pass: true, read: hit.text, value: nil, typed: false, onFail: r.onFail,
+                                              words: "\(hit.symbology ?? "Barcode") \"\(hit.text)\" - carries \"\(a.expected)\"", at: r.at)
+                    }
+                    out.append(r)
+                    matchedBoxes[a.id] = topLeft(hit.box)
+                } else {
+                    var r = ReadingJudge.evaluate(a, read: joined, typed: false)
+                    r = StepReadingResult(assertionId: r.assertionId, kind: r.kind, pass: r.pass, read: r.read, value: nil, typed: false, onFail: r.onFail,
+                                          words: r.pass ? "No barcode decoded; the printed text carries \"\(a.expected)\"" : (joined.isEmpty ? "No barcode in the frame - expected \"\(a.expected)\"" : "No barcode decoded, and the printed text doesn't carry \"\(a.expected)\""), at: r.at)
+                    out.append(r)
+                    if let tallest = found.max(by: { $0.box.height < $1.box.height }) { matchedBoxes[a.id] = topLeft(tallest.box) }
+                }
+                if authoring, !want.isEmpty, let i = codes.firstIndex(where: { fold($0.text).contains(want) }) { picked[a.id] = i }
+                continue
+            }
             let read = a.isReading ? (numeric ?? joined) : joined
             let r = ReadingJudge.evaluate(a, read: read, typed: false)
             out.append(r)
             // The line that carried the match (or, for a reading, the digits) - where the text is.
-            let want = fold(a.expected)
             let tallest = a.isReading ? nil : found.max(by: { $0.box.height < $1.box.height })
             if let hit = found.first(where: { a.isReading ? $0.text == numeric : (!want.isEmpty && fold($0.text).contains(want)) }) ?? tallest {
                 matchedBoxes[a.id] = topLeft(hit.box)

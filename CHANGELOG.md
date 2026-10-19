@@ -50,6 +50,12 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-340: Barcode checks.** The reading sheet decodes barcodes, QR,
+  Data Matrix, PDF417 and Aztec on the same frame as the text and judges a
+  Barcode check on the payload; several in frame are listed by kind, and
+  with nothing decoded the printed digits are the fallback, said as such.
+  Training chips show the decoded codes. "Code" is now "Barcode" wherever
+  people read it; the stored kind is unchanged.
 - **AROMS-350: training captures the words.** After the author reads the
   label in Place Steps in AR, the lines the camera recognised are chips; the
   one carrying the typed expectation is pre-selected, and tapping another

@@ -198,7 +198,7 @@ struct StepAssertion: Codable, Identifiable, Equatable {
     var words: String {
         switch kind {
         case "text-value": return "\(instrumentWords): \(expected)"
-        case "code":       return expected.isEmpty ? "Code - nothing expected" : "Code carries \(expected)"
+        case "code":       return expected.isEmpty ? "Barcode - nothing expected" : "Barcode carries \"\(expected)\""   // the kind stays `code` on the wire
         case "location":   return "Label where it should be"
         default:           return expected.isEmpty ? "Label - nothing expected" : "Label says \"\(expected)\""
         }

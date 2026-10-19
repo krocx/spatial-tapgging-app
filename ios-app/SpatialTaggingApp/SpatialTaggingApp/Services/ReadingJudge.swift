@@ -76,7 +76,7 @@ enum ReadingJudge {
         case "regex":    pass = (try? NSRegularExpression(pattern: a.expected, options: .caseInsensitive))?.firstMatch(in: read, range: NSRange(read.startIndex..., in: read)) != nil
         default:         pass = got.contains(want)       // "must say", not "says only" (AROMS-349)
         }
-        let what = a.kind == "code" ? "Code" : "Read"
+        let what = a.kind == "code" ? "Barcode" : "Read"
         if pass { return base(true, nil, "\(what) \"\(a.expected)\" - found") }
         return base(false, nil, got.isEmpty ? "Nothing readable in the frame - expected \"\(a.expected)\"" : "\(what) \"\(read)\" - \"\(a.expected)\" not on it")
     }

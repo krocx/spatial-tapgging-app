@@ -93,7 +93,7 @@ export function evaluate(a: StepAssertion, read: string): AssertionResult {
     case 'regex':    try { pass = new RegExp(a.expected, 'i').test(read); } catch { pass = false; } break;
     default:         pass = got.includes(want); break;
   }
-  const what = a.kind === 'code' ? 'Code' : 'Read';
+  const what = a.kind === 'code' ? 'Barcode' : 'Read';   // the kind stays `code` on the wire; people say barcode
   if (pass) return { ...base, pass, words: `${what} "${a.expected}" - found` };
   return { ...base, pass, words: got ? `${what} "${read}" - "${a.expected}" not on it` : `Nothing readable in the frame - expected "${a.expected}"` };
 }

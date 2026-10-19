@@ -38,6 +38,11 @@ test('evaluate: readings within and outside, text exact / contains / any-of, ver
   assert.equal(evaluate({ ...label, match: 'exact' }, 'CAUTION WARNING HOT SURFACE INSIDE').pass, false);
   assert.equal(evaluate(label, 'GENUINE 731 PIXMA').words, 'Read "GENUINE 731 PIXMA" - "WARNING HOT SURFACE" not on it');
   assert.equal(evaluate(label, '').words, 'Nothing readable in the frame - expected "WARNING HOT SURFACE"');
+  // AROMS-340: a Barcode check (kind `code` on the wire) is judged on the decoded payload, said as "Barcode".
+  const bar = { id: 'c', kind: 'code' as const, expected: 'LUNA-4471', onFail: 'block' as const, source: 'author' as const };
+  assert.equal(evaluate(bar, 'SN:LUNA-4471:REV2').pass, true);
+  assert.equal(evaluate(bar, 'SN:LUNA-4471:REV2').words, 'Barcode "LUNA-4471" - found');
+  assert.equal(evaluate(bar, 'LUNA-4472').words, 'Barcode "LUNA-4472" - "LUNA-4471" not on it');
   // A blank expectation never blocks: flagged and said in words, whatever onFail says.
   const blank = evaluate({ ...label, expected: '', onFail: 'block' }, 'anything');
   assert.equal(blank.pass, false); assert.equal(blank.onFail, 'flag');

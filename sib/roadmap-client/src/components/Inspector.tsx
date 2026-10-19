@@ -415,7 +415,7 @@ function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: 
       {assertions.filter(a => a.kind !== 'location').map(a => (
         <div key={a.id} className="assertion-row">
           <div className="assertion-head">
-            <span className="chip">{a.kind === 'text-value' ? 'Reading' : a.kind === 'code' ? 'Code' : a.kind === 'location' ? 'Location' : 'Text'}</span>
+            <span className="chip">{a.kind === 'text-value' ? 'Reading' : a.kind === 'code' ? 'Barcode' : a.kind === 'location' ? 'Location' : 'Text'}</span>
             {a.kind === 'text-value' && (
               <select value={a.instrument ?? 'other'} onChange={e => update(a.id, { instrument: e.target.value as StepAssertion['instrument'] })} title="Which instrument the operator reads">
                 <option value="multimeter">Multimeter</option><option value="torque">Torque tool</option><option value="leak-check">Leak checker</option><option value="other">Other display</option>
@@ -427,14 +427,14 @@ function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: 
             <button className="btn ghost" title="Remove" onClick={() => remove(a.id)}>✕</button>
           </div>
           {a.kind !== 'location' && (
-            <input value={a.expected} placeholder={a.kind === 'text-value' ? 'e.g. 80 Ω ±5 %  ·  12.0 N·m ± 0.5  ·  ≤ 1.0e-9 mbar·l/s' : a.kind === 'code' ? 'what the code must carry' : 'what the label must say  ·  a | b for either'}
+            <input value={a.expected} placeholder={a.kind === 'text-value' ? 'e.g. 80 Ω ±5 %  ·  12.0 N·m ± 0.5  ·  ≤ 1.0e-9 mbar·l/s' : a.kind === 'code' ? 'what the barcode must carry  ·  a | b for either' : 'what the label must say  ·  a | b for either'}
                    onChange={e => update(a.id, { expected: e.target.value })} />
           )}
           {a.kind === 'text-value' && <span className="step-check-hint">{boundsWords(a)}</span>}
           {a.kind !== 'text-value' && (
             !a.expected.trim()
-              ? <span className="step-check-hint" style={{ color: 'var(--ax-orange)' }}>Type what the {a.kind === 'code' ? 'code must carry' : 'label must say'} - a blank check is not saved.</span>
-              : <span className="step-check-hint">{a.kind === 'code' ? 'Passes when the code carries this.' : 'Passes when the label carries this, whatever else is printed on it.'}</span>
+              ? <span className="step-check-hint" style={{ color: 'var(--ax-orange)' }}>Type what the {a.kind === 'code' ? 'barcode must carry' : 'label must say'} - a blank check is not saved.</span>
+              : <span className="step-check-hint">{a.kind === 'code' ? 'Passes when the barcode, QR or Data Matrix carries this.' : 'Passes when the label carries this, whatever else is printed on it.'}</span>
           )}
           {a.kind === 'text-match' && (
             <label className="step-check">
@@ -453,7 +453,7 @@ function AssertionsEditor({ nodeId, assertions }: { nodeId: string; assertions: 
       <div className="assertion-add">
         <button className="btn ghost" onClick={() => add('text-value')}>+ Reading</button>
         <button className="btn ghost" onClick={() => add('text-match')}>+ Text</button>
-        <button className="btn ghost" onClick={() => add('code')}>+ Code</button>
+        <button className="btn ghost" onClick={() => add('code')}>+ Barcode</button>
       </div>
       <span className="step-check-hint">Read from the camera on the floor - a multimeter, torque or leak-check display, a label, an engraved part number. The frame is the evidence; a typed value is recorded as typed.</span>
     </div>

@@ -997,7 +997,7 @@ struct EditStepSheet: View {
                         if a.kind != "location" {   // position rides on the Text row's switch
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(a.kind == "text-value" ? "Reading" : a.kind == "code" ? "Code" : a.kind == "location" ? "Location" : "Text")
+                                Text(a.kind == "text-value" ? "Reading" : a.kind == "code" ? "Barcode" : a.kind == "location" ? "Location" : "Text")
                                     .font(.caption.bold()).foregroundStyle(.secondary)
                                 Spacer()
                                 Button(role: .destructive) { assertions.removeAll { $0.id == a.id } } label: { Image(systemName: "trash") }
@@ -1016,14 +1016,14 @@ struct EditStepSheet: View {
                                 // AROMS-349: a check means "must say", never "says only" - a real
                                 // label carries more words than the one that matters. No compare
                                 // picker; "a | b" means either. (exact / regex stay for imports.)
-                                TextField(a.kind == "code" ? "what the code must carry" : "what the label must say  ·  a | b for either", text: $a.expected)
+                                TextField(a.kind == "code" ? "what the barcode must carry  ·  a | b for either" : "what the label must say  ·  a | b for either", text: $a.expected)
                                     .autocorrectionDisabled()
                                 if a.expected.trimmingCharacters(in: .whitespaces).isEmpty {
-                                    Label(a.kind == "code" ? "Type what the code must carry - a blank check is not saved" : "Type what the label must say - a blank check is not saved",
+                                    Label(a.kind == "code" ? "Type what the barcode must carry - a blank check is not saved" : "Type what the label must say - a blank check is not saved",
                                           systemImage: "exclamationmark.triangle")
                                         .font(.footnote).foregroundStyle(Color.orange)
                                 } else {
-                                    Text(a.kind == "code" ? "Passes when the code carries this." : "Passes when the label carries this, whatever else is printed on it.")
+                                    Text(a.kind == "code" ? "Passes when the barcode, QR or Data Matrix carries this." : "Passes when the label carries this, whatever else is printed on it.")
                                         .font(.footnote).foregroundStyle(.secondary)
                                 }
                             }
@@ -1049,7 +1049,7 @@ struct EditStepSheet: View {
                     HStack(spacing: 10) {
                         Button { addAssertion(kind: "text-value") } label: { Label("Reading", systemImage: "gauge.with.needle") }
                         Button { addAssertion(kind: "text-match") } label: { Label("Text", systemImage: "textformat") }
-                        Button { addAssertion(kind: "code") } label: { Label("Code", systemImage: "barcode") }
+                        Button { addAssertion(kind: "code") } label: { Label("Barcode", systemImage: "barcode") }
                     }
                     .buttonStyle(.bordered)
                     if !assertions.isEmpty {
