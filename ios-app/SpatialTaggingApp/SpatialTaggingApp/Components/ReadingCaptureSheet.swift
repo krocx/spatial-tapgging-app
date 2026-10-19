@@ -3,11 +3,11 @@
 //
 // A half-height sheet over the live AR camera: the operator frames the
 // display above the sheet and taps Read. The current AR frame (raw camera
-// image, no AR artefacts) goes through Vision text recognition on-device;
-// for a reading the largest line that carries a number is the display's
-// main digits. Every assertion is judged (ReadingJudge) and said in words;
-// the frame with the read is the step's evidence. "Type it instead" is the
-// explicit fallback and is recorded as typed, not read.
+// image, no AR artefacts) goes through Vision on-device (ReadingEngine);
+// for a reading three frames are sampled over a second and the value that
+// recurs is kept (AROMS-342). Every assertion is judged (ReadingJudge) and
+// said in words; the frame with the read is the step's evidence. "Type it
+// instead" is the explicit fallback and is recorded as typed, not read.
 //
 // Proprietary & Confidential · Applied Materials.
 
@@ -41,17 +41,18 @@ struct ReadingCaptureSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var phase: Phase = .framing
     @State private var frame: UIImage? = nil
-    @State private var recognised: [Recognised] = []
+    @State private var recognised: [ReadingEngine.Line] = []
     @State private var results: [StepReadingResult] = []
     @State private var typing: StepAssertion? = nil
     @State private var typedText = ""
     @State private var flash = 0.0
 
     private enum Phase { case framing, reading, review }
-    /// A recognised line, or (AROMS-340) a decoded code - `symbology` set, `text` the payload.
-    private struct Recognised { let text: String; let box: CGRect; var symbology: String? = nil }
-    /// AROMS-340: the codes decoded from the frame, judged and offered for Code checks.
-    @State private var decodedCodes: [Recognised] = []
+    /// AROMS-340: the barcodes decoded from the frame, judged and offered for Barcode checks.
+    @State private var decodedCodes: [ReadingEngine.Line] = []
+    /// AROMS-342: the values seen across the sampled frames, when the display moved.
+    @State private var samples: [Double] = []
+    @State private var stable = true
 
     private var assertions: [StepAssertion] { assertionsOverride ?? step.assertions ?? [] }
     private var allPass: Bool { ReadingJudge.stepPasses(results) && results.count == assertions.count }
@@ -126,7 +127,7 @@ struct ReadingCaptureSheet: View {
                                 for a in labelChecks {
                                     let lines = candidates(for: a)
                                     guard let i = picked[a.id], i < lines.count else { continue }
-                                    let b = topLeft(lines[i].box)
+                                    let b = lines[i].box
                                     t.regions[a.id]  = StepAssertion.AssertionRegion(x: b.minX, y: b.minY, w: b.width, h: b.height)
                                     t.expected[a.id] = lines[i].text
                                 }
@@ -169,18 +170,14 @@ struct ReadingCaptureSheet: View {
     // ── AROMS-350: training captures the words ───────────────────────────────
 
     private var labelChecks: [StepAssertion] { assertions.filter { $0.kind == "text-match" || $0.kind == "code" } }
-    private func fold(_ s: String) -> String {
-        s.precomposedStringWithCompatibilityMapping.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ").lowercased()
-    }
-    /// Vision boxes are bottom-left normalised; the app stores top-left normalised.
-    private func topLeft(_ b: CGRect) -> CGRect { CGRect(x: b.minX, y: 1 - b.maxY, width: b.width, height: b.height) }
+    private func fold(_ s: String) -> String { ReadingEngine.fold(s) }
 
     /// The recognised lines as chips, one row per label check. The line that
     /// carries the typed expectation is pre-selected; tapping another makes it
     /// the expectation - so the step expects what the camera reads, in the
     /// camera's spelling, and a blank check is filled from the real label.
     /// The lines a check can pick from: decoded barcodes for a Barcode check, recognised text otherwise (AROMS-340).
-    private func candidates(for a: StepAssertion) -> [Recognised] { a.kind == "code" ? decodedCodes : recognised }
+    private func candidates(for a: StepAssertion) -> [ReadingEngine.Line] { a.kind == "code" ? decodedCodes : recognised }
 
     @ViewBuilder
     private var labelPicker: some View {
@@ -229,7 +226,7 @@ struct ReadingCaptureSheet: View {
         let lines = candidates(for: a)
         guard index < lines.count else { return }
         picked[a.id] = index
-        matchedBoxes[a.id] = topLeft(lines[index].box)
+        matchedBoxes[a.id] = lines[index].box
         // The verdict follows the pick, so the author sees the operator's words for this choice.
         var chosen = a; chosen.expected = lines[index].text; chosen.match = "contains"
         let r = ReadingJudge.evaluate(chosen, read: a.kind == "code" ? lines[index].text : recognised.map(\.text).joined(separator: " "), typed: false)
@@ -258,112 +255,35 @@ struct ReadingCaptureSheet: View {
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
-    /// AROMS-340: the symbologies a Luna label or a part tag carries - 1D
-    /// (Code 128 / 39, EAN, UPC, ITF-14), QR, Data Matrix, PDF417, Aztec.
-    private static let codeSymbologies: [VNBarcodeSymbology] = [.qr, .dataMatrix, .code128, .code39, .ean13, .ean8, .upce, .itf14, .pdf417, .aztec]
-
     private func read() {
-        guard let img = frameSource(), let cg = img.cgImage else { return }
-        frame = img; phase = .reading
+        guard let first = frameSource() else { return }
+        frame = first; phase = .reading
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         let wantsCodes = assertions.contains { $0.kind == "code" }
-        let text = VNRecognizeTextRequest()
-        text.recognitionLevel = .accurate
-        text.usesLanguageCorrection = false        // digits and part numbers must not be "corrected"
-        let codes = VNDetectBarcodesRequest()
-        codes.symbologies = Self.codeSymbologies
-        DispatchQueue.global(qos: .userInitiated).async {
-            let handler = VNImageRequestHandler(cgImage: cg, options: [:])
-            try? handler.perform(wantsCodes ? [text, codes] : [text])
-            let found = (text.results ?? []).compactMap { o -> Recognised? in
-                guard let s = o.topCandidates(1).first?.string, !s.isEmpty else { return nil }
-                return Recognised(text: s, box: o.boundingBox)
-            }
-            // A decoded code is a line like any other, prefixed so the author sees
-            // what kind it was; the payload alone is what is judged and saved.
-            let decoded = wantsCodes ? (codes.results ?? []).compactMap { o -> Recognised? in
-                guard let p = o.payloadStringValue, !p.isEmpty else { return nil }
-                return Recognised(text: p, box: o.boundingBox, symbology: Self.symbologyWords(o.symbology))
-            } : []
-            DispatchQueue.main.async { finish(with: found, codes: decoded) }
-        }
-    }
-
-    private static func symbologyWords(_ s: VNBarcodeSymbology) -> String {
-        switch s {
-        case .qr: return "QR"; case .dataMatrix: return "Data Matrix"; case .code128: return "Code 128"; case .code39: return "Code 39"
-        case .ean13: return "EAN-13"; case .ean8: return "EAN-8"; case .upce: return "UPC-E"; case .itf14: return "ITF-14"
-        case .pdf417: return "PDF417"; case .aztec: return "Aztec"; default: return "code"
-        }
-    }
-
-    private func finish(with found: [Recognised], codes: [Recognised]) {
-        recognised = found.sorted { $0.box.maxY > $1.box.maxY }
-        decodedCodes = codes
-        let joined = recognised.map(\.text).joined(separator: " ")
-        // A reading: the tallest line that carries a number is the display's main digits.
-        let numeric = found.filter { ReadingJudge.parseReading($0.text) != nil }.max { $0.box.height < $1.box.height }?.text
-        matchedBoxes = [:]
-        picked = [:]
-        var out: [StepReadingResult] = []
-        for a in assertions where a.kind != "location" {
-            let want = fold(a.expected)
-            if a.kind == "code" {
-                // AROMS-340: a Code check is judged on the decoded payloads - the
-                // one that carries the expectation, else all of them in words. With
-                // nothing decoded, the digits printed under the code are the fallback,
-                // said as such, so a scuffed barcode still has a way through.
-                let hit = codes.first { !want.isEmpty && fold($0.text).contains(want) } ?? codes.first
-                if let hit {
-                    var r = ReadingJudge.evaluate(a, read: hit.text, typed: false)
-                    if !r.pass && codes.count > 1 {
-                        r = StepReadingResult(assertionId: r.assertionId, kind: r.kind, pass: false, read: codes.map(\.text).joined(separator: " | "), value: nil, typed: false, onFail: r.onFail,
-                                              words: "Barcodes read: \(codes.map { "\($0.symbology ?? "barcode") \"\($0.text)\"" }.joined(separator: ", ")) - \"\(a.expected)\" not among them", at: r.at)
-                    } else if r.pass {
-                        r = StepReadingResult(assertionId: r.assertionId, kind: r.kind, pass: true, read: hit.text, value: nil, typed: false, onFail: r.onFail,
-                                              words: "\(hit.symbology ?? "Barcode") \"\(hit.text)\" - carries \"\(a.expected)\"", at: r.at)
-                    }
-                    out.append(r)
-                    matchedBoxes[a.id] = topLeft(hit.box)
-                } else {
-                    var r = ReadingJudge.evaluate(a, read: joined, typed: false)
-                    r = StepReadingResult(assertionId: r.assertionId, kind: r.kind, pass: r.pass, read: r.read, value: nil, typed: false, onFail: r.onFail,
-                                          words: r.pass ? "No barcode decoded; the printed text carries \"\(a.expected)\"" : (joined.isEmpty ? "No barcode in the frame - expected \"\(a.expected)\"" : "No barcode decoded, and the printed text doesn't carry \"\(a.expected)\""), at: r.at)
-                    out.append(r)
-                    if let tallest = found.max(by: { $0.box.height < $1.box.height }) { matchedBoxes[a.id] = topLeft(tallest.box) }
+        let wantsReading = assertions.contains { $0.isReading }
+        let checks = assertions
+        Task {
+            // AROMS-342: a reading is sampled three times over about a second, so
+            // a display that is still settling is seen settling, and one glitched
+            // frame does not decide. Labels and barcodes read the first frame only.
+            var frames: [ReadingEngine.Frame] = [await ReadingEngine.recognise(first, wantsCodes: wantsCodes)]
+            if wantsReading {
+                for _ in 0..<2 {
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    if let img = frameSource() { frames.append(await ReadingEngine.recognise(img, wantsCodes: false)) }
                 }
-                if authoring, !want.isEmpty, let i = codes.firstIndex(where: { fold($0.text).contains(want) }) { picked[a.id] = i }
-                continue
+                if frames.count > 1, let last = frameSource() { frame = last }
             }
-            let read = a.isReading ? (numeric ?? joined) : joined
-            let r = ReadingJudge.evaluate(a, read: read, typed: false)
-            out.append(r)
-            // The line that carried the match (or, for a reading, the digits) - where the text is.
-            let tallest = a.isReading ? nil : found.max(by: { $0.box.height < $1.box.height })
-            if let hit = found.first(where: { a.isReading ? $0.text == numeric : (!want.isEmpty && fold($0.text).contains(want)) }) ?? tallest {
-                matchedBoxes[a.id] = topLeft(hit.box)
-            }
-            // AROMS-350: in Author mode, pre-select the line that carries the typed
-            // expectation; a blank or unread one waits for the author's tap.
-            if authoring && !a.isReading, !want.isEmpty,
-               let i = recognised.firstIndex(where: { fold($0.text).contains(want) }) {
-                picked[a.id] = i
-            }
+            let j = ReadingEngine.judge(checks, frames: frames, authoring: authoring)
+            recognised   = frames.last?.lines ?? []
+            decodedCodes = frames.first?.codes ?? []
+            matchedBoxes = j.matchedBoxes
+            picked       = j.picked
+            samples      = j.samples
+            stable       = j.stable
+            results      = j.results
+            phase = .review
+            UINotificationFeedbackGenerator().notificationOccurred(allPass ? .success : .warning)
         }
-        // AROMS-339: location - the text's place now against where it was trained
-        // (the region stored on the step's first trained text-match).
-        for a in assertions where a.kind == "location" {
-            let anchorText = assertions.first { $0.kind == "text-match" && $0.region != nil } ?? assertions.first { $0.kind == "text-match" }
-            if anchorText == nil {
-                // A position with no label text to anchor it is a configuration slip, said in words, never a block.
-                out.append(StepReadingResult(assertionId: a.id, kind: a.kind, pass: false, read: "", value: nil, typed: false, onFail: "flag", words: "No label text to check the position against - skipped", at: ISO8601DateFormatter().string(from: Date())))
-                continue
-            }
-            let matched = anchorText.flatMap { matchedBoxes[$0.id] }
-            out.append(ReadingJudge.evaluateLocation(a, trained: anchorText?.region, matched: matched, typed: false))
-        }
-        results = out
-        phase = .review
-        UINotificationFeedbackGenerator().notificationOccurred(allPass ? .success : .warning)
     }
 }

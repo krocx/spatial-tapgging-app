@@ -182,6 +182,25 @@ recorded", with one button, Done. `/validate` is a pure compare and the
 sheet on trial calls nothing, so no run, evidence or event is written. The
 Operator mode remains the test of the whole guide.
 
-Open (AROMS-352): on the floor presence and the label are two validations;
-the merge is to read the label on the cone's own frame and only open the
-sheet when it is not legible from there.
+### 8.4 One validation on the floor (2026-10-19, AROMS-352)
+
+With the cone trained, presence goes first. When it passes, the step's
+checks are read on the cone's own frame, silently (`ReadingEngine`, the same
+code as the sheet). All right → the step completes in one go, readings and
+evidence recorded, "Validated PASS - presence and label in one". Not legible
+from there → "Presence OK - now read the label up close" and the reading
+sheet opens with presence kept (`presencePassedPending`), so the sheet
+finishes the step and no second cone runs. A step without a cone keeps the
+sheet as its one validation. Field question for the cleanroom: how far the
+cone fires from a legible label.
+
+### 8.5 Instrument displays (2026-10-19, AROMS-342)
+
+A reading is sampled three times over about a second; the value that recurs
+(within 0.5 %) is kept. When none does, the median is judged and the verdict
+says "display still moving (79.4 · 79.9 · 80.3) - hold steady and read
+again". Scientific notation is folded to "E" on both ends before parsing:
+superscripts (1.2×10⁻⁹), x10^-9, ·10-9, "E -09", e-9. A leak checker that
+prints the mantissa large and the exponent small beside it comes back from
+Vision as two lines; an exponent-shaped line on the same row to the right is
+joined on. "OL", "----" and "Err" are no reading.

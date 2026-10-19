@@ -21,6 +21,13 @@ test('parseReading: the number on a display', () => {
   assert.equal(parseReading('1.2E-9 mbar l/s'), 1.2e-9);
   assert.equal(parseReading('12,3 Nm'), 12.3);
   assert.equal(parseReading('OL'), null);
+  // AROMS-342: the forms instrument displays print for "× 10 to the".
+  assert.equal(parseReading('1.2×10⁻⁹ mbar·l/s'), 1.2e-9);
+  assert.equal(parseReading('1.2 x10^-9'), 1.2e-9);
+  assert.equal(parseReading('3.4E -08'), 3.4e-8);
+  assert.equal(parseReading('5.0e-10'), 5e-10);
+  assert.equal(parseReading('12.0 N·m'), 12);
+  assert.equal(parseReading('----'), null);
 });
 
 test('evaluate: readings within and outside, text exact / contains / any-of, verdict and flags', () => {

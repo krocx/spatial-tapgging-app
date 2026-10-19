@@ -638,6 +638,7 @@
   ],
   "Components/ReadingCaptureSheet.swift": [
    "Models/AROMSModels.swift",
+   "Services/ReadingEngine.swift",
    "Services/ReadingJudge.swift"
   ],
   "Components/ResumeCheckpointOverlay.swift": [],
@@ -713,6 +714,7 @@
    "Services/GLBLoader.swift",
    "Services/GuideRunStore.swift",
    "Services/PresenceService.swift",
+   "Services/ReadingEngine.swift",
    "Services/ReadingJudge.swift",
    "Services/SIBClient.swift",
    "Services/TagFeaturePrint.swift",
@@ -1274,6 +1276,10 @@
   ],
   "Services/QRScannerService.swift": [
    "Models/SIBTypes.swift"
+  ],
+  "Services/ReadingEngine.swift": [
+   "Models/AROMSModels.swift",
+   "Services/ReadingJudge.swift"
   ],
   "Services/ReadingJudge.swift": [
    "Models/AROMSModels.swift"

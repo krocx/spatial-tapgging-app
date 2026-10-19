@@ -50,9 +50,23 @@ export function parseExpectation(raw: string): Bounds | null {
   return null;
 }
 
-/** The number on a display, from what the recogniser read ("79.6 Ω", "OL", "1.2e-9"). Null when none. */
+const SUPERS: Record<string, string> = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁻': '-', '⁺': '+' };
+
+/**
+ * AROMS-342: what instrument displays print for "× 10 to the", folded to "E":
+ * superscript digits and minus ("1.2×10⁻⁹"), "x10^-9", "x10-9", "·10-9",
+ * "E -09" and "e-9". The iPad (ReadingJudge.normaliseNotation) does the same.
+ */
+export function normaliseNotation(text: string): string {
+  let t = text.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]/g, ch => SUPERS[ch] ?? ch).replace(/[−–—]/g, '-');
+  t = t.replace(/\s*[x×X·*]\s*10\s*\^?\s*([-+]?\d+)/g, 'E$1');
+  t = t.replace(/[eE]\s*([-+]?)\s*(\d+)/g, 'E$1$2');
+  return t;
+}
+
+/** The number on a display, from what the recogniser read ("79.6 Ω", "OL", "1.2e-9", "1.2×10⁻⁹ mbar·l/s"). Null when none. */
 export function parseReading(text: string): number | null {
-  const t = normalise(text);
+  const t = normalise(normaliseNotation(text));
   const m = t.match(new RegExp(NUM));
   if (!m) return null;
   const v = num(m[0]);

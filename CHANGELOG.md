@@ -50,6 +50,17 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-352: one validation on the floor.** When presence validates in
+  the cone, the step's label, barcode or reading is read on that same frame;
+  all right and the step completes in one go ("Validated PASS - presence and
+  label in one"). Not legible from there, and the reading sheet opens with
+  presence kept - no second cone.
+- **AROMS-342: instrument displays.** A reading is sampled three times over
+  about a second and the value that recurs is kept; a display still settling
+  says so with the values seen. Scientific notation as leak checkers print
+  it (1.2×10⁻⁹, x10^-9, E -09, mantissa and exponent on separate lines) is
+  read on both the iPad and SIB. Recognition and judging now live in
+  `ReadingEngine`, which the operator's session and the sheet share.
 - **AROMS-340: Barcode checks.** The reading sheet decodes barcodes, QR,
   Data Matrix, PDF417 and Aztec on the same frame as the text and judges a
   Barcode check on the payload; several in frame are listed by kind, and

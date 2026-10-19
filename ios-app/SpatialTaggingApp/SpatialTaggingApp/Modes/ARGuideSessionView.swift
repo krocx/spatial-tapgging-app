@@ -249,6 +249,9 @@ struct ARGuideSessionView: View {
     @State private var showAssistTray = false
     @State private var showStepNavigator = false   // AROMS-330: jump to a step (navigation only)
     @State private var readingIndex: Int? = nil     // AROMS-338: the step whose readings are being captured
+    /// AROMS-352: steps whose presence passed on the cone frame this attempt while the
+    /// label was not legible from there - the reading sheet finishes them, not a second cone.
+    @State private var presencePassedPending: Set<Int> = []
     /// Guardrail: after a dismissal, no new hint for the same step for 30 s.
     @State private var lastHintDismissedAt: Date? = nil
     @State private var lastDismissedStepId: String? = nil
@@ -665,6 +668,12 @@ struct ARGuideSessionView: View {
                                         for r in results { pushReadingEvent(index: i, result: r) }
                                         if ReadingJudge.stepPasses(results), results.count == (sortedSteps[i].assertions?.count ?? 0) {
                                             showNotice(results.allSatisfy { $0.pass } ? "✓ Readings match" : "Readings recorded - some flagged")
+                                            // AROMS-352: presence passed a moment ago on the cone frame - the step is done.
+                                            if presencePassedPending.contains(i) {
+                                                presencePassedPending.remove(i)
+                                                markComplete(at: i)
+                                                autoAdvance(from: i)
+                                            }
                                         }
                                     })
                 .presentationDetents([.medium, .large])
@@ -3057,22 +3066,27 @@ struct ARGuideSessionView: View {
             return
         }
         // AROMS-338: readings and text checks - every blocking one must read right first.
-        if let checks = step.assertions, !checks.isEmpty, !progresses[index].isCompleted {
+        if let checks = step.assertions, !checks.isEmpty, !progresses[index].isCompleted, !readingsSatisfied(at: index) {
             let done = progresses[index].readings
-            let blocking = checks.filter { $0.blocks }
-            // Missing = never read, or read and failed with a blocking result. A result the
-            // device downgraded to "flag" (untrained position, no text to anchor) lets the step go.
-            let missing = blocking.filter { c in
-                guard let r = done.first(where: { $0.assertionId == c.id }) else { return true }
-                return !r.pass && r.onFail != "flag"
-            }
-            if !missing.isEmpty {
-                showNotice(done.isEmpty ? "Read the \(checks.first?.isReading == true ? (checks.first?.instrumentWords.lowercased() ?? "display") : "label") to complete this step" : "A reading is outside what the step expects - read again")
-                readingIndex = index
+            // AROMS-352: one validation, not two. With the cone trained, presence goes
+            // first and the label is read on the cone's own frame; the sheet only
+            // opens when it is not legible from there.
+            if step.needsValidation, step.coneTrained, step.worldPosition != nil, !presencePassedPending.contains(index) {
+                startConeValidation(at: index)
                 return
             }
+            showNotice(done.isEmpty ? "Read the \(checks.first?.isReading == true ? (checks.first?.instrumentWords.lowercased() ?? "display") : "label") to complete this step" : "A reading is outside what the step expects - read again")
+            readingIndex = index
+            return
         }
         if step.needsValidation && !progresses[index].isCompleted {
+            if presencePassedPending.contains(index) {
+                // AROMS-352: presence already passed on this attempt; the label has now read right.
+                presencePassedPending.remove(index)
+                markComplete(at: index)
+                autoAdvance(from: index)
+                return
+            }
             if step.coneTrained, step.worldPosition != nil {
                 startConeValidation(at: index)                   // V2: in-AR guided capture
             } else if step.validationTrained {
@@ -3084,6 +3098,38 @@ struct ARGuideSessionView: View {
         }
         markComplete(at: index)
         autoAdvance(from: index)
+    }
+
+    /// AROMS-338: every blocking check on the step has read right (or was
+    /// downgraded to a flag by the device). True when the step has no checks.
+    private func readingsSatisfied(at index: Int) -> Bool {
+        guard index < sortedSteps.count, index < progresses.count, let checks = sortedSteps[index].assertions, !checks.isEmpty else { return true }
+        let done = progresses[index].readings
+        return !checks.filter { $0.blocks }.contains { c in
+            guard let r = done.first(where: { $0.assertionId == c.id }) else { return true }
+            return !r.pass && r.onFail != "flag"
+        }
+    }
+
+    /// AROMS-352: presence has just passed on the cone's frame - read the step's
+    /// checks on that same frame, silently. All right → the step completes in
+    /// one go; otherwise the reading sheet opens, presence kept.
+    private func readOnConeFrame(index: Int, image: UIImage) async {
+        guard index < sortedSteps.count, let checks = sortedSteps[index].assertions, !checks.isEmpty else { return }
+        let frame = await ReadingEngine.recognise(image, wantsCodes: checks.contains { $0.kind == "code" })
+        let j = ReadingEngine.judge(checks, frames: [frame], authoring: false)
+        if ReadingJudge.stepPasses(j.results) && j.results.count == checks.count {
+            progresses[index].readings = j.results
+            for r in j.results { pushReadingEvent(index: index, result: r) }
+            showNotice(j.results.allSatisfy { $0.pass } ? "✓ Validated PASS - presence and \(checks.contains { $0.isReading } ? "reading" : "label") in one" : "✓ Validated PASS - label recorded, some flagged")
+            markComplete(at: index)
+            autoAdvance(from: index)
+        } else {
+            presencePassedPending.insert(index)
+            let what = checks.first?.isReading == true ? (checks.first?.instrumentWords.lowercased() ?? "display") : "label"
+            showNotice("✓ Presence OK - now read the \(what) up close")
+            readingIndex = index
+        }
     }
 
     /// AROMS-338: one reading's verdict onto the live stream (usage log), typed or read.
@@ -3326,6 +3372,11 @@ struct ARGuideSessionView: View {
         AppLog.info("validation", "fp=\(String(format: "%.3f", fpScore)) ssim=\(String(format: "%.3f", ssim)) → \(String(format: "%.3f", score))")
         if score >= stepPassThreshold {
             pushValidationEvent(index: index, mode: "system", result: "pass", score: score)
+            // AROMS-352: the step's checks read on this same frame - one validation when it is legible from here.
+            if !readingsSatisfied(at: index) {
+                await readOnConeFrame(index: index, image: image)
+                return
+            }
             showNotice("✓ Validated PASS - score \(String(format: "%.2f", score))")
             markComplete(at: index)
             autoAdvance(from: index)

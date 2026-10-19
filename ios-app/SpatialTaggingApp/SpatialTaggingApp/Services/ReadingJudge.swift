@@ -26,15 +26,42 @@ struct StepReadingResult: Codable, Equatable, Identifiable {
 
 enum ReadingJudge {
 
-    private static let numberPattern = try! NSRegularExpression(pattern: #"[-+]?(?:\d+(?:[.,]\d+)?|[.,]\d+)(?:[eE][-+]?\d+)?"#)
+    private static let numberPattern = try! NSRegularExpression(pattern: #"[-+]?(?:\d+(?:[.,]\d+)?|[.,]\d+)(?:E[-+]?\d+)?"#)
+    private static let exponentFragment = try! NSRegularExpression(pattern: #"^\s*(?:E\s*)?[-+]\s*\d{1,3}\s*$"#, options: .caseInsensitive)
 
-    /// The number on a display, from what the recogniser read ("79.6 Ω", "1.2E-9", "12,3 Nm"). Nil when none ("OL").
+    /// AROMS-342: what instrument displays print for "× 10 to the", folded to
+    /// "E": superscript digits and minus ("1.2×10⁻⁹"), "x10^-9", "x10-9",
+    /// "·10-9", "E -09" and "e-9". A port of the same step in assertions.ts.
+    static func normaliseNotation(_ text: String) -> String {
+        var t = text
+        let supers: [Character: Character] = ["⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁻": "-", "⁺": "+"]
+        t = String(t.map { supers[$0] ?? $0 })
+        for d in ["−", "–", "—"] { t = t.replacingOccurrences(of: d, with: "-") }
+        // "× 10 ^ -9", "x10-9", "·10-9", "*10^-9" → "E-9" (only when an exponent follows)
+        t = t.replacingOccurrences(of: #"\s*[x×X·*]\s*10\s*\^?\s*([-+]?\d+)"#, with: "E$1", options: .regularExpression)
+        // "e -9", "E -09" → "E-9"
+        t = t.replacingOccurrences(of: #"[eE]\s*([-+]?)\s*(\d+)"#, with: "E$1$2", options: .regularExpression)
+        return t
+    }
+
+    /// The number on a display, from what the recogniser read ("79.6 Ω",
+    /// "1.2E-9", "1.2×10⁻⁹ mbar·l/s", "12,3 Nm"). Nil when none ("OL", "----").
     static func parseReading(_ text: String) -> Double? {
-        let t = text.replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "–", with: "-")
+        let t = normaliseNotation(text)
         let range = NSRange(t.startIndex..., in: t)
         guard let m = numberPattern.firstMatch(in: t, range: range), let r = Range(m.range, in: t) else { return nil }
         let v = Double(String(t[r]).replacingOccurrences(of: ",", with: "."))
         return v.flatMap { $0.isFinite ? $0 : nil }
+    }
+
+    /// Whether a reading already carries an exponent after normalisation.
+    static func hasExponent(_ text: String) -> Bool { normaliseNotation(text).contains("E") }
+
+    /// A line that is only an exponent ("E-09", "-09", "+2") - the small part a
+    /// leak checker prints beside the mantissa (AROMS-342).
+    static func isExponentFragment(_ text: String) -> Bool {
+        let t = normaliseNotation(text)
+        return exponentFragment.firstMatch(in: t, range: NSRange(t.startIndex..., in: t)) != nil
     }
 
     private static func fold(_ s: String) -> String {
@@ -43,7 +70,7 @@ enum ReadingJudge {
             .lowercased()
     }
 
-    private static func fmt(_ v: Double) -> String {
+    static func fmt(_ v: Double) -> String {
         if abs(v) < 1e-3 || abs(v) >= 1e6 { return String(format: "%.2e", v) }
         let s = String(format: "%.3f", v)
         return s.replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
