@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Fixed
+- **AROMS-353: reads in the Usage Log, and a false pass on scientific
+  notation.** Every step visit in the Usage Log now carries a "Reads" column
+  with what the camera read (reading, label, barcode), the same chips as the
+  Completion Log, so a test run that never completes still shows it. Found
+  with it: SIB derived the bounds of "1.0 × 10⁻¹²" as 1.0 because the ×10
+  notation was not folded, and a display reading "1 × ⁻¹²" (the 10 lost by
+  the recogniser) parsed as 1 - a pass that should have been a fail. Both
+  ends fold the notation now, a reading's bounds are re-derived from the
+  wording on every save, and the settling verdict lists the raw texts seen.
 - **AROMS-349: a Text check means "must say", not "says only".** A check
   for PIXMA failed on a real box because the camera reads the whole label
   and the compare defaulted to exact. Text and Code checks now pass when

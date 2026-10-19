@@ -98,8 +98,10 @@ enum ReadingEngine {
                 l != main && l.box.minX >= main.box.midX && abs(l.box.midY - main.box.midY) < main.box.height * 0.8
             }
             if let exp = sameRow.first(where: { ReadingJudge.isExponentFragment($0.text) }) {
-                let frag = exp.text.trimmingCharacters(in: .whitespaces)
-                text = text + (frag.uppercased().hasPrefix("E") ? frag : "E" + frag)
+                // "1.2 × 10" + "⁻⁹": the "× 10" belongs to the exponent, not the mantissa.
+                let base = ReadingJudge.normaliseNotation(text).replacingOccurrences(of: #"\s*[x×X·*]\s*10\s*\^?\s*$"#, with: "", options: .regularExpression)
+                let frag = ReadingJudge.normaliseNotation(exp.text).trimmingCharacters(in: .whitespaces)
+                text = base + (frag.uppercased().hasPrefix("E") ? frag : "E" + frag)
             }
         }
         return (text, main.box)
@@ -166,7 +168,8 @@ enum ReadingEngine {
             if a.isReading {
                 var r = ReadingJudge.evaluate(a, read: readingText ?? joined, typed: false)
                 if !j.stable {
-                    r = reword(r, read: r.read, words: r.words + " · display still moving (\(j.samples.map { ReadingJudge.fmt($0) }.joined(separator: " · "))) - hold steady and read again")
+                    // The raw texts, not the parsed values - so a display that reads oddly can be seen in the log.
+                    r = reword(r, read: r.read, words: r.words + " · display still moving (\(readings.map { "\"\($0.text)\"" }.joined(separator: " · "))) - hold steady and read again")
                 }
                 j.results.append(r)
                 if let b = readingBox { j.matchedBoxes[a.id] = b }

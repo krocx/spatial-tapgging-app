@@ -28,6 +28,15 @@ test('parseReading: the number on a display', () => {
   assert.equal(parseReading('5.0e-10'), 5e-10);
   assert.equal(parseReading('12.0 N·m'), 12);
   assert.equal(parseReading('----'), null);
+  // The recogniser dropped the "10" and kept the superscript - still the exponent, not "1".
+  assert.equal(parseReading('1 × ⁻¹²'), 1e-12);
+  // The expectation folds the same way, so the bounds are 1e-12, not 1.0 with a unit of "× ⁻¹²".
+  const leak = parseExpectation('1.0 × 10⁻¹² mbar·l/s');
+  assert.equal(leak?.min, 1e-12); assert.equal(leak?.max, 1e-12); assert.equal(leak?.unit, 'mbar·l/s');
+  const le = withBounds({ id: 'l', kind: 'text-value', expected: '≤ 1.0 × 10⁻⁹ mbar·l/s', onFail: 'block', source: 'author' });
+  assert.equal(le.max, 1e-9); assert.equal(le.min, undefined);
+  assert.equal(evaluate(le, '1 × ⁻¹²').pass, true);
+  assert.equal(evaluate(le, '1').pass, false);
 });
 
 test('evaluate: readings within and outside, text exact / contains / any-of, verdict and flags', () => {

@@ -4705,6 +4705,7 @@ function renderUsageLog() {
         `<td class="num">${fmtDur(e.durationSeconds)}</td>` +
         `<td>${OUT[e.outcome] || ''} ${esc(e.outcome)}</td>` +
         `<td>${valBadge(e.validation)}</td>` +
+        `<td>${readsCell(e.readings)}</td>` +
         `<td>${e.evidence
           ? `<img class="ul-thumb" data-evidence-url="/guide-sessions/${encodeURIComponent(u.id)}/evidence/${encodeURIComponent(e.stepId)}" alt="">` : u.signOffSessionId
             ? `<img class="ul-thumb" data-evidence-url="/guide-sessions/${encodeURIComponent(u.signOffSessionId)}/evidence/${encodeURIComponent(e.stepId)}" alt="">` : ''}</td>` +
@@ -4712,12 +4713,32 @@ function renderUsageLog() {
         `<td>${hintsCell(e.hints)}</td>` +
         `<td class="ul-dim mono">${esc(e.stepId.slice(0, 8))}</td></tr>`).join('');
       html += `<tr id="${id}" class="ul-detail"><td></td><td colspan="10">` +
-        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Evidence</th><th title="C1 observations: attention on target · wrong-part taps · replays · aligned seconds">Attention</th><th title="C2 hints fired on this visit"><svg class="ax-icon" style="color:var(--ax-yellow)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Hints</th><th>Step</th></tr></thead>` +
-        `<tbody>${stepRows || '<tr><td colspan="9" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
+        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th title="AROMS-338: what the camera read on this visit - a reading, a label, a barcode">Reads</th><th>Evidence</th><th title="C1 observations: attention on target · wrong-part taps · replays · aligned seconds">Attention</th><th title="C2 hints fired on this visit"><svg class="ax-icon" style="color:var(--ax-yellow)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Hints</th><th>Step</th></tr></thead>` +
+        `<tbody>${stepRows || '<tr><td colspan="10" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
     }
   }
   html += '</tbody></table>';
   view.innerHTML = html;
+}
+
+// AROMS-338 / 353: what the camera read on a step - a reading, a label, a
+// barcode - as chips, the same in the Completion Log and the Usage Log. A
+// usage entry carries `result` ('pass' | 'fail'); a completion carries `pass`.
+function readingChips(list, { margin = '' } = {}) {
+  if (!Array.isArray(list) || !list.length) return '';
+  return list.map(r => {
+    const pass = r.pass === true || r.result === 'pass';
+    const col = pass ? 'var(--ax-green)' : r.onFail === 'flag' ? 'var(--ax-orange)' : 'var(--ax-red)';
+    return `<span class="ax-chip" style="${margin}text-transform:none;letter-spacing:0;font:var(--ax-label-s);color:${col};border:1px solid currentColor;white-space:normal;text-align:left" title="${esc(r.typed ? 'Typed by the operator, not read by the camera' : 'Read by the camera; the frame is the evidence')}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> ${esc(prettyNotation(r.words || ''))}${r.typed ? ' · typed' : ''}</span>`;
+  }).join(' ');
+}
+// Scientific notation in words, the way a leak checker prints it: "1.2e-09" → "1.2 × 10⁻⁹".
+function prettyNotation(words) {
+  const sup = { '-': '⁻', '+': '⁺', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  return String(words).replace(/(\d+(?:\.\d+)?)[eE]([-+]?)0*(\d+)/g, (_, m, sign, e) => `${m} × 10${(sign + e).split('').map(c => sup[c] ?? c).join('')}`);
+}
+function readsCell(list) {
+  return readingChips(list) || '<span class="ul-dim">-</span>';
 }
 
 // C1/C2: compact cells for the usage-log step rows. Numbers only - the
@@ -4849,7 +4870,7 @@ function renderAGStepRows(sess) {
       <div class="ag-step-icon ag-step-done"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg></div>
       <div class="ag-step-txt">Step ${i + 1}
         <span style="color:var(--muted);font-size:0.78rem"> · ${esc(doneAt)} · ${dur}</span>
-        ${Array.isArray(sc.readings) && sc.readings.length ? sc.readings.map(r => `<span class="ax-chip" style="margin-left:8px;text-transform:none;letter-spacing:0;font:var(--ax-label-s);color:${r.pass ? 'var(--ax-green)' : r.onFail === 'flag' ? 'var(--ax-orange)' : 'var(--ax-red)'};border:1px solid currentColor" title="${esc(r.typed ? 'Typed by the operator, not read by the camera' : 'Read by the camera; the frame is the evidence')}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> ${esc(r.words)}${r.typed ? ' · typed' : ''}</span>`).join('') : ''}
+        ${readingChips(sc.readings, { margin: 'margin-left:8px;' })}
         ${sc.hands?.tracked ? `<span class="ax-chip" style="margin-left:8px;text-transform:none;letter-spacing:0;font:var(--ax-label-s);color:${sc.hands.onPartAtCheck || sc.hands.share >= 0.5 ? 'var(--ax-green)' : 'var(--ax-orange)'};border:1px solid currentColor" title="Hands-at-the-part evidence from a hand-tracked XR run: time the hand was within 15 cm of the step's parts, the share of the step spent there, and whether a hand was on the part at the check. A fact about the run, never a recording.">hands at the part ${sc.hands.inZoneSeconds}s · ${Math.round(sc.hands.share * 100)}%${sc.hands.onPartAtCheck ? ' · on it at the check' : ''}</span>` : ''}
       </div>`;
     if (hasEvidence) {

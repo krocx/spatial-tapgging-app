@@ -39,6 +39,8 @@ enum ReadingJudge {
         for d in ["−", "–", "—"] { t = t.replacingOccurrences(of: d, with: "-") }
         // "× 10 ^ -9", "x10-9", "·10-9", "*10^-9" → "E-9" (only when an exponent follows)
         t = t.replacingOccurrences(of: #"\s*[x×X·*]\s*10\s*\^?\s*([-+]?\d+)"#, with: "E$1", options: .regularExpression)
+        // The recogniser often drops the small "10" and keeps the superscript: "1 × ⁻¹²" → "1E-12"
+        t = t.replacingOccurrences(of: #"(\d)\s*[x×X]\s*([-+]\d+)"#, with: "$1E$2", options: .regularExpression)
         // "e -9", "E -09" → "E-9"
         t = t.replacingOccurrences(of: #"[eE]\s*([-+]?)\s*(\d+)"#, with: "E$1$2", options: .regularExpression)
         return t

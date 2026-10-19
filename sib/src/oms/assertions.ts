@@ -32,7 +32,9 @@ function normalise(text: string): string {
  * Returns null when no number is found.
  */
 export function parseExpectation(raw: string): Bounds | null {
-  const t = normalise(raw);
+  // AROMS-342: "1.0 × 10⁻¹² mbar·l/s" is one number, not "1.0" with a unit of "× ⁻¹²" -
+  // fold the notation first, or the bounds come out as 1.0 and a display reading "1" passes.
+  const t = normalise(normaliseNotation(raw));
   const unitOf = (rest: string) => { const u = rest.replace(new RegExp(NUM, 'g'), '').replace(/[±%]|\+\/-|\bto\b|…|\.\.\.|[-<>=≤≥]|\bmax(?:imum)?\b|\bmin(?:imum)?\b|\bat (?:most|least)\b/gi, '').replace(/\s+/g, ' ').trim(); return u || undefined; };
   let m: RegExpMatchArray | null;
   // "80 Ω ±5 %" · "80 ±4 Ω" · "12.0 N·m ± 0.5" · "80 +/- 4": the unit may sit before or after the tolerance.
@@ -60,6 +62,8 @@ const SUPERS: Record<string, string> = { '⁰': '0', '¹': '1', '²': '2', '³':
 export function normaliseNotation(text: string): string {
   let t = text.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]/g, ch => SUPERS[ch] ?? ch).replace(/[−–—]/g, '-');
   t = t.replace(/\s*[x×X·*]\s*10\s*\^?\s*([-+]?\d+)/g, 'E$1');
+  // The recogniser often drops the small "10" and keeps the superscript: "1 × ⁻¹²" → "1E-12".
+  t = t.replace(/(\d)\s*[x×X]\s*([-+]\d+)/g, '$1E$2');
   t = t.replace(/[eE]\s*([-+]?)\s*(\d+)/g, 'E$1$2');
   return t;
 }
@@ -143,9 +147,19 @@ export function sanitizeAssertions(raw: unknown): StepAssertion[] | undefined {
       onFail: r.onFail === 'flag' ? 'flag' : 'block',
       source: r.source === 'import' ? 'import' : 'author',
     };
-    if (typeof r.unit === 'string' && r.unit.trim()) a.unit = r.unit.trim();
-    if (typeof r.min === 'number' && Number.isFinite(r.min)) a.min = r.min;
-    if (typeof r.max === 'number' && Number.isFinite(r.max)) a.max = r.max;
+    // AROMS-342: the wording is the source of truth for a reading's bounds - they are
+    // re-derived on every save, so a parser fix reaches steps saved before it. Only
+    // when the wording yields nothing are the client's numbers kept.
+    const derived = kind === 'text-value' ? parseExpectation(expected) : null;
+    if (derived) {
+      if (derived.min !== undefined) a.min = derived.min;
+      if (derived.max !== undefined) a.max = derived.max;
+      if (derived.unit) a.unit = derived.unit;
+    } else {
+      if (typeof r.unit === 'string' && r.unit.trim()) a.unit = r.unit.trim();
+      if (typeof r.min === 'number' && Number.isFinite(r.min)) a.min = r.min;
+      if (typeof r.max === 'number' && Number.isFinite(r.max)) a.max = r.max;
+    }
     if (r.match === 'exact' || r.match === 'contains' || r.match === 'any-of' || r.match === 'regex') a.match = r.match;
     if (r.instrument === 'multimeter' || r.instrument === 'torque' || r.instrument === 'leak-check' || r.instrument === 'other') a.instrument = r.instrument;
     const g = r.region as Record<string, unknown> | undefined;
