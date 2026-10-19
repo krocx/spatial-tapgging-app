@@ -77,6 +77,8 @@ header h1 a{color:var(--text);text-decoration:none;}
 #modeCtl{position:absolute;right:14px;top:12px;display:flex;z-index:5;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--ax-solid);}
 #modeCtl button{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;padding:6px 11px;cursor:pointer;letter-spacing:.04em;}
 #modeCtl button.on{background:var(--accent);color:var(--ax-ink);}
+#modeCtl .sep{width:1px;background:var(--border);margin:4px 2px;}
+#modeCtl button[data-look].on{background:var(--ax-paper-3);color:var(--ax-ink);}
 #modeHint{position:absolute;right:14px;top:50px;font-size:10.5px;color:var(--muted);text-align:right;pointer-events:none;letter-spacing:.03em;}
 #zoomCtl{position:absolute;right:14px;top:70px;display:flex;flex-direction:column;gap:4px;z-index:5;}
 #graph.stacked .coreglow,#graph.stacked .halo{display:none;}
@@ -236,9 +238,9 @@ text.livelbl.on{opacity:.95;font-weight:700;}
   <div id="areaChips"></div>
   <div id="filterChips"></div>
   <div class="legend">
-    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="var(--ax-blue)"/></svg> shipped</span>
-    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="var(--ax-blue)" fill-opacity=".25" stroke="var(--ax-blue)" stroke-width="1.6"/></svg> beta</span>
-    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="none" stroke="var(--ax-blue)" stroke-width="1.4" stroke-dasharray="3 2"/></svg> planned</span>
+    <span><svg width="14" height="12"><rect class="lg-shape" x="2" y="1" width="10" height="10" rx="5" fill="var(--ax-blue)"/></svg> shipped</span>
+    <span><svg width="14" height="12"><rect class="lg-shape" x="2" y="1" width="10" height="10" rx="5" fill="var(--ax-blue)" fill-opacity=".25" stroke="var(--ax-blue)" stroke-width="1.6"/></svg> beta</span>
+    <span><svg width="14" height="12"><rect class="lg-shape" x="2" y="1" width="10" height="10" rx="5" fill="none" stroke="var(--ax-blue)" stroke-width="1.4" stroke-dasharray="3 2"/></svg> planned</span>
     <span><svg width="14" height="12"><circle cx="6" cy="6" r="5" fill="var(--ax-blue)"/><circle cx="10" cy="2.5" r="2.6" fill="var(--ax-green)"/></svg> new this release</span>
   </div>
   <button class="btn" style="padding:6px 13px" onclick="startTour()" title="Guided tour - the camera flies stop to stop">▶ Tour</button>
@@ -258,7 +260,7 @@ text.livelbl.on{opacity:.95;font-weight:700;}
     <div id="matchCount"></div>
     <svg id="graph"></svg>
     <div id="altView" style="display:none"></div>
-    <div id="modeCtl"><button data-cam="top" class="on" title="Top - the flat disc (key 1)">Top</button><button data-cam="stack" title="Stack - products as layers (key 2)">Stack</button><button data-cam="side" title="Side - floors edge-on, dependencies as wiring (key 3)">Side</button><button data-cam="under" title="Under - looking up the spine from SIB (key 4)">Under</button></div>
+    <div id="modeCtl"><button data-look="wafer" title="Wafer - the platform as a wafer, each feature a die (key W)">Wafer</button><button data-look="disc" title="Circles - the plain disc (key W)">Circles</button><span class="sep"></span><button data-cam="top" class="on" title="Top - the flat disc (key 1)">Top</button><button data-cam="stack" title="Stack - products as layers (key 2)">Stack</button><button data-cam="side" title="Side - floors edge-on, dependencies as wiring (key 3)">Side</button><button data-cam="under" title="Under - looking up the spine from SIB (key 4)">Under</button></div>
     <div id="modeHint"></div>
     <div id="focusBar" style="display:none"></div>
     <div id="tourCap" style="display:none"></div>
@@ -269,7 +271,7 @@ text.livelbl.on{opacity:.95;font-weight:700;}
       <button id="zoomReset" title="Reset layout (forget dragged positions)">↺</button>
       <button id="fxBtn" title="Effects" aria-label="Effects"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg></button>
     </div>
-    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan (3D: orbit + tilt, shift-drag pans) · scroll to zoom · keys 1–4 = Top · Stack · Side · Under</div>
+    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan (3D: orbit + tilt, shift-drag pans) · scroll to zoom · keys 1–4 = Top · Stack · Side · Under · W = wafer / circles</div>
   </div>
   <div id="panel"></div>
 </div>
@@ -408,6 +410,33 @@ function applyHash(){
 // land on a node (the old fixed-offset labels did exactly that at 87 nodes).
 const W = 1400, H = 1080, CX = W/2, CY = H/2;
 const R_MIN = 215, R_MAX = 430;   // an empty core sits inside R_MIN - SIB itself
+// Wafer look (2026.4.50): the platform drawn as a wafer - a die grid under the
+// sectors, the edge-exclusion ring and the notch, every feature a die (rounded
+// square) instead of a dot. Same colours, same solid / outlined / dashed
+// meaning for shipped / beta / planned. Default on; "Circles" is one click
+// away and remembered per browser.
+let waferLook = localStorage.getItem('cat_look') !== 'disc';
+const R_WAFER = R_MAX + 82, DIE = 44;
+function setLook(name){
+  waferLook = name === 'wafer';
+  localStorage.setItem('cat_look', waferLook ? 'wafer' : 'disc');
+  document.querySelectorAll('#modeCtl button[data-look]').forEach(b => b.classList.toggle('on', b.dataset.look === (waferLook ? 'wafer' : 'disc')));
+  document.querySelectorAll('div.legend .lg-shape').forEach(el => el.setAttribute('rx', waferLook ? '1.6' : '5'));
+  buildStatic(); rebuildScene(); draw();
+}
+function dieShape(status, c, r = 8){
+  // The die: a rounded square the size of the old dot; the planned one is a dashed outline, beta an outlined fill.
+  const sz = r * 1.9, o = -sz / 2;
+  const common = `class="shape" x="${o}" y="${o}" width="${sz}" height="${sz}" rx="2.4"`;
+  if (!waferLook){
+    if (status === 'shipped') return `<circle class="shape" r="${r}" fill="${c}"/>`;
+    if (status === 'beta')    return `<circle class="shape" r="${r}" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
+    return `<circle class="shape" r="${r}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+  }
+  if (status === 'shipped') return `<rect ${common} fill="${c}"/>`;
+  if (status === 'beta')    return `<rect ${common} fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
+  return `<rect ${common} fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+}
 const POS_KEY = 'sib_catalog_pos';       // dragged positions, per browser
 let savedPos = {};
 try { savedPos = JSON.parse(localStorage.getItem(POS_KEY) || '{}'); } catch { savedPos = {}; }
@@ -828,7 +857,22 @@ function buildStatic(){
     a.rimLen = rr * (a.g1 - a.g0 - 0.06); a.rimFs = rimFontSize(a.name, a.rimLen);
     out += `<path id="ap-${a.id}" d="${bottom ? arcPath(rr, a.g1 - 0.03, a.g0 + 0.03) : arcPath(rr, a.g0 + 0.03, a.g1 - 0.03)}"/>`;
   }
+  if (waferLook) out += `<clipPath id="waferClip"><circle cx="${CX}" cy="${CY}" r="${R_WAFER}"/></clipPath>`;
   out += '</defs>';
+  if (waferLook){
+    // The wafer: a faint disc, the die grid (reticle pitch) clipped to it, the
+    // edge-exclusion ring, and the notch at the bottom that every wafer carries.
+    let grid = '';
+    for (let x = CX - R_WAFER; x <= CX + R_WAFER; x += DIE) grid += `M${x.toFixed(0)},${(CY - R_WAFER).toFixed(0)}V${(CY + R_WAFER).toFixed(0)}`;
+    for (let y = CY - R_WAFER; y <= CY + R_WAFER; y += DIE) grid += `M${(CX - R_WAFER).toFixed(0)},${y.toFixed(0)}H${(CX + R_WAFER).toFixed(0)}`;
+    out += `<g class="wafer" pointer-events="none">
+      <circle cx="${CX}" cy="${CY}" r="${R_WAFER}" fill="var(--ax-ink)" fill-opacity=".028" stroke="var(--ax-ink-3)" stroke-opacity=".35" stroke-width="1.2"/>
+      <path d="${grid}" clip-path="url(#waferClip)" fill="none" stroke="var(--ax-ink-3)" stroke-opacity=".11" stroke-width="1"/>
+      <circle cx="${CX}" cy="${CY}" r="${R_WAFER - 10}" fill="none" stroke="var(--ax-ink-3)" stroke-opacity=".18" stroke-dasharray="1 4"/>
+      <circle cx="${CX}" cy="${CY + R_WAFER}" r="9" fill="var(--ax-bg)" stroke="var(--ax-ink-3)" stroke-opacity=".35" stroke-width="1.2"/>
+      <text class="ring" x="${CX + 14}" y="${CY + R_WAFER - 14}" opacity=".7">${esc(DATA.platformVersion)}</text>
+    </g>`;
+  }
   // wedges
   DATA.areas.forEach((a, i) => {
     out += `<g class="wedge" data-area="${a.id}" style="--i:${i}">
@@ -964,16 +1008,14 @@ function buildScene(){
     const c = areaById[nd.area].color, bi = nd.id.length + nd.id.charCodeAt(0);
     const breathe = lite ? '' : `animation:${bi % 2 ? 'breatheA' : 'breatheB'} ${3.2 + (bi % 5) * 0.6}s ease-in-out ${(bi % 7) * 0.4}s infinite alternate;`;
     const ring = Math.max(0, Math.min(2, Math.round((Math.hypot(nd.x - CX, nd.y - CY) - R_MIN) / ((R_MAX - R_MIN) / 2))));
-    let shape;
-    if (nd.status === 'shipped') shape = `<circle class="shape" r="8" fill="${c}"/>`;
-    else if (nd.status === 'beta') shape = `<circle class="shape" r="8" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
-    else shape = `<circle class="shape" r="8" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    const shape = dieShape(nd.status, c);
     const name = nd.name.length > 28 ? nd.name.slice(0, 27) + '…' : nd.name;
     // The breathe animation lives on an INNER wrapper: a CSS transform on the
     // positioned group would override its transform attribute (all nodes at 0,0).
     return `<g class="node" data-id="${nd.id}" style="cursor:pointer;--ring:${ring}"><g class="breathe" style="${breathe}">
       <circle class="hit" r="16" fill="transparent"/>
-      <circle class="hsel" r="16" fill="none" stroke="var(--ax-ink)" stroke-width="1.4" opacity=".9" display="none"/>
+      ${waferLook ? `<rect class="hsel" x="-15" y="-15" width="30" height="30" rx="4" fill="none" stroke="var(--ax-ink)" stroke-width="1.4" opacity=".9" display="none"/>`
+                  : `<circle class="hsel" r="16" fill="none" stroke="var(--ax-ink)" stroke-width="1.4" opacity=".9" display="none"/>`}
       <circle class="hhov" r="17" fill="${c}" fill-opacity=".18" display="none"/>
       ${shape}
       ${nd.version === DATA.platformVersion ? `<circle cx="7" cy="-7" r="3.2" fill="var(--ax-green)" stroke="var(--ax-bg)" stroke-width="1"><title>New in ${esc(DATA.platformVersion)}</title></circle>` : ''}
@@ -1137,7 +1179,8 @@ function draw(){
     if (!isSel && !isHov && !neighbours.has(nd.id) && !hov.has(nd.id)) op *= fadeOf(nd);
     A(N.g, 'transform', `translate(${nd.px.toFixed(1)},${nd.py.toFixed(1)}) scale(${nd.ps.toFixed(3)})`);
     A(N.g, 'opacity', op.toFixed(3));
-    A(N.shape, 'r', r);
+    if (waferLook){ const sz = r * 1.9; A(N.shape, 'x', -sz / 2); A(N.shape, 'y', -sz / 2); A(N.shape, 'width', sz); A(N.shape, 'height', sz); }
+    else A(N.shape, 'r', r);
     A(N.hsel, 'display', isSel ? '' : 'none'); A(N.hhov, 'display', isHov && !isSel ? '' : 'none');
     const dy = dyById[nd.id];
     A(N.label, 'display', dy == null ? 'none' : ''); if (dy != null) A(N.label, 'y', dy);
@@ -1187,11 +1230,14 @@ document.getElementById('fxBtn').onclick = () => {
   fxTier = lite ? 'full' : 'lite'; localStorage.setItem('sib_catalog_fx', fxTier); applyFx(); if (scene) rebuildScene();
 };
 applyFx();
-document.querySelectorAll('#modeCtl button').forEach(b => b.onclick = () => setCam(b.dataset.cam));
+document.querySelectorAll('#modeCtl button[data-cam]').forEach(b => b.onclick = () => setCam(b.dataset.cam));
+document.querySelectorAll('#modeCtl button[data-look]').forEach(b => { b.onclick = () => setLook(b.dataset.look); b.classList.toggle('on', b.dataset.look === (waferLook ? 'wafer' : 'disc')); });
+document.querySelectorAll('div.legend .lg-shape').forEach(el => el.setAttribute('rx', waferLook ? '1.6' : '5'));
 window.addEventListener('keydown', ev => {
   if (ev.target.matches('input, textarea') || ev.metaKey || ev.ctrlKey) return;
   const camKeys = { '1': 'top', '2': 'stack', '3': 'side', '4': 'under' };
   if (camKeys[ev.key]) setCam(camKeys[ev.key]);
+  else if (ev.key === 'w' || ev.key === 'W') setLook(waferLook ? 'disc' : 'wafer');
   else if (ev.key === 'f' || ev.key === 'F'){ if (selected) setFocus(!focusPin); }
   else if (trail && (ev.key === 'ArrowRight' || ev.key === ' ')){ ev.preventDefault(); tourStep(1); }
   else if (trail && ev.key === 'ArrowLeft'){ tourStep(-1); }
