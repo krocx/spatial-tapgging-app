@@ -65,6 +65,65 @@ coverage, and an unverified "10x faster at a tenth of the cost" claim. A
 capable, small, government-funded engineering firm; commercial depth to be
 verified by reference calls.
 
+## Revision 2026-10-21 - after the site review and the Vuforia comparison
+
+Two corrections from gridraster.com (the platform page, read in full):
+
+**The tracking runs on the device.** "Devices can cache CAD models, work
+instructions and task data, operate on the shop floor without a live
+connection, and sync results later"; camera and 3D-sensor data "is
+processed in device memory and isn't stored". The Hub trains and serves -
+foundation models fine-tuned on the customer's CAD, scans, manuals and
+labels, pushed to the device with the cached CAD - and the real-time loop
+(detect, register to the CAD, track, with the device's depth sensor) is
+local. Earlier text above saying the tracking is server-side is wrong.
+This makes the "5 mm on a moving object" demo plausible for a rigid part at
+close range with depth; it says nothing yet about a chamber-scale object at
+working distance under cleanroom light, which is the test (protocol below).
+
+**The data-posture objection is largely answered.** The Hub "runs fully
+on-premises and can operate air-gapped"; the app ships through the
+customer's MDM and holds no technical data. The data does not leave. What
+remains is narrower: their pipeline trains on our content, so the questions
+are who owns the fine-tuned weights, whether anything about our geometry
+informs their foundation models, and whether running our chambers through
+their recognition stack bears on the perception IP we are filing. Contract
+and IP-counsel questions, not a reason to refuse the conversation.
+
+Unchanged: a small, defence-funded firm (the page adds AWE 2026 Enterprise
+XR finalist, Army xTechSearch 9, an NVIDIA partner mark - more than the note
+gave, still no commercial customer list); devices are Vision Pro, iOS and
+Android XR - no HoloLens 2 or Quest, most of our glasses shortlist; Active
+Task Assistance is thinner than our product; NDI tracking outside our scope.
+
+**Against Vuforia.** PTC's engine is an SDK we would build on inside the
+Unity client (Model Targets with on-prem generation so CAD stays local,
+state-based targets through service steps, Step Check for a camera verdict
+on CAD state; HoloLens 2 supported; public pricing; a decade of releases) -
+but PTC is retreating from eyewear (Chalk retired 2025-10-31, Vantage for
+RealWear ends 2026-12-01 citing declining eyewear adoption) and has nothing
+for full-fidelity CAD on glasses. GridRaster is a turnkey platform on
+Vision Pro with on-device registration and the streaming gap covered.
+Different shapes; the registration question is empirical.
+
+**Revised verdict: do not buy the platform; evaluate the registration
+engine.** GridRaster joins the registration bake-off for the FY27 AR
+Developer alongside Vuforia (AROMS-363): on-prem trial, a non-sensitive
+fixture of chamber scale, nothing retained, the protocol below, scored into
+Hardware Fit and AR SDK. The earlier "do not collaborate on the platform"
+stands for the platform; it no longer stands for the engine.
+
+### Measurement protocol for the briefing (no data shared)
+
+A known fixture of ours, non-sensitive, of comparable scale to a chamber
+lid; five marked points measured by tape or CMM; three conditions on the
+device they bring - static at 1 m, carried slowly, carried while the wearer
+walks; the pose stream exported so error is computed at the far points,
+not the centroid; latency end to end; behaviour when the object leaves the
+frame and returns; where the Hub sits for the demo (kit-local or Wi-Fi).
+Declining the measurement is itself a finding. The Anchor Lab is the
+instrument: every run ends in mm.
+
 ## Next step (AROMS-348)
 
 A technical briefing with GridRaster, **without sharing data**: how they do
