@@ -89,8 +89,9 @@
   .sc-howto .st b::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ax-blue); margin-right: 8px; }
   .hist-tools { display: flex; gap: var(--ax-s3); align-items: center; margin-bottom: var(--ax-s3); flex-wrap: wrap; }
   /* Business Readiness / Impact (docs/BUSINESS-READINESS.md) */
-  .sc-seg { display: inline-flex; border: var(--ax-hair); border-radius: var(--ax-r-cta); overflow: hidden; }
-  .sc-seg button { border: 0; background: transparent; color: var(--ax-ink-2); font: var(--ax-label); padding: 7px 14px; cursor: pointer; }
+  .sc-seg { display: inline-flex; flex: 0 0 auto; border: var(--ax-hair); border-radius: var(--ax-r-cta); overflow: hidden; background: var(--ax-paper); }
+  .sc-seg button { border: 0; background: transparent; color: var(--ax-ink-2); font: var(--ax-label); padding: 8px 16px; cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
+  .sc-hero .sc-tools > * { flex: 0 0 auto; }
   .sc-seg button.is-on { background: var(--ax-blue); color: var(--ax-on-accent); }
   .bi-top { display: grid; grid-template-columns: 1.2fr 3fr; gap: var(--ax-s4); margin-bottom: var(--ax-s4); }
   .bi-overall .big { font: var(--ax-h2); font-size: 40px; line-height: 44px; font-family: var(--ax-mono); }
@@ -175,7 +176,7 @@ function render() {
       <div><div class="ax-eyebrow">${segment === 'tech' ? 'Technology readiness' : 'Business readiness · impact'} · ${esc(quarter)}</div><h1>Scorecard</h1>
       <p>SIB scores the lenses it has evidence for: L1 (does it work) and L2 (is SIB ready) for Content Pipeline, Hardware Fit and AR SDK. Each lens comes from criteria scored 1 to 5 with a confidence and evidence that links to what SIB holds. L3 to L5 and the verdict live on the master sheet; the verdict is recorded here so everyone sees it.</p></div>
       <div class="sc-tools">
-        <span class="sc-seg" role="tablist"><button class="${segment === 'tech' ? 'is-on' : ''}" data-seg="tech">Technology</button><button class="${segment === 'business' ? 'is-on' : ''}" data-seg="business">Business</button></span>
+        <span class="sc-seg" role="tablist" aria-label="Which half of the scorecard"><button class="${segment === 'tech' ? 'is-on' : ''}" data-seg="tech" title="Does it work · is SIB ready">Technology readiness</button><button class="${segment === 'business' ? 'is-on' : ''}" data-seg="business" title="Productivity · Velocity · Customer Trust">Business readiness · impact</button></span>
         <select class="ax-select" id="sc-quarter">${DATA.quarters.map(q => `<option value="${q}" ${q === quarter ? 'selected' : ''}>${q}</option>`).join('')}</select>
         <a class="ax-btn" href="/scorecard/export.xlsx?quarter=${encodeURIComponent(quarter)}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export to Excel</a>
         <button class="ax-btn" id="sc-rubric" title="How lenses, confidence and gates work"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg> Rubric</button>
