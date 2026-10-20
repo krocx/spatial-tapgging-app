@@ -124,6 +124,42 @@ frame and returns; where the Hub sits for the demo (kit-local or Wi-Fi).
 Declining the measurement is itself a finding. The Anchor Lab is the
 instrument: every run ends in mm.
 
+
+### Capabilities to consider, from the AR OMS seat (2026-10-21)
+
+| Capability | For AR OMS | In SIB today | Take / test / pass | Condition |
+|---|---|---|---|---|
+| Markerless CAD registration of the chamber | Steps land on the equipment with no QR to find, print or keep clean | QR anchor, sealed world map, object origin (iPad) | Test - the headline reason | Working distance on a 2 m object, cleanroom light, moving operator; scored into AR SDK |
+| On-device 6DoF tracking with depth | Steps, parts, hints stay glued while operator and part move | ARKit tracking off the anchor; drift check, re-align | Test | Error at the far points; recovery after occlusion |
+| Full-fidelity CAD on glasses | A 2M-triangle chamber as modelled, not the decimated ladder | Decimation per device budget | Test - the gap Vuforia does not close | Only if it works offline on their device; else a kit-local server we would run |
+| Step validation against CAD state | Camera verdict from the CAD, no trained reference | Cone / quick shot trained per step | Test - could remove the author's training | False-fail rate on the same steps as our cone |
+| Tool tracking (6DoF) | "Every bolt torqued, in order" from the tool, not the display | Readings by camera from the display | Pass for now, watch | NDI is their core; FY28 for us |
+| Automatic defect detection | Workmanship flagged in-process | Gemba findings are human; readings judge values | Pass | Needs training on our defects |
+| Digital twin from scans | A chamber scanned once, twin kept to configuration | Shape model for object anchoring (beta) | Test later | For configurations with no clean CAD |
+| Multi-user spatial session | Two people on one chamber | Presence & coaching | Pass - we have it | |
+| Devices: Vision Pro, iOS, Android XR | Vision Pro as a glasses pilot | iPad, Quest 3 / HoloLens 2 (WebXR), Even G2 | Gap | No HoloLens 2 or Quest; ask the roadmap |
+| On-prem / air-gapped Hub, offline devices | Fits GIS and the cleanroom | SIB on-prem | Comparable | Ours stricter on where models train |
+| Fine-tuning on our CAD, manuals, labels | Recognition tuned to our parts | Our own perception, per step | Counsel first | Model ownership, perception-IP contamination |
+| Active Task Assistance | - | Designer, lifecycle, sessions, evidence, Intelligence, Insights | Pass | Our product; theirs thinner |
+
+### Questions the demos will not answer
+
+| Area | Ask | Why a demo cannot settle it |
+|---|---|---|
+| Accuracy | Distance, object size, sensor and ground truth behind "5 mm"; error at the far corners of a 2 m object | 50 cm on a hand-held part looks glued at centimetre error |
+| Degradation | 1.5 m, glossy or uniform surface, cleanroom light, gloved hands over half the part; failure mode - drift, jump, or reported loss | Demos are lit, textured, close |
+| Recovery | Object out of frame 30 s; device sleeps and wakes - re-acquire time, pose jump | A continuous demo never loses it |
+| On the device | Which models run on the headset, size, frame rate, thermal over 40 min on Vision Pro | Demos last five minutes |
+| Offline truth | Hub unreachable: what keeps working, what quietly stops | The kit sits beside the demo |
+| Training pipeline | What is fine-tuned on our data (detector, refiner, both; synthetic renders or photos); who owns the weights; deletable on exit; anything reaching their foundation models | Nothing in a demo shows what trained on what |
+| Model per asset | Hours from new CAD to working registration, theirs and ours; retraining on a variant | Demo assets have months of their work |
+| Large CAD on glasses | On-device or streamed; from what, over what, latency, fallback when the link drops | The demo room has their network |
+| Validation semantics | Present, pose within tolerance, or both; false-fail rate on an oblique view of a correct part | A demo shows the pass |
+| Devices | HoloLens 2 / Quest 3 on the roadmap; Android XR hardware; Vision Pro enterprise entitlements | Demos are on their best device |
+| Integration | API / SDK for an external app to request pose and verdict, or must we live inside their app | Demos run inside their app |
+| Security | FIPS on which components; MDM; telemetry; Hub as container we run or appliance they ship | "On-prem" covers many shapes |
+| Commercial | Non-defence production customers; licensing per device / Hub / asset; support for a Hub on our site | Awards and SBIRs are not customers |
+
 ## Next step (AROMS-348)
 
 A technical briefing with GridRaster, **without sharing data**: how they do
