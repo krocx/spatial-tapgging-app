@@ -59,6 +59,16 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-361: Business Readiness · Impact - the scorecard's second half.**
+  `/scorecard` → Business: three pillars - Productivity, Velocity, Customer
+  Trust - as fifteen needles with a baseline, last quarter, now and target.
+  Five fill themselves from the usage log (cycle time, time in the strike
+  zone, first-time right, help per run, runs to proficiency); ten are entered
+  from MES, QMS and HR with their source. A pillar's level follows how far
+  its needles moved, capped by evidence and coverage; the programme is as
+  ready as its weakest pillar. Every POC claims the needles it moves and
+  records what it measured. Gauges with last quarter's ghost, "why" on every
+  needle, what to enter next, two Excel sheets. docs/BUSINESS-READINESS.md.
 - **AROMS-358 / 359: the catalogue says hello, and shows how it grew.** A
   first visit gets what the map is and three things to do, with a guided
   trail one click away; coming back after a fortnight or a release lists

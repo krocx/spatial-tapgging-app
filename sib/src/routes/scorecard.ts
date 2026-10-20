@@ -35,12 +35,15 @@ import { readDeviceProfiles } from './devices.js';
 import { guideStepStore } from '../guides/store.js';
 import { omsUsageStore } from '../oms/usage-log.js';
 import { readinessReport } from '../guides/readiness.js';
+import { useCaseStore } from './portfolio.js';
+import { PILLARS, METRICS, BRL_WORDS, autoMetrics, impactState, overall, metricById, type ImpactEntry, type PocImpactClaim } from '../scorecard/impact-core.js';
 import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, quarterAfter, transitionVerdict, TRANSITION_RULE, type Entry, type LensOverride, type MasterVerdict, type TrackId, type Lens, type Confidence, type Verdict, type EvidenceLink } from '../scorecard/scorecard-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const entryStore  = new JsonFileStore<Entry>('scorecard-entries');
 const lensStore   = new JsonFileStore<LensOverride & { id: string }>('scorecard-lens');
 const masterStore = new JsonFileStore<MasterVerdict & { id: string }>('scorecard-master');
+const impactStore = new JsonFileStore<ImpactEntry>('scorecard-impact');
 
 const CONF: Confidence[] = ['High', 'Medium', 'Low'];
 const VERDICTS: Verdict[] = ['ADVANCE', 'CONTINUE', 'PARK', 'CLOSE'];
@@ -237,7 +240,23 @@ router.get('/export.xlsx', (req: Request, res: Response) => {
   }
   const tr = buildTransition(quarter);
   const trRows: TableRow[] = tr.devices.map(d => ({ cells: [d.name, d.verdict, d.coverage === null ? '' : Math.round(d.coverage * 100) + ' %', d.nativeShare === null ? '' : Math.round(d.nativeShare * 100) + ' %', d.l1 ?? '', d.l2 ?? '', d.confidence ?? '', d.runs, d.evidencedRuns, d.blockers.map(b => `${b.name} (${b.score})`).join('; '), d.because, d.moves] }));
+  // Business Readiness block (docs/BUSINESS-READINESS.md): the needles for the quarter.
+  const bAll = omsUsageStore.findAll();
+  const bPrev = quarterAfter(quarter, -1);
+  const bState = impactState(impactStore.findAll(), autoMetrics(bAll, quarter, quarterOf), autoMetrics(bAll, bPrev, quarterOf), quarter, bPrev);
+  const bRows: TableRow[] = bState.flatMap(p => p.metrics.map(m => ({ cells: [
+    p.pillar.name, m.metric.name, m.metric.unit, m.metric.better === 'lower' ? 'lower is better' : 'higher is better',
+    m.baseline ?? '', m.previous ?? '', m.now ?? '', m.target ?? '',
+    m.progress === null ? '' : Math.round(Math.max(0, Math.min(1, m.progress)) * 100) + ' %',
+    m.confidence ?? '', m.source ?? '', m.metric.auto ? 'SIB' : m.metric.source.toUpperCase(), m.detail ?? '',
+  ] })));
+  const bPillarRows: TableRow[] = [
+    ...bState.map(p => ({ cells: [p.pillar.name, p.level ?? '', p.word, p.progress === null ? '' : Math.round(p.progress * 100) + ' %', p.measured, p.pillar.metrics.length, p.moving] })),
+    (() => { const o = overall(bState); return { cells: ['Overall', o.level ?? '', o.word, o.progress === null ? '' : Math.round(o.progress * 100) + ' %', '', '', ''] }; })(),
+  ];
   const buf = buildWorkbookXlsx([
+    { name: 'Business readiness', headers: ['Pillar', 'Level', 'Readiness', 'Progress to target', 'Measured', 'Metrics', 'Moving'], rows: bPillarRows, colWidths: [18, 7, 26, 18, 10, 9, 8], freezeHeader: true },
+    { name: 'Needles', headers: ['Pillar', 'Metric', 'Unit', 'Direction', 'Baseline', 'Previous quarter', 'This quarter', 'Target', 'Progress', 'Confidence', 'Source', 'From', 'Detail'], rows: bRows, colWidths: [16, 28, 9, 16, 10, 14, 12, 10, 10, 11, 30, 7, 40], freezeHeader: true },
     { name: 'Glasses transition', headers: ['Device', 'Verdict', 'Steps delivered', 'Native', 'L1', 'L2', 'Confidence', 'Runs', 'Evidenced runs', 'Blockers', 'Because', 'What moves it'], rows: trRows, colWidths: [24, 16, 14, 10, 5, 5, 11, 7, 13, 40, 50, 60], freezeHeader: true },
     { name: 'SIB Import', headers: ['Track', 'Quarter', 'Lens', 'Score', 'Confidence', 'Evidence refs', 'Suggested from criteria', 'Owner note'], rows: lensRows, colWidths: [26, 10, 7, 7, 11, 24, 60, 50], freezeHeader: true },
     { name: 'Criteria', headers: ['Track', 'Lens', 'Criterion', 'Score', 'Confidence', 'Comment', 'Evidence', 'Scored by', 'Date'], rows: critRows, colWidths: [26, 6, 28, 7, 11, 50, 50, 16, 11], freezeHeader: true },
@@ -250,4 +269,79 @@ router.get('/export.xlsx', (req: Request, res: Response) => {
 
 /** For the Overview tab: what the master gate would say with the owner's L3-L5 (entered on the master sheet) - we only preview with SIB's L1/L2 and nulls. */
 export { masterOutcome };
+
+// ── Business Readiness / Impact (docs/BUSINESS-READINESS.md) ─────────────────
+// GET /scorecard/impact?quarter= - the three pillars with every metric's
+// baseline / now / target / previous, the readiness level per pillar and
+// overall, the POC claims against each needle, and what to enter next.
+router.get('/impact', (req: Request, res: Response) => {
+  const quarter = isQuarter(req.query.quarter) ? req.query.quarter : quarterOf();
+  const prev = quarterAfter(quarter, -1);
+  const all = omsUsageStore.findAll();
+  const auto = autoMetrics(all, quarter, quarterOf);
+  const autoPrev = autoMetrics(all, prev, quarterOf);
+  const entries = impactStore.findAll();
+  const pillars = impactState(entries, auto, autoPrev, quarter, prev);
+  // Every POC's claims on the needles, with the use-case for context.
+  const claims: PocImpactClaim[] = [];
+  for (const u of useCaseStore.findAll()) for (const p of u.pocs ?? []) for (const c of p.impacts ?? []) {
+    if (!metricById(c.metricId)) continue;
+    claims.push({ pocId: p.id, pocName: `POC-${p.number} ${p.name}`, useCase: u.name, metricId: c.metricId, hypothesis: c.hypothesis, measured: c.measured, note: c.note });
+  }
+  // What to enter next: metrics with no baseline, no target, or no value this quarter.
+  const todo = pillars.flatMap(p => p.metrics.filter(m => m.baseline === null || m.target === null || m.now === null).map(m => ({
+    metricId: m.metric.id, pillar: p.pillar.name, name: m.metric.name, source: m.metric.source,
+    missing: [m.baseline === null ? 'baseline' : null, m.target === null ? 'target' : null, m.now === null ? (m.metric.auto ? 'no runs yet' : 'this quarter’s value') : null].filter(Boolean) as string[],
+  })));
+  const m = me(req);
+  res.json({ data: {
+    quarter, previous: prev, pillars, overall: overall(pillars), words: BRL_WORDS, claims, todo,
+    metrics: METRICS.map(x => ({ id: x.id, pillar: x.pillar, name: x.name, unit: x.unit, better: x.better, source: x.source, auto: !!x.auto, what: x.what, how: x.how, why: x.why, practice: x.practice, reference: x.reference ?? null, weight: x.weight })),
+    pillarsMeta: PILLARS.map(p => ({ id: p.id, name: p.name, question: p.question, colour: p.colour })),
+    history: entries.filter(e => e.kind === 'value').map(e => ({ metricId: e.metricId, quarter: e.quarter, value: e.value, confidence: e.confidence, source: e.source, by: e.by, at: e.at })),
+    can: { enter: !!m && SCORERS.includes(m.role), target: !!m && OWNERS.includes(m.role) }, me: m,
+  }, timestamp: new Date().toISOString() });
+});
+
+// POST /scorecard/impact/entries - a baseline, a value for a quarter, or a target.
+// Values and baselines: Engineer and above, with the source named. Targets: Manager and above.
+router.post('/impact/entries', requireNamed(SCORERS, 'enter a business number'), (req: Request, res: Response) => {
+  const b = req.body as Partial<ImpactEntry>;
+  const metric = metricById(String(b.metricId));
+  if (!metric) { res.status(400).json({ error: 'Unknown metric' }); return; }
+  const kind = b.kind === 'baseline' || b.kind === 'target' || b.kind === 'value' ? b.kind : null;
+  if (!kind) { res.status(400).json({ error: 'kind must be baseline, value or target' }); return; }
+  if (kind === 'target' && !OWNERS.includes(me(req)!.role)) { res.status(403).json({ error: 'Setting a target needs the Manager role or above' }); return; }
+  const value = Number(b.value);
+  if (!Number.isFinite(value)) { res.status(400).json({ error: 'value must be a number' }); return; }
+  if (!CONF.includes(b.confidence as Confidence)) { res.status(400).json({ error: 'confidence must be High, Medium or Low' }); return; }
+  const source = String(b.source ?? '').trim();
+  if (!source) { res.status(400).json({ error: 'Name the source - the report, export or study the number comes from. A number without a source is an opinion.' }); return; }
+  if (metric.auto && kind === 'value') { res.status(400).json({ error: `${metric.name} is computed by SIB from the usage log; enter its baseline and target, the value fills itself` }); return; }
+  const entry: ImpactEntry = {
+    id: uuidv4(), metricId: metric.id, quarter: isQuarter(b.quarter) ? b.quarter : quarterOf(), kind, value, confidence: b.confidence as Confidence,
+    source: source.slice(0, 300), ...(b.scope ? { scope: String(b.scope).slice(0, 200) } : {}), ...(b.note ? { note: String(b.note).slice(0, 2000) } : {}),
+    by: who(req), at: new Date().toISOString(),
+  };
+  impactStore.save(entry);
+  res.status(201).json({ data: entry, timestamp: new Date().toISOString() });
+});
+
+// PATCH /scorecard/impact/claims - a POC's claim on a needle (hypothesis, and later the measured change). Manager+.
+router.patch('/impact/claims', requireNamed(OWNERS, 'record a POC impact'), (req: Request, res: Response) => {
+  const b = req.body as { useCaseId?: string; pocId?: string; metricId?: string; hypothesis?: number | null; measured?: number | null; note?: string };
+  const u = useCaseStore.findById(String(b.useCaseId));
+  const poc = u?.pocs?.find(p => p.id === b.pocId);
+  if (!u || !poc) { res.status(404).json({ error: 'Unknown use-case or POC' }); return; }
+  if (!metricById(String(b.metricId))) { res.status(400).json({ error: 'Unknown metric' }); return; }
+  poc.impacts = poc.impacts ?? [];
+  let c = poc.impacts.find(x => x.metricId === b.metricId);
+  if (!c) { c = { metricId: String(b.metricId) }; poc.impacts.push(c); }
+  if (b.hypothesis !== undefined) { if (b.hypothesis === null) delete c.hypothesis; else c.hypothesis = Number(b.hypothesis); }
+  if (b.measured !== undefined) { if (b.measured === null) delete c.measured; else c.measured = Number(b.measured); }
+  if (b.note !== undefined) { if (b.note) c.note = String(b.note).slice(0, 500); else delete c.note; }
+  useCaseStore.save(u);
+  res.json({ data: poc.impacts, timestamp: new Date().toISOString() });
+});
+
 export default router;

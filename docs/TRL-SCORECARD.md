@@ -2,7 +2,10 @@
 
 Proprietary & Confidential · Applied Materials
 
-How the AR OMS programme scores its tracks, and what SIB does for it.
+How the AR OMS programme scores its tracks, and what SIB does for it. This
+is the Technology half; the Business half - Productivity, Velocity, Customer
+Trust, every POC moving a needle - is [BUSINESS-READINESS.md](BUSINESS-READINESS.md),
+read side by side with this one at every quarterly review.
 Status: built 2026-10-01 (`/scorecard`, `sib/src/scorecard/`, master workbook
 `Master-TRL-Scorecard-FY27.xlsx` kept outside the repo).
 

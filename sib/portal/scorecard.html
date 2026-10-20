@@ -88,6 +88,29 @@
   .sc-howto .st b { display: block; color: var(--ax-ink); font-family: var(--ax-mono); }
   .sc-howto .st b::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ax-blue); margin-right: 8px; }
   .hist-tools { display: flex; gap: var(--ax-s3); align-items: center; margin-bottom: var(--ax-s3); flex-wrap: wrap; }
+  /* Business Readiness / Impact (docs/BUSINESS-READINESS.md) */
+  .sc-seg { display: inline-flex; border: var(--ax-hair); border-radius: var(--ax-r-cta); overflow: hidden; }
+  .sc-seg button { border: 0; background: transparent; color: var(--ax-ink-2); font: var(--ax-label); padding: 7px 14px; cursor: pointer; }
+  .sc-seg button.is-on { background: var(--ax-blue); color: var(--ax-on-accent); }
+  .bi-top { display: grid; grid-template-columns: 1.2fr 3fr; gap: var(--ax-s4); margin-bottom: var(--ax-s4); }
+  .bi-overall .big { font: var(--ax-h2); font-size: 40px; line-height: 44px; font-family: var(--ax-mono); }
+  .bi-pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ax-s4); }
+  .bi-pillar { border-top: 3px solid var(--ax-pc); }
+  .bi-pillar h2 { margin: 0; font: var(--ax-h3); }
+  .bi-pillar .q { font: var(--ax-label-s); color: var(--ax-ink-3); margin: 2px 0 6px; }
+  .bi-gauge { display: block; width: 100%; height: auto; }
+  .bi-level { font: var(--ax-h2); font-size: 22px; line-height: 26px; }
+  .bi-word { font: var(--ax-label-s); color: var(--ax-ink-2); }
+  .bi-table td, .bi-table th { vertical-align: top; }
+  .bi-table .m b { display: block; } .bi-table .m span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .bi-table .n { font-family: var(--ax-mono); text-align: right; white-space: nowrap; }
+  .bi-bar { position: relative; height: 6px; border-radius: 3px; background: var(--ax-paper-3); min-width: 120px; }
+  .bi-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--ax-pc, var(--ax-blue)); }
+  .bi-bar em { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--ax-ink-3); }
+  .bi-claims .ax-table td { vertical-align: top; }
+  .bi-todo { display: flex; flex-wrap: wrap; gap: 6px; }
+  .up { color: var(--ax-green); } .down { color: var(--ax-red); } .flat { color: var(--ax-ink-3); }
+  @media (max-width: 980px) { .bi-top, .bi-pillars { grid-template-columns: 1fr; } }
   .sc-modal { position: fixed; inset: 0; background: var(--ax-scrim); z-index: 9100; display: none; align-items: center; justify-content: center; }
   .sc-modal.open { display: flex; }
   .sc-modal .ax-card { background: var(--ax-solid); width: min(760px, 94vw); max-height: 90vh; overflow: auto; position: relative; }
@@ -122,6 +145,8 @@ async function api(path, init = {}) {
 function toast(msg) { let t = document.getElementById('sc-toast'); if (!t) { t = document.createElement('div'); t.id = 'sc-toast'; t.className = 'ax-notice'; t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9200;max-width:90vw'; document.body.appendChild(t); } t.textContent = msg; t.style.display = 'flex'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 3500); }
 
 let DATA = null, quarter = null, tab = 'transition';
+let segment = 'tech';            // 'tech' | 'business' - the two halves of the scorecard
+let IMPACT = null;               // /scorecard/impact for the quarter
 const WORDS = { 1: 'Concept', 2: 'Demo only', 3: 'Controlled', 4: 'In situ', 5: 'Proven' };
 const VERDICT_TEXT = { ADVANCE: 'Advance', CONTINUE: 'Continue', PARK: 'Parked', CLOSE: 'Closed' };
 const COLOR = { 'content-pipeline': 'var(--ax-green)', 'hardware-fit': 'var(--ax-blue)', 'ar-sdk': 'var(--ax-teal)' };
@@ -142,20 +167,25 @@ async function load(q) {
   render();
 }
 function render() {
+  // The business half is loaded per quarter; a quarter change re-fetches it.
+  if (segment === 'business' && (!IMPACT || IMPACT.quarter !== quarter) && !render._loading) { render._loading = true; loadImpact().then(() => { render._loading = false; render(); }).catch(err => { render._loading = false; toast(err.message); }); }
   const t = tab === 'leadership' ? null : DATA.tracks.find(x => x.id === tab);
   main.innerHTML = `
     <div class="sc-hero">
-      <div><div class="ax-eyebrow">Technology readiness · ${esc(quarter)}</div><h1>Scorecard</h1>
+      <div><div class="ax-eyebrow">${segment === 'tech' ? 'Technology readiness' : 'Business readiness · impact'} · ${esc(quarter)}</div><h1>Scorecard</h1>
       <p>SIB scores the lenses it has evidence for: L1 (does it work) and L2 (is SIB ready) for Content Pipeline, Hardware Fit and AR SDK. Each lens comes from criteria scored 1 to 5 with a confidence and evidence that links to what SIB holds. L3 to L5 and the verdict live on the master sheet; the verdict is recorded here so everyone sees it.</p></div>
       <div class="sc-tools">
+        <span class="sc-seg" role="tablist"><button class="${segment === 'tech' ? 'is-on' : ''}" data-seg="tech">Technology</button><button class="${segment === 'business' ? 'is-on' : ''}" data-seg="business">Business</button></span>
         <select class="ax-select" id="sc-quarter">${DATA.quarters.map(q => `<option value="${q}" ${q === quarter ? 'selected' : ''}>${q}</option>`).join('')}</select>
         <a class="ax-btn" href="/scorecard/export.xlsx?quarter=${encodeURIComponent(quarter)}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export to Excel</a>
         <button class="ax-btn" id="sc-rubric" title="How lenses, confidence and gates work"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg> Rubric</button>
       </div>
     </div>
-    <nav class="ax-tabs">${[['transition', 'Glasses transition'], ['leadership', 'Overview'], ...DATA.tracks.map(x => [x.id, x.name]), ['history', 'History']].map(([id, name]) => `<button class="${tab === id ? 'is-on' : ''}" data-tab="${id}">${esc(name)}</button>`).join('')}</nav>
-    ${tab === 'transition' ? transition() : tab === 'leadership' ? leadership() : tab === 'history' ? history() : track(t)}`;
+    ${segment === 'business' ? business() : `<nav class="ax-tabs">${[['transition', 'Glasses transition'], ['leadership', 'Overview'], ...DATA.tracks.map(x => [x.id, x.name]), ['history', 'History']].map(([id, name]) => `<button class="${tab === id ? 'is-on' : ''}" data-tab="${id}">${esc(name)}</button>`).join('')}</nav>
+    ${tab === 'transition' ? transition() : tab === 'leadership' ? leadership() : tab === 'history' ? history() : track(t)}`}`;
   main.querySelectorAll('.ax-tabs button').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
+  main.querySelectorAll('[data-seg]').forEach(b => b.onclick = async () => { segment = b.dataset.seg; if (segment === 'business' && (!IMPACT || IMPACT.quarter !== quarter)) await loadImpact(); location.hash = segment === 'business' ? '#business' : ''; render(); });
+  if (segment === 'business') wireBusiness();
   document.getElementById('sc-quarter').onchange = e => load(e.target.value);
   document.getElementById('sc-rubric').onclick = openRubric;
   wire();
@@ -425,6 +455,136 @@ async function openScore(t, k) {
     } catch (err) { toast(err.message); }
   };
 }
+
+// ── Business readiness · impact (docs/BUSINESS-READINESS.md) ────────────────
+async function loadImpact() { IMPACT = (await api('/scorecard/impact?quarter=' + encodeURIComponent(quarter))).data; }
+const fmtN = (v, unit) => v === null || v === undefined ? '–' : (Math.abs(v) >= 100 ? Math.round(v) : +v.toFixed(1)).toLocaleString() + (unit === '%' ? ' %' : '');
+const pctClamp = p => p === null ? null : Math.max(0, Math.min(1, p));
+// A gauge on the design system: a half ring, the needle at progress-to-target,
+// a ghost needle where last quarter stood, the five readiness bands as ticks.
+function gauge(p, prev, colour, label) {
+  const W = 220, H = 128, cx = 110, cy = 112, R = 92, r = 70;
+  const ang = t => Math.PI - Math.PI * Math.max(0, Math.min(1, t));
+  const pt = (t, rad) => [cx + Math.cos(ang(t)) * rad, cy - Math.sin(ang(t)) * rad];
+  const arc = (t0, t1, rad) => { const [x0, y0] = pt(t0, rad), [x1, y1] = pt(t1, rad); return `M${x0.toFixed(1)},${y0.toFixed(1)}A${rad},${rad} 0 ${t1 - t0 > 0.5 ? 1 : 0} 1 ${x1.toFixed(1)},${y1.toFixed(1)}`; };
+  const band = (t0, t1, op) => `<path d="${arc(t0, t1, (R + r) / 2)}" fill="none" stroke="${colour}" stroke-opacity="${op}" stroke-width="${R - r}"/>`;
+  const needle = (t, col, op, w) => { if (t === null) return ''; const [x, y] = pt(t, R + 4), [x0, y0] = pt(t, r - 8); return `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col}" stroke-opacity="${op}" stroke-width="${w}" stroke-linecap="round"/>`; };
+  const ticks = [0.05, 0.3, 0.6, 0.95].map(t => { const [x0, y0] = pt(t, r - 2), [x1, y1] = pt(t, R + 2); return `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--ax-bg)" stroke-width="2"/>`; }).join('');
+  return `<svg class="bi-gauge" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">
+    ${band(0, 1, 0.14)}${p !== null && pctClamp(p) > 0 ? band(0, pctClamp(p), 0.75) : ''}${ticks}
+    ${needle(prev === null ? null : pctClamp(prev), 'var(--ax-ink-3)', 0.6, 2)}${needle(p === null ? null : pctClamp(p), 'var(--ax-ink)', 1, 3)}
+    <circle cx="${cx}" cy="${cy}" r="5" fill="var(--ax-ink)"/>
+    <text x="${cx - R - 2}" y="${cy + 16}" font-size="9" fill="var(--ax-ink-3)">baseline</text>
+    <text x="${cx + R + 2}" y="${cy + 16}" font-size="9" fill="var(--ax-ink-3)" text-anchor="end">target</text>
+    <text x="${cx}" y="${cy - 14}" font-size="22" font-family="var(--ax-mono)" font-weight="700" fill="var(--ax-ink)" text-anchor="middle">${p === null ? '–' : Math.round(pctClamp(p) * 100) + ' %'}</text>
+  </svg>`;
+}
+function trend(m) {
+  if (m.now === null || m.previous === null) return '<span class="flat">–</span>';
+  const d = m.now - m.previous; if (Math.abs(d) < 1e-9) return '<span class="flat">no change</span>';
+  const good = (m.metric.better === 'lower') === (d < 0);
+  return `<span class="${good ? 'up' : 'down'}" title="against last quarter">${d > 0 ? '▲' : '▼'} ${fmtN(Math.abs(d), m.metric.unit)}</span>`;
+}
+function business() {
+  const I = IMPACT; if (!I) return '<div class="ax-empty"><span class="ax-mark is-loading"><i></i><em></em></span>Loading the business half…</div>';
+  const O = I.overall;
+  const srcWord = { sib: 'SIB · automatic', mes: 'MES', qms: 'QMS', hr: 'HR', survey: 'pulse survey', finance: 'Finance' };
+  const claimsBy = id => I.claims.filter(c => c.metricId === id);
+  const pillarCards = I.pillars.map(p => `
+    <div class="ax-card bi-pillar" style="--ax-pc:${p.pillar.colour}">
+      <h2>${esc(p.pillar.name)}</h2><div class="q">${esc(p.pillar.question)}</div>
+      ${gauge(p.progress, p.metrics.some(m => m.previous !== null && m.baseline !== null && m.target !== null) ? ghostProgress(p) : null, p.pillar.colour, p.pillar.name + ' progress to target')}
+      <div class="bi-level">${p.level ? `Level ${p.level} of 5` : 'Not measured'}</div>
+      <div class="bi-word">${esc(p.word)} · ${p.measured} of ${p.pillar.metrics.length} measured · ${p.moving} moving</div>
+    </div>`).join('');
+  const rows = I.pillars.map(p => p.metrics.map(m => `
+    <tr style="--ax-pc:${p.pillar.colour}">
+      <td class="m"><b>${esc(m.metric.name)}</b><span>${esc(m.metric.what)}</span></td>
+      <td class="n">${fmtN(m.baseline, m.metric.unit)}</td>
+      <td class="n">${fmtN(m.previous, m.metric.unit)}</td>
+      <td class="n"><b>${fmtN(m.now, m.metric.unit)}</b><div style="font:var(--ax-label-s)">${trend(m)}</div></td>
+      <td class="n">${fmtN(m.target, m.metric.unit)}<div style="font:var(--ax-label-s);color:var(--ax-ink-3)">${m.metric.unit}${m.metric.better === 'lower' ? ' · lower' : ' · higher'}</div></td>
+      <td><div class="bi-bar" title="progress from baseline to target"><i style="width:${m.progress === null ? 0 : Math.round(pctClamp(m.progress) * 100)}%"></i>${m.previous !== null && m.baseline !== null && m.target !== null ? `<em style="left:${Math.round(pctClamp((m.previous - m.baseline) / (m.target - m.baseline)) * 100)}%" title="last quarter"></em>` : ''}</div>
+          <div style="font:var(--ax-label-s);color:var(--ax-ink-3);margin-top:4px">${m.progress === null ? (m.baseline === null ? 'no baseline' : m.target === null ? 'no target' : 'no value') : Math.round(pctClamp(m.progress) * 100) + ' % to target'}</div></td>
+      <td><span class="ax-chip ${m.confidence === 'High' ? 'ax-chip--ok' : m.confidence === 'Low' ? 'ax-chip--warn' : ''}">${esc(m.confidence ?? '–')}</span><div style="font:var(--ax-label-s);color:var(--ax-ink-3);margin-top:4px">${esc(m.source ?? srcWord[m.metric.source])}${m.detail ? ' · ' + esc(m.detail) : ''}</div></td>
+      <td>${claimsBy(m.metric.id).map(c => `<div style="font:var(--ax-label-s)"><b>${esc(c.pocName)}</b> ${c.hypothesis !== undefined ? `expects ${c.hypothesis > 0 ? '+' : ''}${c.hypothesis}` : ''}${c.measured !== undefined ? ` · moved ${c.measured > 0 ? '+' : ''}${c.measured}` : ''}</div>`).join('') || '<span class="ax-muted" style="font:var(--ax-label-s)">no POC claims it yet</span>'}</td>
+      <td>${I.can.enter ? `<button class="ax-btn ax-btn--sm" data-enter="${m.metric.id}">${m.metric.auto ? 'Baseline · target' : 'Enter'}</button>` : ''}<button class="ax-btn ax-btn--quiet ax-btn--sm" data-why="${m.metric.id}" title="What it is, how it is measured, why it moves the business">Why</button></td>
+    </tr>`).join('')).join('');
+  const todo = I.todo.length ? `<div class="ax-card" style="margin-top:var(--ax-s4)"><div class="ax-eyebrow">What to enter next</div>
+      <div class="bi-todo" style="margin-top:8px">${I.todo.map(t => `<span class="ax-chip ax-chip--text ${I.can.enter ? 'ax-chip--interactive' : ''}" ${I.can.enter ? `data-enter="${t.metricId}"` : ''} title="${esc(t.pillar)} · from ${esc(srcWord[t.source])}">${esc(t.name)} · ${esc(t.missing.join(', '))}</span>`).join('')}</div>
+      <div class="ax-label-s ax-muted" style="margin-top:8px">A pillar cannot be above Level 3 with fewer than half its metrics measured, or above Level 2 on Low-confidence numbers alone - a good POC number is not yet a business case.</div></div>` : '';
+  return `
+    <div class="bi-top">
+      <div class="ax-card bi-overall">
+        <div class="ax-eyebrow">Business readiness · ${esc(I.quarter)}</div>
+        <div class="big">${O.level ? `L${O.level}` : '–'}</div>
+        <div class="bi-word" style="font:var(--ax-body)">${esc(O.word)}</div>
+        <div class="ax-label-s ax-muted" style="margin-top:8px">${O.progress === null ? 'No needle has a baseline, a value and a target yet.' : `${Math.round(O.progress * 100)} % of the way from baseline to target across the three pillars. The level is the lowest pillar: a programme is as ready as its weakest promise.`}</div>
+        <div class="ax-label-s ax-muted" style="margin-top:8px">Grey needle: last quarter (${esc(I.previous)}). Bands: 1 baseline only · 2 moved in a POC · 3 moved in situ · 4 repeated across chambers · 5 business case proven.</div>
+      </div>
+      <div class="bi-pillars">${pillarCards}</div>
+    </div>
+    <div class="ax-card">
+      <div class="ax-eyebrow">The needles</div>
+      <table class="ax-table bi-table" style="margin-top:8px"><thead><tr><th>Metric</th><th class="n">Baseline</th><th class="n">Last quarter</th><th class="n">Now</th><th class="n">Target</th><th>To target</th><th>Confidence · source</th><th>POCs moving it</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    ${todo}
+    <div class="ax-card bi-claims" style="margin-top:var(--ax-s4)">
+      <div class="ax-eyebrow">Every POC moves a needle</div>
+      ${I.claims.length ? `<table class="ax-table" style="margin-top:8px"><thead><tr><th>Use-case</th><th>POC</th><th>Needle</th><th class="n">Expected</th><th class="n">Measured</th><th>Note</th></tr></thead><tbody>
+        ${I.claims.map(c => { const m = I.metrics.find(x => x.id === c.metricId); return `<tr><td>${esc(c.useCase)}</td><td>${esc(c.pocName)}</td><td>${esc(m?.name ?? c.metricId)}</td><td class="n">${c.hypothesis === undefined ? '–' : (c.hypothesis > 0 ? '+' : '') + c.hypothesis + ' ' + esc(m?.unit ?? '')}</td><td class="n">${c.measured === undefined ? '–' : (c.measured > 0 ? '+' : '') + c.measured + ' ' + esc(m?.unit ?? '')}</td><td>${esc(c.note ?? '')}</td></tr>`; }).join('')}</tbody></table>`
+        : `<p class="ax-muted" style="margin:8px 0 0">No POC has declared which needles it moves yet. On the <a href="/portfolio">POC Portfolio</a> each POC names its needles and the change it expects; when it completes, the change it measured is recorded against it - that is the needle moving.</p>`}
+    </div>`;
+}
+// Where the pillar's needle stood last quarter, from each metric's previous value.
+function ghostProgress(p) {
+  const xs = p.metrics.filter(m => m.previous !== null && m.baseline !== null && m.target !== null && m.target !== m.baseline);
+  if (!xs.length) return null;
+  const w = xs.reduce((s, m) => s + m.metric.weight, 0);
+  return xs.reduce((s, m) => s + Math.max(0, Math.min(1, (m.previous - m.baseline) / (m.target - m.baseline))) * m.metric.weight, 0) / w;
+}
+function wireBusiness() {
+  main.querySelectorAll('[data-why]').forEach(b => b.onclick = () => {
+    const m = IMPACT.metrics.find(x => x.id === b.dataset.why);
+    openModal(`<div class="ax-eyebrow">${esc(IMPACT.pillarsMeta.find(p => p.id === m.pillar).name)} · ${esc(m.unit)} · ${m.better} is better</div><h2 style="margin:4px 0 10px">${esc(m.name)}</h2>
+      <p><b>What.</b> ${esc(m.what)}</p><p><b>How it is measured.</b> ${esc(m.how)}</p><p><b>Why it moves the business.</b> ${esc(m.why)}</p><p><b>Practice it is borrowed from.</b> ${esc(m.practice)}</p>${m.reference ? `<p class="ax-muted"><b>Reference range.</b> ${esc(m.reference)}</p>` : ''}
+      <p class="ax-label-s ax-muted">Source: ${m.auto ? 'computed by SIB from the usage log every quarter' : 'entered by the owner from ' + esc(m.source.toUpperCase())}.</p>`);
+  });
+  main.querySelectorAll('[data-enter]').forEach(b => b.onclick = () => openEnter(b.dataset.enter));
+}
+function openModal(html) {
+  const mo = document.getElementById('sc-modal');
+  mo.innerHTML = `<div class="ax-card">${html}<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="ax-btn" id="mo-close">Close</button></div></div>`;
+  mo.classList.add('open');
+  document.getElementById('mo-close').onclick = () => mo.classList.remove('open');
+  mo.onclick = e => { if (e.target === mo) mo.classList.remove('open'); };
+}
+function openEnter(metricId) {
+  const m = IMPACT.metrics.find(x => x.id === metricId);
+  const kinds = m.auto ? [['baseline', 'Baseline'], ['target', 'Target']] : [['value', `Value for ${quarter}`], ['baseline', 'Baseline'], ['target', 'Target']];
+  const mo = document.getElementById('sc-modal');
+  mo.innerHTML = `<div class="ax-card"><div class="ax-eyebrow">${esc(IMPACT.pillarsMeta.find(p => p.id === m.pillar).name)} · ${esc(m.unit)}</div><h2 style="margin:4px 0 10px">${esc(m.name)}</h2>
+    <p class="ax-muted" style="margin:0 0 12px">${esc(m.how)}</p>
+    <form id="bi-form" class="sc-form">
+      <label>What you are entering <select class="ax-select" name="kind">${kinds.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></label>
+      <label>Value (${esc(m.unit)}) <input class="ax-input" name="value" type="number" step="any" required></label>
+      <label>Source - the report, export or study it comes from <input class="ax-input" name="source" placeholder="e.g. MES labour report, FY26-Q4, procedures WI-4471 and WI-4480" required></label>
+      <label>Scope (optional) <input class="ax-input" name="scope" placeholder="chamber · crew · procedure set"></label>
+      <label>Confidence <select class="ax-select" name="confidence"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+      <label>Note (optional) <input class="ax-input" name="note"></label>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="ax-btn" id="bi-cancel">Cancel</button><button class="ax-btn ax-btn--primary">Save</button></div>
+      ${!IMPACT.can.target ? '<div class="ax-label-s ax-muted">Targets need the Manager role or above.</div>' : ''}
+    </form></div>`;
+  mo.classList.add('open');
+  document.getElementById('bi-cancel').onclick = () => mo.classList.remove('open');
+  document.getElementById('bi-form').onsubmit = async e => {
+    e.preventDefault(); const f = e.target;
+    try {
+      await api('/scorecard/impact/entries', { method: 'POST', body: JSON.stringify({ metricId, quarter, kind: f.kind.value, value: Number(f.value.value), source: f.source.value, scope: f.scope.value, confidence: f.confidence.value, note: f.note.value }) });
+      mo.classList.remove('open'); toast('Saved'); await loadImpact(); render();
+    } catch (err) { toast(err.message); }
+  };
+}
 function wire() {
   main.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { tab = b.dataset.open; if (b.dataset.device) location.hash = `#${tab}?device=${encodeURIComponent(b.dataset.device)}`; render(); });
   const hh = document.getElementById('sc-howto-hide'); if (hh) hh.onclick = () => { try { localStorage.setItem('sib_scorecard_howto', '1'); } catch {} render(); };
@@ -448,7 +608,8 @@ function wire() {
 // Deep link: /scorecard#hardware-fit?guide=…  (from the readiness matrix)
 const h = location.hash.slice(1).split('?')[0];
 if (h && ['transition', 'leadership', 'content-pipeline', 'hardware-fit', 'ar-sdk', 'history'].includes(h)) tab = h;
-load();
+if (h === 'business') segment = 'business';
+load().then(async () => { if (segment === 'business') { await loadImpact(); render(); } });
 </script>
 </body>
 </html>

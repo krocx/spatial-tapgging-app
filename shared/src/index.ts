@@ -2429,6 +2429,9 @@ export interface Poc {
   exitReason?:     string;              // parked: technology / HW / SW not available …
   /** Scorecard tracks this POC should move; the completion gate checks for entries since startedAt. */
   tracks:          string[];
+  /** Business Readiness (2026.4.50): the needles this POC says it moves - metric id, the expected
+   *  change (hypothesis, in the metric's unit, signed) and, once measured, what it did. */
+  impacts?:        { metricId: string; hypothesis?: number; measured?: number; note?: string }[];
   /** Catalogue feature ids the POC depends on: "platform capability in place" is read from their status. */
   features:        string[];
   status:          PortfolioEntry[];    // append-only

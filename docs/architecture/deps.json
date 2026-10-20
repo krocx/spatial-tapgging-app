@@ -466,6 +466,8 @@
    "routes/anchors.ts",
    "routes/devices.ts",
    "routes/guides.ts",
+   "routes/portfolio.ts",
+   "scorecard/impact-core.ts",
    "scorecard/scorecard-core.ts",
    "stores/json-file-store.ts"
   ],
@@ -501,6 +503,9 @@
    "guides/store.ts",
    "middleware/auth.ts",
    "ops-log.ts"
+  ],
+  "scorecard/impact-core.ts": [
+   "scorecard/scorecard-core.ts"
   ],
   "scorecard/scorecard-core.ts": [],
   "sse/guide-session.sse.ts": [
