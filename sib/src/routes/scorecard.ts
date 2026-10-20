@@ -36,7 +36,8 @@ import { guideStepStore } from '../guides/store.js';
 import { omsUsageStore } from '../oms/usage-log.js';
 import { readinessReport } from '../guides/readiness.js';
 import { useCaseStore } from './portfolio.js';
-import { PILLARS, METRICS, BRL_WORDS, autoMetrics, impactState, overall, metricById, type ImpactEntry, type PocImpactClaim } from '../scorecard/impact-core.js';
+import { PILLARS, METRICS, BRL_WORDS, SOURCE_WORDS, autoMetrics, impactState, overall, contributions, metricById, type ImpactEntry, type PocImpactClaim } from '../scorecard/impact-core.js';
+import type { UseCase } from '@spatial/shared';
 import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, quarterAfter, transitionVerdict, TRANSITION_RULE, type Entry, type LensOverride, type MasterVerdict, type TrackId, type Lens, type Confidence, type Verdict, type EvidenceLink } from '../scorecard/scorecard-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -288,6 +289,18 @@ router.get('/impact', (req: Request, res: Response) => {
     if (!metricById(c.metricId)) continue;
     claims.push({ pocId: p.id, pocName: `POC-${p.number} ${p.name}`, useCase: u.name, metricId: c.metricId, hypothesis: c.hypothesis, measured: c.measured, note: c.note });
   }
+  // Risks, bottlenecks and support needed: from the portfolio, for the use-cases whose POCs claim a needle.
+  const claimingUse = new Set(claims.map(c => c.useCase));
+  const risks: { useCase: string; poc?: string; kind: 'bottleneck' | 'health' | 'milestone'; severity: string; needsLeadership: boolean; owner?: string; text: string; at?: string }[] = [];
+  for (const u of useCaseStore.findAll()) {
+    if (!claimingUse.has(u.name)) continue;
+    if (u.health && u.health !== 'green') risks.push({ useCase: u.name, kind: 'health', severity: u.health === 'red' ? 'high' : 'medium', needsLeadership: u.health === 'red', text: `Use-case ${u.health === 'red' ? 'off track' : 'at risk'}${u.healthReason ? ': ' + u.healthReason : ''}` });
+    for (const p of u.pocs ?? []) {
+      for (const b of p.bottlenecks ?? []) if (!b.resolvedAt) risks.push({ useCase: u.name, poc: `POC-${p.number} ${p.name}`, kind: 'bottleneck', severity: b.severity, needsLeadership: !!b.needsLeadership, owner: b.owner, text: b.text, at: b.at });
+      if (p.nextMilestone?.due && p.stage === 'in-progress' && new Date(p.nextMilestone.due) < new Date()) risks.push({ useCase: u.name, poc: `POC-${p.number} ${p.name}`, kind: 'milestone', severity: 'medium', needsLeadership: false, text: `Milestone overdue: ${p.nextMilestone.text} (due ${p.nextMilestone.due})` });
+    }
+  }
+  risks.sort((a, b) => Number(b.needsLeadership) - Number(a.needsLeadership) || ({ high: 3, medium: 2, low: 1 }[b.severity] ?? 0) - ({ high: 3, medium: 2, low: 1 }[a.severity] ?? 0));
   // What to enter next: metrics with no baseline, no target, or no value this quarter.
   const todo = pillars.flatMap(p => p.metrics.filter(m => m.baseline === null || m.target === null || m.now === null).map(m => ({
     metricId: m.metric.id, pillar: p.pillar.name, name: m.metric.name, source: m.metric.source,
@@ -295,7 +308,10 @@ router.get('/impact', (req: Request, res: Response) => {
   })));
   const m = me(req);
   res.json({ data: {
-    quarter, previous: prev, pillars, overall: overall(pillars), words: BRL_WORDS, claims, todo,
+    quarter, previous: prev, pillars, overall: overall(pillars), words: BRL_WORDS, claims, todo, risks,
+    contributions: contributions(pillars, claims), sourceWords: SOURCE_WORDS,
+    sample: entries.some(e => e.sample) || useCaseStore.findAll().some(u => u.name.startsWith('[Sample]')),
+    quarters: [...new Set([quarter, prev, ...entries.map(e => e.quarter)])].sort(),
     metrics: METRICS.map(x => ({ id: x.id, pillar: x.pillar, name: x.name, unit: x.unit, better: x.better, source: x.source, auto: !!x.auto, what: x.what, how: x.how, why: x.why, practice: x.practice, reference: x.reference ?? null, weight: x.weight })),
     pillarsMeta: PILLARS.map(p => ({ id: p.id, name: p.name, question: p.question, colour: p.colour })),
     history: entries.filter(e => e.kind === 'value').map(e => ({ metricId: e.metricId, quarter: e.quarter, value: e.value, confidence: e.confidence, source: e.source, by: e.by, at: e.at })),
@@ -325,6 +341,132 @@ router.post('/impact/entries', requireNamed(SCORERS, 'enter a business number'),
   };
   impactStore.save(entry);
   res.status(201).json({ data: entry, timestamp: new Date().toISOString() });
+});
+
+// GET /scorecard/impact/template.xlsx?quarter= - the needles as a workbook to fill in and import back:
+// one row per needle with what it is and how it is measured, the numbers SIB already has, and
+// empty cells for this quarter's value, the baseline and the target. Automatic needles take only
+// baseline and target. A second sheet explains the words.
+router.get('/impact/template.xlsx', (req: Request, res: Response) => {
+  const quarter = isQuarter(req.query.quarter) ? req.query.quarter : quarterOf();
+  const prev = quarterAfter(quarter, -1);
+  const all = omsUsageStore.findAll();
+  const st = impactState(impactStore.findAll(), autoMetrics(all, quarter, quarterOf), autoMetrics(all, prev, quarterOf), quarter, prev);
+  const rows: TableRow[] = st.flatMap(p => p.metrics.map(m => ({ cells: [
+    p.pillar.name, m.metric.id, m.metric.name, m.metric.unit, m.metric.better === 'lower' ? 'lower is better' : 'higher is better',
+    m.metric.auto ? 'SIB computes the value - enter baseline and target only' : SOURCE_WORDS[m.metric.source], m.metric.how,
+    m.baseline ?? '', m.metric.auto ? (m.now ?? '') : '', m.target ?? '', '', '', '', '',
+  ] })));
+  const words: TableRow[] = [
+    { cells: ['Value for ' + quarter, 'The number for this quarter, in the metric\u2019s unit. Leave blank to keep what SIB has. Not read for automatic needles.'] },
+    { cells: ['Baseline', 'The number from the last full quarter before the platform. Enter once; a new value replaces it.'] },
+    { cells: ['Target', 'Where the sponsor wants it. Managers and above; a new value replaces it.'] },
+    { cells: ['Source', 'Required for any row with a number: the report, export or study it comes from (e.g. "MES labour report FY26-Q4, WI-4471").'] },
+    { cells: ['Scope', 'Optional: the chamber, crew or procedure set the number covers.'] },
+    { cells: ['Confidence', 'High: repeated on real work, reproducible. Medium: more than once in a controlled setting. Low: once, a demo or hearsay. Blank = Medium.'] },
+    { cells: ['Note', 'Optional.'] },
+    { cells: ['Metric id', 'Do not change - the import matches rows by it.'] },
+  ];
+  const buf = buildWorkbookXlsx([
+    { name: 'Needles ' + quarter, headers: ['Pillar', 'Metric id', 'Metric', 'Unit', 'Direction', 'Source', 'How it is measured', 'Baseline', 'SIB value (read-only)', 'Target', 'Value for ' + quarter, 'Source of the numbers', 'Scope', 'Confidence', 'Note'], rows, colWidths: [16, 18, 28, 9, 16, 26, 60, 10, 14, 10, 14, 36, 24, 11, 36], freezeHeader: true },
+    { name: 'How to fill', headers: ['Column', 'What goes in it'], rows: words, colWidths: [22, 110], freezeHeader: true },
+  ]);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="business-readiness-${quarter}.xlsx"`);
+  res.send(buf);
+});
+
+// POST /scorecard/impact/import - rows from the filled template (parsed in the browser):
+// [{ metricId, value?, baseline?, target?, source, scope?, confidence?, note? }]. Same rules as
+// single entries; the whole file is checked before anything is saved, and the reply says what went in.
+router.post('/impact/import', requireNamed(SCORERS, 'import business numbers'), (req: Request, res: Response) => {
+  const quarter = isQuarter(req.body?.quarter) ? req.body.quarter : quarterOf();
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows as Record<string, unknown>[] : [];
+  const canTarget = OWNERS.includes(me(req)!.role);
+  const out: ImpactEntry[] = []; const problems: string[] = []; const skipped: string[] = [];
+  const num = (v: unknown) => v === '' || v === null || v === undefined ? null : (Number.isFinite(Number(v)) ? Number(v) : NaN);
+  for (const r of rows) {
+    const metric = metricById(String(r.metricId ?? '').trim());
+    if (!metric) { if (String(r.metricId ?? '').trim()) problems.push(`Unknown metric id "${r.metricId}"`); continue; }
+    const kinds: [ImpactEntry['kind'], number | null][] = [['baseline', num(r.baseline)], ['target', num(r.target)], ['value', metric.auto ? null : num(r.value)]];
+    const present = kinds.filter(([, v]) => v !== null);
+    if (!present.length) { skipped.push(metric.name); continue; }
+    if (present.some(([, v]) => Number.isNaN(v))) { problems.push(`${metric.name}: a cell is not a number`); continue; }
+    const source = String(r.source ?? '').trim();
+    if (!source) { problems.push(`${metric.name}: the source is missing`); continue; }
+    const conf = ['High', 'Medium', 'Low'].includes(String(r.confidence)) ? String(r.confidence) as Confidence : 'Medium';
+    for (const [kind, value] of present) {
+      if (kind === 'target' && !canTarget) { problems.push(`${metric.name}: setting a target needs the Manager role`); continue; }
+      out.push({ id: uuidv4(), metricId: metric.id, quarter, kind, value: value as number, confidence: conf, source: source.slice(0, 300),
+        ...(r.scope ? { scope: String(r.scope).slice(0, 200) } : {}), ...(r.note ? { note: String(r.note).slice(0, 2000) } : {}), by: who(req), at: new Date().toISOString() });
+    }
+  }
+  if (problems.length) { res.status(400).json({ error: `Nothing imported - fix these first: ${problems.join('; ')}`, problems, timestamp: new Date().toISOString() }); return; }
+  for (const e of out) impactStore.save(e);
+  res.json({ data: { saved: out.length, skipped, quarter }, timestamp: new Date().toISOString() });
+});
+
+// POST /scorecard/impact/sample - load the review sample (ETCH · 3D OMS → AR OMS): a use-case with three
+// POCs claiming needles, open bottlenecks, and three quarters of numbers, all marked sample. Owner only.
+// DELETE /scorecard/impact/sample removes it as one.
+router.post('/impact/sample', requireNamed(['owner'], 'load the sample'), (req: Request, res: Response) => {
+  const now = new Date().toISOString(); const by = who(req);
+  const q0 = quarterOf(), q1 = quarterAfter(q0, -1), q2 = quarterAfter(q0, -2);
+  const E = (metricId: string, kind: ImpactEntry['kind'], quarter: string, value: number, confidence: Confidence = 'Medium'): ImpactEntry =>
+    ({ id: uuidv4(), metricId, kind, quarter, value, confidence, source: 'SAMPLE · ETCH 3D OMS → AR OMS review data', scope: 'ETCH · Centura chamber lid and lift procedures', by, at: now, sample: true });
+  const B = (id: string, v: number) => E(id, 'baseline', q2, v, 'High');
+  const T = (id: string, v: number) => E(id, 'target', q2, v, 'High');
+  const V = (id: string, q: string, v: number, c: Confidence = 'Medium') => E(id, 'value', q, v, c);
+  const entries = [
+    B('ttc', 45), T('ttc', 25), V('ttc', q1, 41), V('ttc', q0, 36, 'High'),
+    B('people-ready', 20), T('people-ready', 80), V('people-ready', q1, 35), V('people-ready', q0, 48, 'High'),
+    B('change-readiness', 2.8), T('change-readiness', 4.2), V('change-readiness', q1, 3.1, 'Low'), V('change-readiness', q0, 3.4),
+    B('learning-curve', 5), T('learning-curve', 2), B('hints-per-run', 2.5), T('hints-per-run', 0.5),
+    B('slh', 14.5), T('slh', 11), V('slh', q1, 14.1), V('slh', q0, 13.2, 'High'),
+    B('cycle-time', 12), T('cycle-time', 6), B('strike-zone', 55), T('strike-zone', 75),
+    B('process-improvements', 0), T('process-improvements', 6), V('process-improvements', q1, 1), V('process-improvements', q0, 2, 'High'),
+    B('npt', 28), T('npt', 15), V('npt', q1, 26, 'Low'), V('npt', q0, 23),
+    B('ftr', 71), T('ftr', 92),
+    B('rework-tasks', 18), T('rework-tasks', 8), V('rework-tasks', q1, 16), V('rework-tasks', q0, 12, 'High'),
+    B('rework-hours', 96), T('rework-hours', 40), V('rework-hours', q1, 88), V('rework-hours', q0, 70, 'High'),
+    B('dmr-early', 40), T('dmr-early', 75), V('dmr-early', q1, 48), V('dmr-early', q0, 58),
+    B('field-nc', 6), T('field-nc', 2), V('field-nc', q1, 6), V('field-nc', q0, 5, 'Low'),
+  ];
+  for (const e of entries) impactStore.save(e);
+  const pe = (text: string, daysAgo: number) => ({ id: uuidv4(), at: new Date(Date.now() - daysAgo * 86400000).toISOString(), by, text });
+  const uc: UseCase = {
+    id: 'sample-etch-3doms-aroms', bu: 'ETCH', name: '[Sample] ETCH · 3D OMS to AR OMS', question: 'Can the 3D OMS lid and lift procedures run as AR work instructions on the Centura, with fewer workmanship issues and less time per unit?',
+    process: 'Centura chamber lid · lift assembly', sponsor: 'ETCH WMO lead', meContact: 'ME, Centura line', stage: 'active', health: 'amber', healthReason: 'Cleanroom-rated glasses not yet available; iPad pilot holds the date',
+    anchorIds: [], guideIds: [], dvs: { differentiated: 'Validation and readings by camera, not a checklist', valuable: 'Rework hours and field NCs on the lid procedure', sustainable: 'Procedures authored once in the Designer, imported from 3D OMS' },
+    pocs: [
+      { id: 'sample-poc-1', number: 1, name: 'Lid procedure in AR on the iPad', scope: 'The 42-step lid procedure, one chamber, two crews. Out: lift assembly, glasses.', definitionOfDone: 'Two crews run the procedure in AR for four weeks with validation on; cycle time, first-time right and strike zone measured against the baseline.',
+        stage: 'completed', startedAt: new Date(Date.now() - 95 * 86400000).toISOString(), completedAt: new Date(Date.now() - 20 * 86400000).toISOString(), exit: 'next-poc', tracks: ['content-pipeline', 'hardware-fit'], features: ['spatial-steps', 'step-validation', 'usage-log'],
+        impacts: [{ metricId: 'cycle-time', hypothesis: -4, measured: -3.5, note: 'crew B faster than crew A; night shift not measured' }, { metricId: 'ftr', hypothesis: 10, measured: 13 }, { metricId: 'strike-zone', hypothesis: 15, measured: 11, note: 'tool fetch still off-target' }, { metricId: 'rework-tasks', hypothesis: -5, measured: -4 }, { metricId: 'ttc', hypothesis: -10, measured: -9 }],
+        status: [pe('Four-week run complete; crews asked to keep the iPads', 20), pe('Crew B on week 2; validation false-fail on step 31 fixed by retraining the cone', 55)], bottlenecks: [], learnings: [pe('A step validated by the camera is re-done less: rework tasks on the lid fell from 18 to 14 in the quarter, with the drop on the steps that have validation', 20), pe('Tool fetch is the largest off-target block (strike zone 66 %, not 70 %): a tool shadow board at the chamber is the next move', 22)],
+        redTeam: [pe('If the cone retraining is needed per chamber the author cost does not scale', 60)] },
+      { id: 'sample-poc-2', number: 2, name: 'Readings and labels on the floor', scope: 'Leak-check reading, torque display and the three serial labels on the lid procedure read by camera. Out: glasses.', definitionOfDone: 'Readings and labels judged on device for six weeks; DMRs caught at the step counted against the QMS.',
+        stage: 'in-progress', startedAt: new Date(Date.now() - 18 * 86400000).toISOString(), tracks: ['content-pipeline'], features: ['spatial-readings', 'usage-log'],
+        impacts: [{ metricId: 'dmr-early', hypothesis: 20 }, { metricId: 'ftr', hypothesis: 5 }, { metricId: 'rework-hours', hypothesis: -20 }],
+        status: [pe('Leak checker display reads at 0.5 % stability; torque display next week', 3)], bottlenecks: [{ ...pe('Luna labels: Data Matrix only decodes within 30 cm; needs the label size review with the supplier', 5), owner: 'ME, Centura line', severity: 'medium', needsLeadership: false }], learnings: [],
+        nextMilestone: { text: 'Six-week readings run complete', due: new Date(Date.now() + 25 * 86400000).toISOString().slice(0, 10) } },
+      { id: 'sample-poc-3', number: 3, name: 'Glasses pilot on the lift assembly (HoloLens 2)', scope: 'The lift assembly on cleanroom-rated glasses, hands free. Out: lid procedure.', definitionOfDone: 'One crew, two weeks, non-productive time and SLH measured; Hardware Fit scored.',
+        stage: 'planned', tracks: ['hardware-fit', 'ar-sdk'], features: ['xr-kit', 'device-readiness'],
+        impacts: [{ metricId: 'npt', hypothesis: -8 }, { metricId: 'slh', hypothesis: -1.5 }, { metricId: 'ttc', hypothesis: -5 }],
+        status: [], bottlenecks: [
+          { ...pe('GIS firewall: device MDM and the SIB endpoint for HoloLens are not approved; without it the pilot cannot start', 12), owner: 'IT security partner', severity: 'high', needsLeadership: true },
+          { ...pe('Cleanroom-rated glasses: two units on order, delivery unconfirmed', 9), owner: 'Programme', severity: 'high', needsLeadership: true },
+        ], learnings: [], nextMilestone: { text: 'Pilot start', due: new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10) } },
+    ],
+    createdAt: now, createdBy: by, updatedAt: now, updatedBy: by,
+  };
+  useCaseStore.save(uc);
+  res.status(201).json({ data: { entries: entries.length, useCase: uc.name }, timestamp: now });
+});
+router.delete('/impact/sample', requireNamed(['owner'], 'remove the sample'), (_req: Request, res: Response) => {
+  let n = 0;
+  for (const e of impactStore.findAll()) if (e.sample) { impactStore.delete(e.id); n++; }
+  for (const u of useCaseStore.findAll()) if (u.name.startsWith('[Sample]')) { useCaseStore.delete(u.id); n++; }
+  res.json({ data: { removed: n }, timestamp: new Date().toISOString() });
 });
 
 // PATCH /scorecard/impact/claims - a POC's claim on a needle (hypothesis, and later the measured change). Manager+.

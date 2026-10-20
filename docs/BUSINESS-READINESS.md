@@ -46,10 +46,10 @@ stands, a grey ghost where last quarter stood.
 
 | Needle | Unit | Better | Source | What it says |
 |---|---|---|---|---|
-| Time to contribution | days | lower | HR · SIB sign-off | Start date to first solo sign-off on a procedure in scope. The instruction is on the equipment and validated as they go, so day one is the real procedure with the system watching. Published AR cases report 35-85 % shorter training (vendor-reported). |
+| Time to contribution | days | lower | OJT record · SIB sign-off | OJT start date to first solo sign-off on a procedure in scope. The instruction is on the equipment and validated as they go, so day one is the real procedure with the system watching. Published AR cases report 35-85 % shorter training (vendor-reported). |
 | Runs to proficiency | runs | lower | SIB, automatic | Per operator and guide, runs until a run completes within 1.2× the guide's median. A short curve means the guide teaches. |
 | Help needed per run | hints | lower | SIB, automatic | Hints shown per completed run. Falling help with rising completion is upskilling made visible. |
-| People ready | % | higher | HR roster · SIB | Operators with a sign-off in the last 30 days over the rollout scope. Readiness is people, not licences (Prosci ADKAR: ability and reinforcement). |
+| People ready | % | higher | OJT roster · SIB | Operators with a sign-off in the last 30 days over the rollout scope. Readiness is people, not licences (Prosci ADKAR: ability and reinforcement). |
 | Change readiness | /5 | higher | pulse survey | A five-question ADKAR pulse each quarter. The leading indicator for everything else here. |
 
 **Velocity - is the work faster, and is the technician in the strike zone?**
@@ -77,8 +77,8 @@ Five of the fifteen fill themselves from the usage log every quarter (marked
 runs to proficiency. Their confidence follows the sample - High at 20 or more
 runs, Medium at 5, Low below. Demo runs never count. The other ten are entered
 by the owner with their source, scope and confidence, exactly as L3 to L5 are
-entered in the master sheet: those numbers live in MES, QMS and HR, with
-people who will not log in to SIB.
+entered in the master sheet: those numbers live in MES, QMS and the OJT
+records, with people who will not log in to SIB.
 
 ## The readiness rule
 
@@ -127,16 +127,45 @@ what proves the case.
 
 ## What leadership sees
 
-`/scorecard` → **Business**. One card with the programme's level and word;
-three pillar cards with a gauge each (needle this quarter, ghost last
-quarter, the bands as ticks); the needle table - baseline, last quarter, now,
-target, progress bar with last quarter's mark, confidence and source, and the
-POCs claiming it; "What to enter next" as chips, so a reviewer sees in one
-line which numbers the quarter still lacks; and the POC claims table. "Why"
-on any needle opens its definition, its formula, why it moves the business
-and the practice it is borrowed from, so no number on the page is a mystery.
-The Excel export carries two sheets, "Business readiness" and "Needles", in
-front of the Technology block, for the master workbook.
+`/scorecard` → **Business**. The programme's level and word; the three
+pillar gauges (needle this quarter, ghost last quarter, the bands as
+ticks); **Who moved the needle** - one bar per pillar, its progress split by
+the POC that measured it, outlined where a POC has promised but not yet
+measured, grey where the needle moved and no POC claims it; **Risks,
+bottlenecks and support needed** - from the portfolio, every open
+bottleneck, health flag and overdue milestone on a POC that claims a needle,
+the ones needing a leadership decision first. Then one section per pillar:
+its gauge and level, and its needles - baseline, last quarter, now, target,
+a progress bar with last quarter's mark and a sparkline, confidence and
+source, the POCs claiming it, Enter and Why. "Why" opens the needle's
+definition, formula, why it moves the business and the practice it is
+borrowed from, so no number on the page is a mystery. "What to enter next"
+lists the gaps as chips. The Excel export carries two sheets, "Business
+readiness" and "Needles", in front of the Technology block.
+
+## Entering the numbers
+
+Three ways, for three habits. **One needle:** Enter on its row - value,
+baseline or target, source, scope, confidence. **One sitting:** "Enter this
+quarter's numbers" (or a pillar's button) walks through the needles one at a
+time with the what, how and why in view, baseline and target beside the
+value, blank fields keeping what SIB has, nothing saved without a source.
+**In Excel:** download the quarter's template - one row per needle with how
+it is measured and the numbers SIB already holds, a second sheet explaining
+every column - fill it with the MES, QMS and OJT exports open beside it, and
+import it back; the file is checked as a whole before anything is saved, and
+the reply says what went in. Automatic needles take only a baseline and a
+target in all three.
+
+## Sample data for review
+
+An Owner can load a review sample - "[Sample] ETCH · 3D OMS to AR OMS":
+one use-case, three POCs (the lid procedure in AR, completed with measured
+changes; readings and labels, in progress; a glasses pilot, planned and
+blocked), open bottlenecks including two that need a leadership decision,
+and three quarters of numbers - and remove it as one. It shows the page as
+it will look after a quarter of real use, and every sample number says so in
+its source.
 
 ## Cadence and roles
 

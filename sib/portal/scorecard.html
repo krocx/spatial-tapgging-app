@@ -109,6 +109,28 @@
   .bi-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--ax-pc, var(--ax-blue)); }
   .bi-bar em { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--ax-ink-3); }
   .bi-claims .ax-table td { vertical-align: top; }
+  .bi-section { border-left: 3px solid var(--ax-pc); margin-top: var(--ax-s4); }
+  .bi-section .bi-head { display: grid; grid-template-columns: 200px 1fr auto; gap: var(--ax-s4); align-items: center; }
+  .bi-section .bi-head h2 { margin: 0; font: var(--ax-h3); }
+  .bi-section .bi-head .q { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .bi-section .bi-gauge { width: 200px; }
+  .bi-needles { margin-top: var(--ax-s3); }
+  .bi-needles td.m { min-width: 220px; } .bi-needles td.m b { display: block; } .bi-needles td.m span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+  .bi-needles td.n { font-family: var(--ax-mono); text-align: right; white-space: nowrap; }
+  .bi-needles td.act { white-space: nowrap; }
+  .bi-visuals { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--ax-s4); margin-top: var(--ax-s4); }
+  .bi-contrib svg { display: block; width: 100%; height: auto; }
+  .bi-risk { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: start; padding: 8px 0; border-top: var(--ax-hair); }
+  .bi-risk:first-of-type { border-top: 0; }
+  .bi-risk .sev { font: var(--ax-label-s); padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
+  .sev-high { background: var(--ax-bad-fill); color: var(--ax-red); } .sev-medium { background: var(--ax-warn-fill); color: var(--ax-orange); } .sev-low { background: var(--ax-paper-3); color: var(--ax-ink-2); }
+  .bi-wiz .wstep { display: none; } .bi-wiz .wstep.is-on { display: block; }
+  .bi-wiz .wprog { display: flex; gap: 4px; margin: 8px 0 14px; } .bi-wiz .wprog i { flex: 1; height: 4px; border-radius: 2px; background: var(--ax-paper-3); } .bi-wiz .wprog i.done { background: var(--ax-green); } .bi-wiz .wprog i.on { background: var(--ax-blue); }
+  .bi-wiz .why { background: var(--ax-paper); border-radius: var(--ax-r-field); padding: 10px 12px; margin: 8px 0 12px; font: var(--ax-label-s); color: var(--ax-ink-2); }
+  .bi-wiz .why b { color: var(--ax-ink); }
+  .bi-wiz .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .spark { vertical-align: middle; }
+  @media (max-width: 980px) { .bi-visuals, .bi-section .bi-head, .bi-wiz .grid2 { grid-template-columns: 1fr; } }
   .bi-todo { display: flex; flex-wrap: wrap; gap: 6px; }
   .up { color: var(--ax-green); } .down { color: var(--ax-red); } .flat { color: var(--ax-ink-3); }
   @media (max-width: 980px) { .bi-top, .bi-pillars { grid-template-columns: 1fr; } }
@@ -174,7 +196,7 @@ function render() {
   main.innerHTML = `
     <div class="sc-hero">
       <div><div class="ax-eyebrow">${segment === 'tech' ? 'Technology readiness' : 'Business readiness · impact'} · ${esc(quarter)}</div><h1>Scorecard</h1>
-      <p>SIB scores the lenses it has evidence for: L1 (does it work) and L2 (is SIB ready) for Content Pipeline, Hardware Fit and AR SDK. Each lens comes from criteria scored 1 to 5 with a confidence and evidence that links to what SIB holds. L3 to L5 and the verdict live on the master sheet; the verdict is recorded here so everyone sees it.</p></div>
+      <p>${segment === 'business' ? 'Is the business moving? Three pillars - Productivity, Velocity, Customer Trust - as needles with a baseline, a now and a target. Five fill themselves from the usage log; the rest are entered from MES, QMS and OJT records with their source. Every POC claims the needles it moves; the programme is as ready as its weakest pillar.' : 'SIB scores the lenses it has evidence for: L1 (does it work) and L2 (is SIB ready) for Content Pipeline, Hardware Fit and AR SDK. Each lens comes from criteria scored 1 to 5 with a confidence and evidence that links to what SIB holds. L3 to L5 and the verdict live on the master sheet; the verdict is recorded here so everyone sees it.'}</p></div>
       <div class="sc-tools">
         <span class="sc-seg" role="tablist" aria-label="Which half of the scorecard"><button class="${segment === 'tech' ? 'is-on' : ''}" data-seg="tech" title="Does it work · is SIB ready">Technology readiness</button><button class="${segment === 'business' ? 'is-on' : ''}" data-seg="business" title="Productivity · Velocity · Customer Trust">Business readiness · impact</button></span>
         <select class="ax-select" id="sc-quarter">${DATA.quarters.map(q => `<option value="${q}" ${q === quarter ? 'selected' : ''}>${q}</option>`).join('')}</select>
@@ -488,33 +510,49 @@ function trend(m) {
 }
 function business() {
   const I = IMPACT; if (!I) return '<div class="ax-empty"><span class="ax-mark is-loading"><i></i><em></em></span>Loading the business half…</div>';
-  const O = I.overall;
-  const srcWord = { sib: 'SIB · automatic', mes: 'MES', qms: 'QMS', hr: 'HR', survey: 'pulse survey', finance: 'Finance' };
+  const O = I.overall, SW = I.sourceWords;
   const claimsBy = id => I.claims.filter(c => c.metricId === id);
-  const pillarCards = I.pillars.map(p => `
-    <div class="ax-card bi-pillar" style="--ax-pc:${p.pillar.colour}">
-      <h2>${esc(p.pillar.name)}</h2><div class="q">${esc(p.pillar.question)}</div>
-      ${gauge(p.progress, p.metrics.some(m => m.previous !== null && m.baseline !== null && m.target !== null) ? ghostProgress(p) : null, p.pillar.colour, p.pillar.name + ' progress to target')}
-      <div class="bi-level">${p.level ? `Level ${p.level} of 5` : 'Not measured'}</div>
-      <div class="bi-word">${esc(p.word)} · ${p.measured} of ${p.pillar.metrics.length} measured · ${p.moving} moving</div>
-    </div>`).join('');
-  const rows = I.pillars.map(p => p.metrics.map(m => `
-    <tr style="--ax-pc:${p.pillar.colour}">
-      <td class="m"><b>${esc(m.metric.name)}</b><span>${esc(m.metric.what)}</span></td>
-      <td class="n">${fmtN(m.baseline, m.metric.unit)}</td>
-      <td class="n">${fmtN(m.previous, m.metric.unit)}</td>
-      <td class="n"><b>${fmtN(m.now, m.metric.unit)}</b><div style="font:var(--ax-label-s)">${trend(m)}</div></td>
-      <td class="n">${fmtN(m.target, m.metric.unit)}<div style="font:var(--ax-label-s);color:var(--ax-ink-3)">${m.metric.unit}${m.metric.better === 'lower' ? ' · lower' : ' · higher'}</div></td>
-      <td><div class="bi-bar" title="progress from baseline to target"><i style="width:${m.progress === null ? 0 : Math.round(pctClamp(m.progress) * 100)}%"></i>${m.previous !== null && m.baseline !== null && m.target !== null ? `<em style="left:${Math.round(pctClamp((m.previous - m.baseline) / (m.target - m.baseline)) * 100)}%" title="last quarter"></em>` : ''}</div>
-          <div style="font:var(--ax-label-s);color:var(--ax-ink-3);margin-top:4px">${m.progress === null ? (m.baseline === null ? 'no baseline' : m.target === null ? 'no target' : 'no value') : Math.round(pctClamp(m.progress) * 100) + ' % to target'}</div></td>
-      <td><span class="ax-chip ${m.confidence === 'High' ? 'ax-chip--ok' : m.confidence === 'Low' ? 'ax-chip--warn' : ''}">${esc(m.confidence ?? '–')}</span><div style="font:var(--ax-label-s);color:var(--ax-ink-3);margin-top:4px">${esc(m.source ?? srcWord[m.metric.source])}${m.detail ? ' · ' + esc(m.detail) : ''}</div></td>
-      <td>${claimsBy(m.metric.id).map(c => `<div style="font:var(--ax-label-s)"><b>${esc(c.pocName)}</b> ${c.hypothesis !== undefined ? `expects ${c.hypothesis > 0 ? '+' : ''}${c.hypothesis}` : ''}${c.measured !== undefined ? ` · moved ${c.measured > 0 ? '+' : ''}${c.measured}` : ''}</div>`).join('') || '<span class="ax-muted" style="font:var(--ax-label-s)">no POC claims it yet</span>'}</td>
-      <td>${I.can.enter ? `<button class="ax-btn ax-btn--sm" data-enter="${m.metric.id}">${m.metric.auto ? 'Baseline · target' : 'Enter'}</button>` : ''}<button class="ax-btn ax-btn--quiet ax-btn--sm" data-why="${m.metric.id}" title="What it is, how it is measured, why it moves the business">Why</button></td>
-    </tr>`).join('')).join('');
-  const todo = I.todo.length ? `<div class="ax-card" style="margin-top:var(--ax-s4)"><div class="ax-eyebrow">What to enter next</div>
-      <div class="bi-todo" style="margin-top:8px">${I.todo.map(t => `<span class="ax-chip ax-chip--text ${I.can.enter ? 'ax-chip--interactive' : ''}" ${I.can.enter ? `data-enter="${t.metricId}"` : ''} title="${esc(t.pillar)} · from ${esc(srcWord[t.source])}">${esc(t.name)} · ${esc(t.missing.join(', '))}</span>`).join('')}</div>
-      <div class="ax-label-s ax-muted" style="margin-top:8px">A pillar cannot be above Level 3 with fewer than half its metrics measured, or above Level 2 on Low-confidence numbers alone - a good POC number is not yet a business case.</div></div>` : '';
-  return `
+  const hist = id => I.history.filter(h => h.metricId === id).sort((a, b) => a.quarter.localeCompare(b.quarter));
+  // Tools: template · import · sample
+  const tools = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:var(--ax-s4)">
+      <a class="ax-btn" href="/scorecard/impact/template.xlsx?quarter=${encodeURIComponent(quarter)}" title="One row per needle with what it is and how it is measured; fill the numbers in Excel and import the file back"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Template for ${esc(quarter)}</a>
+      ${I.can.enter ? `<button class="ax-btn" id="bi-import" title="Import the filled template (.xlsx or .csv)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Import filled template</button><input type="file" id="bi-import-file" accept=".xlsx,.xls,.csv" style="display:none">` : ''}
+      ${I.can.enter ? `<button class="ax-btn ax-btn--primary" id="bi-wizard-all">Enter this quarter’s numbers</button>` : `<span class="ax-label-s ax-muted">Entering numbers is for Engineers and above, signed in by name.</span>`}
+      <span style="flex:1"></span>
+      ${I.me && I.me.role === 'owner' ? (I.sample ? `<button class="ax-btn ax-btn--quiet" id="bi-sample-off" title="Remove the ETCH sample use-case and numbers">Remove sample data</button>` : `<button class="ax-btn ax-btn--quiet" id="bi-sample-on" title="Load a review sample: ETCH · 3D OMS to AR OMS, three POCs, three quarters of numbers">Load sample (ETCH 3D OMS → AR OMS)</button>`) : ''}
+    </div>`;
+  // Pillar sections: gauge + level + its needles
+  const sections = I.pillars.map(p => {
+    const C = I.contributions.find(c => c.pillar === p.pillar.id);
+    const rows = p.metrics.map(m => `
+      <tr>
+        <td class="m"><b>${esc(m.metric.name)}${m.metric.auto ? ' <span class="ax-chip" style="font-size:10px;vertical-align:middle" title="Computed by SIB from the usage log">SIB</span>' : ''}</b><span title="${esc(m.metric.what)}">${esc(m.metric.what)}</span></td>
+        <td class="n">${fmtN(m.baseline, m.metric.unit)}</td>
+        <td class="n">${fmtN(m.previous, m.metric.unit)}</td>
+        <td class="n"><b>${fmtN(m.now, m.metric.unit)}</b><div style="font:var(--ax-label-s)">${trend(m)}</div></td>
+        <td class="n">${fmtN(m.target, m.metric.unit)}<div style="font:var(--ax-label-s);color:var(--ax-ink-3)">${esc(m.metric.unit)} · ${m.metric.better}</div></td>
+        <td style="min-width:150px"><div class="bi-bar" style="--ax-pc:${p.pillar.colour}" title="progress from baseline to target"><i style="width:${m.progress === null ? 0 : Math.round(pctClamp(m.progress) * 100)}%"></i>${m.previous !== null && m.baseline !== null && m.target !== null && m.target !== m.baseline ? `<em style="left:${Math.round(pctClamp((m.previous - m.baseline) / (m.target - m.baseline)) * 100)}%" title="last quarter"></em>` : ''}</div>
+            <div style="font:var(--ax-label-s);color:var(--ax-ink-3);margin-top:4px">${m.progress === null ? (m.baseline === null ? 'needs a baseline' : m.target === null ? 'needs a target' : m.metric.auto ? 'no runs yet' : 'needs this quarter’s value') : Math.round(pctClamp(m.progress) * 100) + ' % to target'} ${spark(m, hist(m.metric.id))}</div></td>
+        <td><span class="ax-chip ${m.confidence === 'High' ? 'ax-chip--ok' : m.confidence === 'Low' ? 'ax-chip--warn' : ''}">${esc(m.confidence ?? '–')}</span><div style="font:var(--ax-label-s);color:var(--ax-ink-3);margin-top:4px;max-width:220px">${esc(m.source ?? SW[m.metric.source])}${m.detail ? ' · ' + esc(m.detail) : ''}</div></td>
+        <td style="max-width:220px">${claimsBy(m.metric.id).map(c => `<div style="font:var(--ax-label-s)"><b>${esc(c.pocName)}</b>${c.hypothesis !== undefined ? ` expects ${c.hypothesis > 0 ? '+' : ''}${c.hypothesis}` : ''}${c.measured !== undefined ? ` · <span class="${c.measured !== 0 && ((m.metric.better === 'lower') === (c.measured < 0)) ? 'up' : 'down'}">moved ${c.measured > 0 ? '+' : ''}${c.measured}</span>` : ''}</div>`).join('') || '<span class="ax-muted" style="font:var(--ax-label-s)">no POC claims it yet</span>'}</td>
+        <td class="act">${I.can.enter ? `<button class="ax-btn ax-btn--sm" data-enter="${m.metric.id}">${m.metric.auto ? 'Baseline · target' : 'Enter'}</button> ` : ''}<button class="ax-btn ax-btn--quiet ax-btn--sm" data-why="${m.metric.id}">Why</button></td>
+      </tr>`).join('');
+    return `<section class="ax-card bi-section" style="--ax-pc:${p.pillar.colour}">
+      <div class="bi-head">
+        ${gauge(p.progress, ghostProgress(p), p.pillar.colour, p.pillar.name + ' progress to target')}
+        <div><h2>${esc(p.pillar.name)}</h2><div class="q">${esc(p.pillar.question)}</div>
+          <div class="bi-level" style="margin-top:6px">${p.level ? `Level ${p.level} of 5 · ${esc(p.word)}` : 'Not measured'}</div>
+          <div class="bi-word">${p.measured} of ${p.pillar.metrics.length} needles measured · ${p.moving} moving${C && C.pocs.length ? ` · moved by ${C.pocs.filter(x => x.measured > 0).map(x => esc(x.pocName)).join(', ') || 'no POC yet'}` : ''}</div></div>
+        <div>${I.can.enter ? `<button class="ax-btn" data-wizard="${p.pillar.id}">Enter ${esc(p.pillar.name)} numbers</button>` : ''}</div>
+      </div>
+      <table class="ax-table bi-needles"><thead><tr><th>Needle</th><th class="n">Baseline</th><th class="n">Last quarter</th><th class="n">Now</th><th class="n">Target</th><th>To target</th><th>Confidence · source</th><th>POCs moving it</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    </section>`;
+  }).join('');
+  // Risks · bottlenecks · support needed
+  const risks = I.risks.length ? I.risks.map(r => `<div class="bi-risk"><span class="sev sev-${esc(r.severity)}">${r.needsLeadership ? 'decision needed' : esc(r.severity)}</span><div><b>${esc(r.text)}</b><div style="font:var(--ax-label-s);color:var(--ax-ink-3)">${esc(r.useCase)}${r.poc ? ' · ' + esc(r.poc) : ''}${r.owner ? ' · owner ' + esc(r.owner) : ''}${r.kind === 'health' ? ' · use-case health' : r.kind === 'milestone' ? ' · milestone' : ''}</div></div></div>`).join('')
+    : '<p class="ax-muted" style="margin:8px 0 0">No open bottleneck, health flag or overdue milestone on a POC that claims a needle.</p>';
+  const needDecision = I.risks.filter(r => r.needsLeadership).length;
+  return tools + `
     <div class="bi-top">
       <div class="ax-card bi-overall">
         <div class="ax-eyebrow">Business readiness · ${esc(I.quarter)}</div>
@@ -523,19 +561,55 @@ function business() {
         <div class="ax-label-s ax-muted" style="margin-top:8px">${O.progress === null ? 'No needle has a baseline, a value and a target yet.' : `${Math.round(O.progress * 100)} % of the way from baseline to target across the three pillars. The level is the lowest pillar: a programme is as ready as its weakest promise.`}</div>
         <div class="ax-label-s ax-muted" style="margin-top:8px">Grey needle: last quarter (${esc(I.previous)}). Bands: 1 baseline only · 2 moved in a POC · 3 moved in situ · 4 repeated across chambers · 5 business case proven.</div>
       </div>
-      <div class="bi-pillars">${pillarCards}</div>
+      <div class="bi-pillars">${I.pillars.map(p => `<div class="ax-card bi-pillar" style="--ax-pc:${p.pillar.colour}"><h2>${esc(p.pillar.name)}</h2><div class="q">${esc(p.pillar.question)}</div>${gauge(p.progress, ghostProgress(p), p.pillar.colour, p.pillar.name)}<div class="bi-level">${p.level ? `Level ${p.level} of 5` : 'Not measured'}</div><div class="bi-word">${esc(p.word)}</div></div>`).join('')}</div>
     </div>
-    <div class="ax-card">
-      <div class="ax-eyebrow">The needles</div>
-      <table class="ax-table bi-table" style="margin-top:8px"><thead><tr><th>Metric</th><th class="n">Baseline</th><th class="n">Last quarter</th><th class="n">Now</th><th class="n">Target</th><th>To target</th><th>Confidence · source</th><th>POCs moving it</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="bi-visuals">
+      <div class="ax-card bi-contrib"><div class="ax-eyebrow">Who moved the needle</div>
+        <div class="ax-label-s ax-muted" style="margin:4px 0 8px">Each pillar’s progress to target, split by the POC that measured it. Outlined: promised, not yet measured. Grey: moved, but no POC claims it.</div>
+        ${contribChart(I)}
+      </div>
+      <div class="ax-card"><div class="ax-eyebrow">Risks · bottlenecks · support needed${needDecision ? ` · <span style="color:var(--ax-red)">${needDecision} need${needDecision === 1 ? 's' : ''} a leadership decision</span>` : ''}</div>${risks}
+        <div class="ax-label-s ax-muted" style="margin-top:10px">From the <a href="/portfolio">POC Portfolio</a>: open bottlenecks, use-case health and overdue milestones on the POCs that claim a needle.</div></div>
     </div>
-    ${todo}
+    ${sections}
+    ${I.todo.length ? `<div class="ax-card" style="margin-top:var(--ax-s4)"><div class="ax-eyebrow">What to enter next</div>
+      <div class="bi-todo" style="margin-top:8px">${I.todo.map(t => `<span class="ax-chip ax-chip--text ${I.can.enter ? 'ax-chip--interactive' : ''}" ${I.can.enter ? `data-enter="${t.metricId}"` : ''} title="${esc(t.pillar)} · from ${esc(SW[t.source])}">${esc(t.name)} · ${esc(t.missing.join(', '))}</span>`).join('')}</div>
+      <div class="ax-label-s ax-muted" style="margin-top:8px">A pillar cannot be above Level 3 with fewer than half its needles measured, or above Level 2 on Low-confidence numbers alone - a good POC number is not yet a business case.</div></div>` : ''}
     <div class="ax-card bi-claims" style="margin-top:var(--ax-s4)">
       <div class="ax-eyebrow">Every POC moves a needle</div>
       ${I.claims.length ? `<table class="ax-table" style="margin-top:8px"><thead><tr><th>Use-case</th><th>POC</th><th>Needle</th><th class="n">Expected</th><th class="n">Measured</th><th>Note</th></tr></thead><tbody>
-        ${I.claims.map(c => { const m = I.metrics.find(x => x.id === c.metricId); return `<tr><td>${esc(c.useCase)}</td><td>${esc(c.pocName)}</td><td>${esc(m?.name ?? c.metricId)}</td><td class="n">${c.hypothesis === undefined ? '–' : (c.hypothesis > 0 ? '+' : '') + c.hypothesis + ' ' + esc(m?.unit ?? '')}</td><td class="n">${c.measured === undefined ? '–' : (c.measured > 0 ? '+' : '') + c.measured + ' ' + esc(m?.unit ?? '')}</td><td>${esc(c.note ?? '')}</td></tr>`; }).join('')}</tbody></table>`
-        : `<p class="ax-muted" style="margin:8px 0 0">No POC has declared which needles it moves yet. On the <a href="/portfolio">POC Portfolio</a> each POC names its needles and the change it expects; when it completes, the change it measured is recorded against it - that is the needle moving.</p>`}
+        ${I.claims.map(c => { const m = I.metrics.find(x => x.id === c.metricId); const good = c.measured !== undefined && c.measured !== 0 && ((m.better === 'lower') === (c.measured < 0)); return `<tr><td>${esc(c.useCase)}</td><td>${esc(c.pocName)}</td><td>${esc(m?.name ?? c.metricId)}</td><td class="n">${c.hypothesis === undefined ? '–' : (c.hypothesis > 0 ? '+' : '') + c.hypothesis + ' ' + esc(m?.unit ?? '')}</td><td class="n ${c.measured === undefined ? '' : good ? 'up' : 'down'}">${c.measured === undefined ? '–' : (c.measured > 0 ? '+' : '') + c.measured + ' ' + esc(m?.unit ?? '')}</td><td>${esc(c.note ?? '')}</td></tr>`; }).join('')}</tbody></table>`
+        : `<p class="ax-muted" style="margin:8px 0 0">No POC has declared which needles it moves yet. On the <a href="/portfolio">POC Portfolio</a> each POC names its needles and the change it expects; when it completes, the change it measured is recorded - that is the needle moving.</p>`}
     </div>`;
+}
+// Baseline → last quarter → now, as a four-point line in the row.
+function spark(m, h) {
+  const pts = [m.baseline, ...h.filter(x => x.quarter < quarter).map(x => x.value), m.now].filter(v => v !== null && v !== undefined);
+  if (pts.length < 2) return '';
+  const w = 60, hh = 14, lo = Math.min(...pts, m.target ?? Infinity), hi = Math.max(...pts, m.target ?? -Infinity), span = hi - lo || 1;
+  const y = v => hh - 2 - ((v - lo) / span) * (hh - 4);
+  const d = pts.map((v, i) => `${i ? 'L' : 'M'}${(i / (pts.length - 1) * (w - 4) + 2).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const ty = m.target === null ? null : y(m.target);
+  return `<svg class="spark" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}" aria-hidden="true">${ty !== null ? `<line x1="2" x2="${w - 2}" y1="${ty.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="var(--ax-ink-3)" stroke-dasharray="2 2"/>` : ''}<path d="${d}" fill="none" stroke="var(--ax-pc, var(--ax-blue))" stroke-width="1.5"/><circle cx="${w - 2}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="2" fill="var(--ax-ink)"/></svg>`;
+}
+// Who moved the needle: one stacked bar per pillar, segments per POC (measured), outlined for expected, grey for unattributed.
+function contribChart(I) {
+  const W = 560, rowH = 44, pad = 120, bw = W - pad - 16;
+  const pocs = [...new Set(I.contributions.flatMap(c => c.pocs.map(p => p.pocName)))];
+  const tone = i => ['var(--ax-blue)', 'var(--ax-green)', 'var(--ax-orange)', 'var(--ax-indigo)', 'var(--ax-cyan)', 'var(--ax-red)'][i % 6];
+  const rows = I.contributions.map((c, r) => {
+    const y = r * rowH + 10; let x = pad;
+    const P = I.pillars.find(p => p.pillar.id === c.pillar);
+    let segs = `<text x="0" y="${y + 17}" font-size="12" fill="var(--ax-ink)" font-weight="700">${esc(P.pillar.name)}</text><text x="0" y="${y + 31}" font-size="10" fill="var(--ax-ink-3)">${P.level ? 'L' + P.level : '–'} · ${Math.round((c.progress || 0) * 100)} %</text>`;
+    segs += `<rect x="${pad}" y="${y + 6}" width="${bw}" height="18" rx="3" fill="var(--ax-paper-3)"/>`;
+    for (const p of c.pocs) { const w = Math.max(0, Math.min(1, p.measured)) * bw; if (w > 0.5) { segs += `<rect x="${x.toFixed(1)}" y="${y + 6}" width="${w.toFixed(1)}" height="18" fill="${tone(pocs.indexOf(p.pocName))}"><title>${esc(p.pocName)} · moved ${Math.round(p.measured * 100)} % of the way</title></rect>`; x += w; } }
+    const un = Math.max(0, Math.min(1, c.unattributed)) * bw; if (un > 0.5) { segs += `<rect x="${x.toFixed(1)}" y="${y + 6}" width="${un.toFixed(1)}" height="18" fill="var(--ax-ink-3)" fill-opacity=".5"><title>moved, no POC claims it · ${Math.round(c.unattributed * 100)} %</title></rect>`; x += un; }
+    for (const p of c.pocs) { const w = Math.max(0, Math.min(1, p.expected)) * bw; if (w > 0.5 && x + w <= pad + bw + 0.5) { segs += `<rect x="${x.toFixed(1)}" y="${y + 6}" width="${w.toFixed(1)}" height="18" fill="none" stroke="${tone(pocs.indexOf(p.pocName))}" stroke-dasharray="3 2"><title>${esc(p.pocName)} · expects ${Math.round(p.expected * 100)} % more</title></rect>`; x += w; } }
+    segs += `<line x1="${pad + bw}" x2="${pad + bw}" y1="${y + 2}" y2="${y + 28}" stroke="var(--ax-ink-3)"/><text x="${pad + bw}" y="${y + 38}" font-size="9" fill="var(--ax-ink-3)" text-anchor="end">target</text>`;
+    return segs;
+  }).join('');
+  const legend = pocs.map((n, i) => `<span class="ax-chip ax-chip--text" style="border-left:8px solid ${tone(i)};text-transform:none;letter-spacing:0">${esc(n)}</span>`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${I.contributions.length * rowH + 14}" role="img" aria-label="Progress by POC per pillar">${rows}</svg><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${legend || '<span class="ax-label-s ax-muted">No POC has measured a change yet.</span>'}</div>`;
 }
 // Where the pillar's needle stood last quarter, from each metric's previous value.
 function ghostProgress(p) {
@@ -552,6 +626,88 @@ function wireBusiness() {
       <p class="ax-label-s ax-muted">Source: ${m.auto ? 'computed by SIB from the usage log every quarter' : 'entered by the owner from ' + esc(m.source.toUpperCase())}.</p>`);
   });
   main.querySelectorAll('[data-enter]').forEach(b => b.onclick = () => openEnter(b.dataset.enter));
+  main.querySelectorAll('[data-wizard]').forEach(b => b.onclick = () => openWizard(b.dataset.wizard));
+  const wa = document.getElementById('bi-wizard-all'); if (wa) wa.onclick = () => openWizard(null);
+  const imp = document.getElementById('bi-import'), impF = document.getElementById('bi-import-file');
+  if (imp && impF) { imp.onclick = () => impF.click(); impF.onchange = ev => importTemplate(ev.target.files[0]); }
+  const son = document.getElementById('bi-sample-on'); if (son) son.onclick = async () => { try { await api('/scorecard/impact/sample', { method: 'POST', body: '{}' }); toast('Sample loaded'); await loadImpact(); render(); } catch (e) { toast(e.message); } };
+  const soff = document.getElementById('bi-sample-off'); if (soff) soff.onclick = async () => { try { await api('/scorecard/impact/sample', { method: 'DELETE' }); toast('Sample removed'); await loadImpact(); render(); } catch (e) { toast(e.message); } };
+}
+// ── Guided entry: one needle at a time, with its why in view ──────────────
+function openWizard(pillarId) {
+  const I = IMPACT;
+  const list = I.pillars.filter(p => !pillarId || p.pillar.id === pillarId).flatMap(p => p.metrics.map(m => ({ p, m })));
+  const mo = document.getElementById('sc-modal');
+  let i = 0; const done = new Set();
+  const stepHtml = ({ p, m }, idx) => {
+    const M = m.metric, auto = !!M.auto;
+    return `<div class="wstep ${idx === i ? 'is-on' : ''}" data-i="${idx}">
+      <div class="ax-eyebrow" style="color:${p.pillar.colour}">${esc(p.pillar.name)} · ${idx + 1} of ${list.length}</div>
+      <h2 style="margin:4px 0 6px">${esc(M.name)} <span class="ax-muted" style="font:var(--ax-label)">${esc(M.unit)} · ${M.better} is better</span></h2>
+      <div class="why"><b>What.</b> ${esc(M.what)}<br><b>How.</b> ${esc(M.how)}<br><b>Why it matters.</b> ${esc(M.why)}${M.reference ? `<br><b>Reference.</b> ${esc(M.reference)}` : ''}</div>
+      <form data-step="${idx}" class="sc-form">
+        <div class="grid2">
+          <label>Baseline ${m.baseline !== null ? `<span class="ax-muted">(now ${fmtN(m.baseline, M.unit)})</span>` : ''}<input class="ax-input" name="baseline" type="number" step="any" placeholder="${m.baseline !== null ? 'keep' : 'the quarter before the platform'}"></label>
+          <label>Target ${m.target !== null ? `<span class="ax-muted">(now ${fmtN(m.target, M.unit)})</span>` : ''}${I.can.target ? '' : '<span class="ax-muted">· Manager+</span>'}<input class="ax-input" name="target" type="number" step="any" ${I.can.target ? '' : 'disabled'} placeholder="${m.target !== null ? 'keep' : 'where the sponsor wants it'}"></label>
+        </div>
+        ${auto ? `<div class="ax-notice" style="margin:6px 0"><span>SIB computes this one from the usage log${m.now !== null ? ` - this quarter: <b>${fmtN(m.now, M.unit)}</b> (${esc(m.detail ?? '')})` : ' - no runs yet this quarter'}. Enter only the baseline and the target.</span></div>`
+               : `<label>Value for ${esc(quarter)} ${m.now !== null ? `<span class="ax-muted">(now ${fmtN(m.now, M.unit)})</span>` : ''}<input class="ax-input" name="value" type="number" step="any" placeholder="${m.now !== null ? 'keep' : 'this quarter’s number'}"></label>`}
+        <label>Source - the report, export or study the numbers come from <input class="ax-input" name="source" placeholder="${esc(I.sourceWords[M.source])}: report name, period, procedures"></label>
+        <div class="grid2">
+          <label>Scope (optional) <input class="ax-input" name="scope" placeholder="chamber · crew · procedure set"></label>
+          <label>Confidence <select class="ax-select" name="confidence"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+        </div>
+        <label>Note (optional) <input class="ax-input" name="note"></label>
+      </form>
+    </div>`;
+  };
+  const shell = () => `<div class="ax-card bi-wiz"><div class="ax-eyebrow">Enter this quarter’s numbers · ${esc(quarter)}</div>
+      <div class="wprog">${list.map((_, k) => `<i class="${done.has(k) ? 'done' : k === i ? 'on' : ''}"></i>`).join('')}</div>
+      ${list.map(stepHtml).join('')}
+      <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;align-items:center">
+        <span class="ax-label-s ax-muted">Leave a field blank to keep what SIB has. Nothing is saved without a source.</span>
+        <span style="display:flex;gap:8px"><button class="ax-btn" id="wz-close">Close</button><button class="ax-btn" id="wz-skip">Skip</button><button class="ax-btn ax-btn--primary" id="wz-save">Save and next</button></span>
+      </div></div>`;
+  const show = () => {
+    mo.innerHTML = shell(); mo.classList.add('open');
+    document.getElementById('wz-close').onclick = async () => { mo.classList.remove('open'); await loadImpact(); render(); };
+    document.getElementById('wz-skip').onclick = () => { if (i < list.length - 1) { i++; show(); } else { document.getElementById('wz-close').click(); } };
+    document.getElementById('wz-save').onclick = async () => {
+      const f = mo.querySelector(`form[data-step="${i}"]`);
+      const { m } = list[i];
+      const kinds = [['baseline', f.baseline.value], ['target', f.target && !f.target.disabled ? f.target.value : ''], ['value', f.value ? f.value.value : '']].filter(([, v]) => v !== '');
+      if (!kinds.length) { document.getElementById('wz-skip').click(); return; }
+      if (!f.source.value.trim()) { toast('Name the source - a number without a source is an opinion'); f.source.focus(); return; }
+      try {
+        for (const [kind, v] of kinds) await api('/scorecard/impact/entries', { method: 'POST', body: JSON.stringify({ metricId: m.metric.id, quarter, kind, value: Number(v), source: f.source.value, scope: f.scope.value, confidence: f.confidence.value, note: f.note.value }) });
+        done.add(i); toast(`${m.metric.name} saved`);
+        if (i < list.length - 1) { i++; show(); } else { document.getElementById('wz-close').click(); }
+      } catch (e) { toast(e.message); }
+    };
+  };
+  show();
+}
+// ── Import the filled template (.xlsx via SheetJS, loaded on demand; .csv natively) ──
+async function importTemplate(file) {
+  if (!file) return;
+  try {
+    let table;
+    if (/\.csv$/i.test(file.name)) {
+      table = (await file.text()).split(/\r?\n/).filter(Boolean).map(line => line.match(/("([^"]|"")*"|[^,]*)(,|$)/g).map(c => c.replace(/,$/, '').replace(/^"|"$/g, '').replace(/""/g, '"')));
+    } else {
+      if (!window.XLSX) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = ok; s.onerror = () => no(new Error('Could not load the spreadsheet reader')); document.head.appendChild(s); });
+      const wb = window.XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      table = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, blankrows: false });
+    }
+    const head = table[0].map(h => String(h).trim().toLowerCase());
+    const col = name => head.findIndex(h => h.startsWith(name));
+    const ci = col('metric id'), cb = col('baseline'), ct = col('target'), cv = col('value for'), cs = col('source of'), csc = col('scope'), cc = col('confidence'), cn = col('note');
+    if (ci < 0) throw new Error('This is not the template - the "Metric id" column is missing');
+    const rows = table.slice(1).filter(r => r[ci]).map(r => ({ metricId: r[ci], baseline: r[cb] ?? '', target: r[ct] ?? '', value: cv >= 0 ? (r[cv] ?? '') : '', source: r[cs] ?? '', scope: r[csc] ?? '', confidence: r[cc] ?? '', note: r[cn] ?? '' }));
+    const res = await api('/scorecard/impact/import', { method: 'POST', body: JSON.stringify({ quarter, rows }) });
+    toast(`${res.data.saved} number${res.data.saved === 1 ? '' : 's'} imported${res.data.skipped.length ? ` · ${res.data.skipped.length} rows left blank` : ''}`);
+    await loadImpact(); render();
+  } catch (e) { toast(e.message); }
 }
 function openModal(html) {
   const mo = document.getElementById('sc-modal');

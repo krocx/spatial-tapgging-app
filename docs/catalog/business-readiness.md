@@ -11,6 +11,9 @@ api: |
   GET /scorecard/impact - the three pillars with every needle's baseline, last quarter, now and target, the readiness level per pillar and overall, the POC claims, what to enter next; ?quarter= (portal · API key)
   POST /scorecard/impact/entries - a baseline, a quarterly value or a target for a needle, with source, scope and confidence (portal · API key)
   PATCH /scorecard/impact/claims - a POC's claim on a needle: the change it expects, and the change it measured (portal · API key)
+  GET /scorecard/impact/template.xlsx - the quarter's needles as a workbook to fill in Excel and import back, with a sheet explaining every column (portal · API key)
+  POST /scorecard/impact/import - the filled template's rows, checked as a whole before anything is saved (portal · API key)
+  POST /scorecard/impact/sample - the review sample, ETCH 3D OMS to AR OMS: one use-case, three POCs, three quarters of numbers; DELETE removes it as one (portal · admin key)
 wireframe: portal
 arch: |
   flowchart LR

@@ -19,7 +19,9 @@ import type { OmsUsageSession } from '@spatial/shared';
 import type { Confidence } from './scorecard-core.js';
 
 export type PillarId = 'productivity' | 'velocity' | 'trust';
-export type MetricSource = 'sib' | 'mes' | 'qms' | 'hr' | 'survey' | 'finance';
+export type MetricSource = 'sib' | 'mes' | 'qms' | 'ojt' | 'survey' | 'finance';
+/** The source in the owner's words. */
+export const SOURCE_WORDS: Record<MetricSource, string> = { sib: 'SIB · automatic', mes: 'MES', qms: 'QMS', ojt: 'OJT · on-the-job training records', survey: 'pulse survey', finance: 'Finance' };
 
 export interface Metric {
   id:         string;
@@ -58,9 +60,9 @@ export const PILLARS: Pillar[] = [
     id: 'productivity', name: 'Productivity', colour: 'var(--ax-blue)',
     question: 'Do people become contributors sooner, and stay capable?',
     metrics: [
-      { id: 'ttc', pillar: 'productivity', name: 'Time to contribution', unit: 'days', better: 'lower', source: 'hr', weight: 3,
+      { id: 'ttc', pillar: 'productivity', name: 'Time to contribution', unit: 'days', better: 'lower', source: 'ojt', weight: 3,
         what: 'How long a new technician takes from first day to working a procedure unsupervised.',
-        how: 'Days from start date to the first solo sign-off on a procedure in scope (HR start date · SIB sign-off). Median over the people who started in the quarter.',
+        how: 'Days from the OJT start date to the first solo sign-off on a procedure in scope (OJT record · SIB sign-off). Median over the people who started in the quarter.',
         why: 'The instruction is on the equipment and validated as they go, so a newcomer works the real procedure on day one with the system watching. Every POC that puts a guide in front of a new hire moves this.',
         practice: 'Time-to-proficiency (Kirkpatrick level 3 - behaviour on the job); Boeing and Lockheed report 35-85 % shorter training with AR instructions (vendor-reported).',
         reference: 'Published AR cases: -35 % to -85 % training time (vendor-reported, Boeing / Lockheed Martin).' },
@@ -74,9 +76,9 @@ export const PILLARS: Pillar[] = [
         how: 'Hints shown per completed run, median over the quarter (usage log). Demo runs excluded.',
         why: 'Falling help with rising completion is upskilling made visible; rising help on one step is a content problem the Intelligence page names.',
         practice: 'Assistance rate as a proficiency proxy (connected-worker programmes).' },
-      { id: 'people-ready', pillar: 'productivity', name: 'People ready', unit: '%', better: 'higher', source: 'hr', weight: 2,
+      { id: 'people-ready', pillar: 'productivity', name: 'People ready', unit: '%', better: 'higher', source: 'ojt', weight: 2,
         what: 'The share of the target population trained on the platform and active on it.',
-        how: 'Operators with a sign-off in the last 30 days ÷ operators in the rollout scope (HR roster · SIB sign-offs).',
+        how: 'Operators with a sign-off in the last 30 days ÷ operators in the OJT rollout scope (OJT roster · SIB sign-offs).',
         why: 'Readiness is people, not licences. A POC that trains a crew and sees them keep using it moves this; one that trains and stops does not.',
         practice: 'Adoption rate (Prosci ADKAR - ability and reinforcement).' },
       { id: 'change-readiness', pillar: 'productivity', name: 'Change readiness', unit: '/5', better: 'higher', source: 'survey', weight: 1,
@@ -167,6 +169,8 @@ export interface ImpactEntry {
   note?:      string;
   by:         string;
   at:         string;
+  /** Sample data loaded for review; removed as one. */
+  sample?:    boolean;
 }
 
 /** What a POC says it will move, and what the quarter says it did. */
@@ -313,6 +317,36 @@ export function impactState(entries: ImpactEntry[], auto: AutoMetric[], autoPrev
     });
     const { progress, level, word } = pillarLevel(metrics);
     return { pillar: p, metrics, progress, level, word, measured: metrics.filter(x => x.now !== null).length, moving: metrics.filter(x => (x.progress ?? 0) > 0.05).length };
+  });
+}
+
+/**
+ * Who moved the needle: per pillar, each POC's share of the progress, from
+ * the change it measured on each needle (its measured delta over the
+ * baseline-to-target distance, weighted as the pillar weights its needles).
+ * Claims with only a hypothesis are carried as `expected` so the picture
+ * shows what is promised beside what is proven. The remainder of the
+ * pillar's progress that no POC claims is `unattributed`.
+ */
+export interface Contribution { pocId: string; pocName: string; useCase: string; measured: number; expected: number }
+export interface PillarContributions { pillar: PillarId; progress: number; pocs: Contribution[]; unattributed: number }
+export function contributions(ps: PillarState[], claims: PocImpactClaim[]): PillarContributions[] {
+  return ps.map(p => {
+    const wsum = p.metrics.reduce((s, m) => s + m.metric.weight, 0);
+    const by = new Map<string, Contribution>();
+    for (const m of p.metrics) {
+      const span = m.baseline !== null && m.target !== null ? m.target - m.baseline : null;
+      if (!span) continue;
+      for (const c of claims.filter(c => c.metricId === m.metric.id)) {
+        const e = by.get(c.pocId) ?? { pocId: c.pocId, pocName: c.pocName, useCase: c.useCase, measured: 0, expected: 0 };
+        if (c.measured !== undefined) e.measured += Math.max(0, c.measured / span) * m.metric.weight / wsum;
+        else if (c.hypothesis !== undefined) e.expected += Math.max(0, c.hypothesis / span) * m.metric.weight / wsum;
+        by.set(c.pocId, e);
+      }
+    }
+    const progress = p.progress ?? 0;
+    const claimed = [...by.values()].reduce((s, c) => s + c.measured, 0);
+    return { pillar: p.pillar.id, progress, pocs: [...by.values()].sort((a, b) => b.measured - a.measured), unattributed: Math.max(0, progress - claimed) };
   });
 }
 
