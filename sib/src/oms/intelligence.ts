@@ -230,7 +230,14 @@ export function computeIntelligence(
 
 const cache = new Map<string, { at: number; value: GuideIntelligence }>();
 const TTL_MS = 60_000;
-let stepLookup: (guideId: string) => GuideStep[] = () => [];
+// `var` on purpose, with no initialiser: routes/guide-sessions.ts calls the
+// setter while this module is still loading (the import cycle usage-log →
+// routes/anchors → … → guide-sessions), when a `let` would still be in its
+// temporal dead zone and the whole route graph fails to load (seen in
+// test/intelligence.test.ts). A `var` is hoisted and simply undefined; an
+// initialiser here would overwrite what the route already wired.
+// eslint-disable-next-line no-var
+var stepLookup: ((guideId: string) => GuideStep[]) | undefined;
 /** Wired by the routes layer (avoids a store import cycle). */
 export function setIntelligenceStepLookup(fn: (guideId: string) => GuideStep[]): void { stepLookup = fn; }
 
@@ -238,7 +245,7 @@ export function setIntelligenceStepLookup(fn: (guideId: string) => GuideStep[]):
 export function guideIntelligence(guideId: string, fresh = false): GuideIntelligence {
   const hit = cache.get(guideId);
   if (!fresh && hit && Date.now() - hit.at < TTL_MS) return hit.value;
-  const value = computeIntelligence(guideId, omsUsageStore.findAll(), stepLookup(guideId), readSamples, new Date().toISOString(), guideStore.findById(guideId)?.ciMode ?? 'normal');
+  const value = computeIntelligence(guideId, omsUsageStore.findAll(), stepLookup?.(guideId) ?? [], readSamples, new Date().toISOString(), guideStore.findById(guideId)?.ciMode ?? 'normal');
   cache.set(guideId, { at: Date.now(), value });
   return value;
 }
