@@ -432,7 +432,7 @@ router.post(
         });
         for (const s of imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
         imported.assembly = {
-          modelId: model.id, source: DYNAMICS_ASSEMBLY_SOURCE,
+          modelId: model.id, source: 'dynamics',
           ...(r.initialNodes.length ? { initialNodes: r.initialNodes as GuideStepNode[] } : {}),
           ...(r.bounds ? { bounds: r.bounds as { min: [number, number, number]; max: [number, number, number] } } : {}),
         };
@@ -459,11 +459,6 @@ router.post(
   },
 );
 
-// Where a Dynamics assembly says it came from. GuideAssembly.source is a
-// shared type ('cortona' | 'cad'); adding 'dynamics' is a one-word change to
-// shared/src/index.ts that needs Karthik's go (AROMS-366). Until then the
-// assembly is a placed CAD model, which is exactly how the app treats it.
-const DYNAMICS_ASSEMBLY_SOURCE: NonNullable<ImportedGuide['assembly']>['source'] = 'cad';
 
 // GET /guides/import/jobs/:id - poll an import. `status` is queued |
 // processing | done | failed; `result` (done) has guide, steps, model, log,

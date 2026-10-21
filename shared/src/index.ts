@@ -1380,8 +1380,8 @@ export interface GuideAssembly {
    *  far from the geometry (CAD world origin), so placement UIs put the
    *  bottom-centre of these bounds on the tapped surface, not the origin. */
   bounds?:       { min: [number, number, number]; max: [number, number, number] };
-  /** Where the assembly + node data came from. */
-  source?:       'cortona' | 'cad';
+  /** Where the assembly + node data came from ('dynamics' = a Dynamics 365 Guides package, AROMS-366). */
+  source?:       'cortona' | 'cad' | 'dynamics';
   /** 2026.4.46: 'empty' = build-up (everything hidden until a step installs
    *  it - ingest hides the model's root nodes in the initial state);
    *  'complete' = take-apart. Absent for imports that carry their own state. */
@@ -2030,7 +2030,7 @@ export interface ImportedGuide {
 export interface ImportGuideRequest {
   anchorId:     string;
   createdBy:    string;
-  sourceType?:  'manual' | 'mes' | 'rapidmanual';
+  sourceType?:  'manual' | 'mes' | 'rapidmanual' | 'dynamics';
   /** Full ImportedGuide payload - passed through to the active adapter. */
   payload:      ImportedGuide;
   /**

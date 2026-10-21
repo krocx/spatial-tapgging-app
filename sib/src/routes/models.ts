@@ -93,7 +93,7 @@ export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId
     hasUSDZ:          false,
     // Assemblies are rendered from the GLB on device (per-part show/hide/animate);
     // a USDZ of a 2M-triangle assembly is hundreds of MB and never read.
-    usdzStatus:       opts.category === 'cortona' ? 'not-needed' : 'pending',
+    usdzStatus:       opts.category === 'cortona' || opts.category === 'dynamics' ? 'not-needed' : 'pending',   // imported assemblies render from the GLB with per-part control
     ...(opts.ladder ? { variants: opts.ladder.variants, triangles: opts.ladder.triangles } : {}),
     // An imported assembly is in metres already (the unit factor is in the GLB): scale 1, and say so.
     ...(opts.importUnits ? { importUnits: opts.importUnits, defaultScale: 1 } : {}),

@@ -35,7 +35,7 @@ provenance kept in the import log), `adapters/dynamics-guides-adapter.ts`
 | placement (`isPlaced` only) | node `pl:<guid>`, TRS converted; per step: hide the previous step's nodes, show mine with style → `show: solid | ghost`, `color` |
 | attention director at a placement / position | `effect: 'flash'` on that node, `cadPosition`; else the centroid of the step's shown nodes |
 | step image | out of the package, by sequence number, into the step-image store (route layer) |
-| `GuideAssembly` | `modelId`, `initialNodes` (everything hidden), `bounds`, `source` (see open points) |
+| `GuideAssembly` | `modelId`, `initialNodes` (everything hidden), `bounds`, `source: 'dynamics'` |
 
 Option sets, as read: step template 937380000 Default / 001 Question / 002
 Completion; response action 937380000 NoAction / 001 GoToNextStep / 002
@@ -77,7 +77,4 @@ mode / speed / direction / take, videos and audio, the folder hierarchy,
 localisation tables, `Invisible` as a behaviour (imported hidden, or dropped
 with `invisible: 'drop'`). Step pictures that are PNG are stored and served
 as the step-image store does every imported image (`.jpg` name,
-`image/jpeg` header - clients sniff). Open: `'dynamics'` in
-`GuideAssembly.source` / `ImportGuideRequest.sourceType` (shared types) and
-`usdzStatus: 'not-needed'` for the assembly, both one-word changes awaiting
-Karthik.
+`image/jpeg` header - clients sniff).

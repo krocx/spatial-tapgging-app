@@ -83,13 +83,6 @@ to build it; the whole test suite runs on synthetic packages.
 
 ## Open points
 
-- `GuideAssembly.source` and `ImportGuideRequest.sourceType` (shared types)
-  gain the word `'dynamics'` once agreed; until then a Dynamics assembly is
-  recorded as a placed CAD model and the guide menu's Import log button
-  keys on that word.
-- A Dynamics assembly's USDZ status stays `pending` (the app renders the
-  GLB with per-part control, as for Cortona); marking it `not-needed` is a
-  one-token change in `routes/models.ts` once agreed.
 - Videos stay unlinked (SIB has no guide video store); the report counts
   them. AROMS-367: batch import, idempotent re-import by GUID + version,
   a Dataverse Web API source on the same mapper.
