@@ -1,8 +1,8 @@
 // jobs.ts - heavy jobs: one worker at a time, results kept for polling.
 //
-// POST /guides/import/cortona answers 202 with a job id; the portal polls
-// GET /guides/import/jobs/:id. POST /models/:id/variants uses the same
-// queue. A queue of one keeps the memory peak to a single job (the Bee
+// POST /guides/import/cortona and /guides/import/dynamics answer 202 with a
+// job id; the portal polls GET /guides/import/jobs/:id. POST
+// /models/:id/variants uses the same queue. A queue of one keeps the memory peak to a single job (the Bee
 // drone import alone reaches ~490 MB). Each job gets its own worker so the
 // heap is handed back when it ends, and a worker that dies (out of memory,
 // a crash in the parser) fails that job only - the API, sessions and every
@@ -11,11 +11,12 @@
 import { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import type { CortonaImportOptions } from './cortona/importer.js';
+import type { DynamicsImportOptions } from './dynamics/importer.js';
 import type { LadderResult } from '../models/variants.js';
 import { workerHeapMb } from '../memory.js';
 
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
-export type JobKind   = 'cortona' | 'variants';
+export type JobKind   = 'cortona' | 'dynamics' | 'variants';
 
 export interface ImportJob {
   id:         string;
@@ -51,8 +52,22 @@ export interface CortonaWorkerResult {
 
 export interface VariantsWorkerResult { ladder: LadderResult }
 
+/** A Dynamics 365 Guides package: the GLB is null when the guide places nothing (text-only). */
+export interface DynamicsWorkerResult {
+  imported:     unknown;
+  report:       unknown;
+  initialNodes: unknown[];
+  bounds?:      unknown;
+  /** Step images keyed by sequence number (bytes + sniffed type). */
+  stepImages:   { seq: number; sniffed: string; bytes: Buffer }[];
+  provenance:   unknown;
+  ladder:       LadderResult;
+  glb:          Buffer | null;
+}
+
 type WorkerInput =
   | { kind: 'cortona'; buffer: ArrayBuffer; opts: CortonaImportOptions; modelId: string; modelsDir: string }
+  | { kind: 'dynamics'; buffer: ArrayBuffer; opts: DynamicsImportOptions; modelId: string; modelsDir: string }
   | { kind: 'variants'; modelId: string; modelsDir: string };
 
 interface Pending {
@@ -80,6 +95,11 @@ function enqueue(input: WorkerInput, finish: Pending['finish'], limitBytes: numb
 export function enqueueCortonaImport(buffer: ArrayBuffer, opts: CortonaImportOptions, modelId: string, modelsDir: string,
                                      finish: (r: CortonaWorkerResult) => Promise<unknown>, limitBytes: number): ImportJob {
   return enqueue({ kind: 'cortona', buffer, opts, modelId, modelsDir }, finish as Pending['finish'], limitBytes);
+}
+
+export function enqueueDynamicsImport(buffer: ArrayBuffer, opts: DynamicsImportOptions, modelId: string, modelsDir: string,
+                                      finish: (r: DynamicsWorkerResult) => Promise<unknown>, limitBytes: number): ImportJob {
+  return enqueue({ kind: 'dynamics', buffer, opts, modelId, modelsDir }, finish as Pending['finish'], limitBytes);
 }
 
 export function enqueueVariants(modelId: string, modelsDir: string,
@@ -133,17 +153,22 @@ function runWorker(input: WorkerInput, heapMb: number): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL('./worker.js', import.meta.url), {
       workerData: input,
-      transferList: input.kind === 'cortona' ? [input.buffer] : [],
+      transferList: input.kind === 'cortona' || input.kind === 'dynamics' ? [input.buffer] : [],
       resourceLimits: { maxOldGenerationSizeMb: heapMb },
     });
     let settled = false;
-    worker.once('message', (m: { ok: boolean; error?: string; glb?: ArrayBuffer; imported?: unknown; log?: unknown; initialNodes?: unknown[]; bounds?: unknown; assembledPose?: 'published' | 'final'; ladder?: LadderResult }) => {
+    worker.once('message', (m: { ok: boolean; error?: string; glb?: ArrayBuffer | null; imported?: unknown; log?: unknown; report?: unknown; initialNodes?: unknown[]; bounds?: unknown; assembledPose?: 'published' | 'final'; ladder?: LadderResult; stepImages?: { seq: number; sniffed: string; bytes: ArrayBuffer }[]; provenance?: unknown }) => {
       settled = true;
       if (!m.ok) { reject(new Error(m.error ?? `${input.kind} failed`)); return; }
       const empty: LadderResult = { variants: [], triangles: 0, skipped: [] };
       if (input.kind === 'cortona') {
         const r: CortonaWorkerResult = { imported: m.imported, log: m.log, initialNodes: m.initialNodes ?? [], bounds: m.bounds, assembledPose: m.assembledPose,
           ladder: m.ladder ?? empty, glb: Buffer.from(m.glb ?? new ArrayBuffer(0)) };
+        resolve(r);
+      } else if (input.kind === 'dynamics') {
+        const r: DynamicsWorkerResult = { imported: m.imported, report: m.report, initialNodes: m.initialNodes ?? [], bounds: m.bounds, provenance: m.provenance,
+          stepImages: (m.stepImages ?? []).map(s => ({ seq: s.seq, sniffed: s.sniffed, bytes: Buffer.from(s.bytes) })),
+          ladder: m.ladder ?? empty, glb: m.glb ? Buffer.from(m.glb) : null };
         resolve(r);
       } else {
         const r: VariantsWorkerResult = { ladder: m.ladder ?? empty };

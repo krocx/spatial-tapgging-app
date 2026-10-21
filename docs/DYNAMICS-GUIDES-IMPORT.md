@@ -2,132 +2,94 @@
 
 Proprietary & Confidential · Applied Materials
 
-Status: **proposal v2, 2026-10-21** - scoped to a manual migration of two
-guides, for Karthik's review before backlog rows are created. Nothing here
-is built.
+Status: **built, 2026-10-21** (AROMS-364 core, 365 tests, 366 wiring;
+367 holds the nice-to-haves). Round one is two guides moved by hand; the
+deadline behind it is Microsoft's: Guides and Remote Assist stop working
+after **31 December 2026**
+([notice](https://learn.microsoft.com/en-us/lifecycle/announcements/dynamics-365-guides-remote-assist-end-of-support)).
+Implementation notes for engineers live in
+[`sib/src/import/dynamics/README.md`](../sib/src/import/dynamics/README.md).
 
 ## Scope, as agreed
 
-Round one is two guides, moved by hand: a person exports a guide from the
-Microsoft side with their own Microsoft login, and imports the result with
-the SIB import tool, which converts it into a draft AR guide the way the
-Cortona and xlsx imports do today - steps, sections, media, models; the
+A person exports a guide on the Microsoft side with their own Microsoft
+login (the same authentication Guides itself uses - no new IT contract) and
+imports the resulting `.guide` file with the SIB Import tool, which turns it
+into a draft AR guide the way the Cortona and xlsx imports do today. The
 author then places and trains it in AR. No Entra app registration, no
 connector, no scaling work until that workflow has been reviewed on the two
-guides. The deadline behind it is Microsoft's: Guides and Remote Assist stop
-working after **31 December 2026**
-([notice](https://learn.microsoft.com/en-us/lifecycle/announcements/dynamics-365-guides-remote-assist-end-of-support)).
+guides.
 
-## What "export" means on the Microsoft side
+## The `.guide` package
 
-There is no "export this guide to a file" in the Guides PC app or the admin
-app. A guide is rows in Dataverse tables plus files on asset rows
-([table reference](https://learn.microsoft.com/en-us/dynamics365/mixed-reality/guides/developer-entity-reference)).
-Every tool that "exports" a guide - Microsoft's own
-[Content Migration Tool](https://learn.microsoft.com/en-us/dynamics365/mixed-reality/guides/migrate)
-(PowerShell, Dataverse to Dataverse), and third-party exporters such as
-frontline.io's `.guides` packager - reads those tables with the **user's
-own sign-in** and the Dynamics CRM permission that login already carries.
-That is the same authentication as using Guides itself, which is the point
-Karthik made: no new IT contract.
+"Export guide" writes a single file: a plain POSIX tar, no compression, no
+directories. Entries are named by kind, part, GUID and ETag:
 
-Two manual ways to get a guide out, both with the ME's own login:
+| Entry | Holds |
+|---|---|
+| `Guide_Manifest` | guide id, solution version, schema version |
+| `Guide_Body` | the `msmrw_guide` row with its child tables expanded (OData JSON: raw option-set numbers plus `@OData.Community.Display.V1.FormattedValue` labels, `_x_value` lookups) |
+| `Metadata_<guid>` | one per asset: name, format, version |
+| `Model_Body_<guid>_<etag>` · `Image_Body…` · `Video_Body…` · `Audio_Body…` | the asset files; `…_SmallThumbnail_…` thumbnails |
 
-**A. Power Platform CLI export (recommended).** `pac` is Microsoft's
-command-line tool; `pac auth create` signs the user in interactively (the
-same Microsoft login as Guides), and `pac data export` writes the records a
-schema file names into a zip. SIB ships that schema file - the Guides tables
-scoped to one guide - and a one-page procedure. The ME runs three commands
-and gets `<guide-name>.zip`. To confirm in Phase 0: that `pac data export`
-carries the **file columns** (the glTF, images, video) and not only the rows;
-if it does not, the files are downloaded from the asset records in the
-Guides admin app and dropped into the same zip under `media/`.
-
-**B. Excel export from the Guides admin app (fallback, no tooling).** The
-model-driven app exports any table view to Excel: Guides, Guide Tasks,
-Guide Steps, Guide Step Objects, Guide Step Object Placements, 3D Assets,
-Image / Video / Audio Assets, each filtered to the guide. The files are
-downloaded from the asset records. The ME zips the workbooks and the
-`media/` folder. Slower, nothing to install.
-
-The SIB importer reads either: one zip, with tables as CMT XML or as xlsx,
-and a `media/` folder. One parser, one mapping.
+The reader is ours and defensive: paths, `..`, links, devices, oversize and
+over-count archives and bad checksums are refused before anything is parsed;
+file types are decided by magic bytes, not by the `Format` field.
 
 ## What a guide is, and what it becomes in SIB
 
-| Dataverse table | Holds | Becomes |
-|---|---|---|
-| `msmrw_guide` | name, description, anchor type (QR · circular code · object anchor), schema version | Guide name and description; anchor type recorded for Phase 3 |
-| `msmrw_guidetask` | ordered groups of steps (Previous Task) | Sections |
-| `msmrw_guidestep` | text, template type (default · question · completion), Previous Step, responses | Steps in order; questions → the conditional graph; completion → last step, evidence required |
-| `msmrw_guidestepobject(placement)` | which 3D object sits on a step, and where (relative to the anchor) | Model slots with the Guides scale; placement kept in the import record for Phase 3, not applied |
-| `msmrw_3dasset` | customer models as glTF; Microsoft toolkit holograms (arrows, hands, dots) | Customer models → model library, de-duplicated by asset id; toolkit holograms → the step pin's marker where the meaning is "here", else a log line |
-| `msmrw_imageasset` · `videoasset` · `audioasset` | step media | First image → step image; further images and video → reference links; audio → TTS text where a transcript exists, else a link |
-| `_localized` tables | translations | One language per import, chosen in the modal |
+| Guides | Becomes in SIB |
+|---|---|
+| Guide name, description | Guide name and description |
+| Task (ordered by Previous Task) | Section; the step title is the task name |
+| Step (ordered by Previous Step) - text, picture | Step with the text and the picture (written into the step-image store) |
+| Question step with responses (Go to next · Go to step · No action) | First acting response → success branch, second → failure branch; the response texts stay in the step as a numbered list (SIB has no response buttons); a third acting response is reported for the Designer |
+| Completion step, its objects and placements | Last step, evidence required, its objects shown |
+| Placed 3D objects - the author's models and Microsoft's stock holograms alike | Nodes `pl:<placementGuid>` of **one merged assembly GLB** per guide in the Guides anchor frame; per-step show / hide / X-ray (ghost) / colour deltas; the assembly's initial state hides everything |
+| Attention director | `effect: 'flash'` on its object and the step's `cadPosition`; without a director, the shown objects' centroid |
+| Anchor type (holographic, QR, circular, object) | Recorded in the report; the author places the assembly once at the SIB QR, which is the equivalent of the Guides anchor |
+| Unity coordinates (left-handed, Y up) | Converted (x, y, −z; quaternion −x, −y, z, w) behind one flag, `?flipZ=0` to keep the source frame for diagnosis |
+| Triggers, interactables, anchor 3D object, animation takes / speed / direction, videos, audio, folder tree, `Invisible` behaviour | **Not represented** - counted and listed in the report, never imported half-way (`Invisible` is imported hidden by default, or dropped with `?invisible=drop`) |
 
-The honest losses, said in the import summary before anything is written:
-questions with more than two responses are folded to a linear sequence
-with the step named; video and extra images are demoted to links; toolkit
-holograms are not ours to carry. A guide that is mostly Microsoft arrows
-loses most of its visual authoring, and the ME should see that count
-before applying.
+Why one assembly rather than per-step model slots: SIB already has the
+CAD-driven content model (`GuideAssembly` + per-step `nodes[]` +
+`cadPosition`) for Cortona; reusing it means Place Assembly, the Studio,
+iOS and the XR kit work unchanged, and nothing touches the USDZ pipeline.
 
 ## The workflow, end to end
 
-1. ME signs in with `pac auth create` (or opens the Guides admin app),
-   exports the guide with SIB's schema (or the table views), gets a zip.
-2. Portal → Import → **Dynamics 365 Guides (.zip)** → chooses the chamber
-   and the language → the job parses in the worker, as Cortona does, and
-   shows the summary: steps, sections, questions folded, media demoted,
-   holograms not carried, models found.
-3. Apply → a **draft** guide on the chamber, with the same de-duplication
-   prompt as other imports (update the existing guide or create a new one).
-4. Author opens Place Steps in AR, places, trains, publishes - as today.
+1. The ME exports the guide on the Microsoft side and gets `<name>.guide`.
+2. Portal → Content → Import → choose the `.guide` → the job reads it in a
+   worker (one at a time, like Cortona) and answers with the guide, the
+   assembly model and the report; if a guide with that name exists, the
+   usual update / new / cancel prompt.
+3. The draft guide is in the library with its sections, branches, pictures
+   and assembly; the import log (guide menu) holds the content-free report
+   and the source guide's GUID and asset versions.
+4. Author: Place Assembly on the anchor, then place steps, train, publish -
+   as today.
 
-## What is new in SIB
+From a terminal, `npm run guide:inspect -- file.guide --tree` dry-runs a
+package and writes nothing; `--json` for the machine-readable report,
+`--out <dir>` to look at the merged GLB in a viewer, `--make-sample x.guide`
+to write a synthetic package for a rehearsal.
 
-- `sib/src/import/dynamics/` - the parser (CMT XML and xlsx table shapes →
-  `ImportedGuide`), the model and media handling, and a mapping log in the
-  Cortona importer's style. `DynamicsGuidesAdapter` registered beside
-  `ManualJsonAdapter`; `sourceType: 'dynamics'`.
-- `POST /guides/import/dynamics` on the existing job queue with preview,
-  apply and discard.
-- Portal: the Import modal's third source, with the language picker and
-  the summary.
-- `docs/catalog/dynamics-guides-import.md`, the Feature Catalog row,
-  SERVER-REFERENCE, and `docs/howto/EXPORT-FROM-DYNAMICS-GUIDES.md` - the
-  one-page procedure for the ME (pac commands, the schema file, the Excel
-  fallback, where to find the files).
-- `ImportedGuideStep` gains an optional `sourcePlacement` that is stored but
-  not applied - so Phase 3 can use it without a second export.
+## Privacy
 
-## Phases
+Real guides may contain proprietary procedures. The importer never logs
+instruction text, asset names or URLs at info level - counts and GUIDs only -
+and the report kept with the guide is the same. No real guides were used
+to build it; the whole test suite runs on synthetic packages.
 
-| Phase | Scope | Size | Needs |
-|---|---|---|---|
-| 0 · Confirm the export | One of the two guides exported both ways; confirm which tables and file columns come out, the placement columns, the asset file formats; keep the export as the test fixture | 2 days | the ME's login on the tenant, one guide |
-| 1 · Export procedure | SIB's `pac` schema file and the one-page procedure, tried by the ME unaided on the second guide; the Excel fallback written | 1 day | Phase 0 |
-| 2 · SIB importer | Parser, adapter, zip import with preview / apply / discard, steps · sections · questions · media · models, summary and log; catalogue and docs; the two guides imported and placed in AR | 5 days | the Phase 0 fixture |
-| 3 · Later, after the review | Placements reused through the QR frame as candidates in Place Steps in AR; batch export of a folder; a connector if scale asks for it; Guides sessions as pre-platform baselines for Business Readiness | - | the review of the two-guide workflow |
+## Open points
 
-Eight working days to the two guides placed in AR, no IT dependency.
-
-## Risks and open questions
-
-- **File columns in the export.** If `pac data export` does not carry the
-  asset files, the ME downloads them from the admin app - a few clicks per
-  asset, fine for two guides, the first thing to automate at scale.
-- **Toolkit holograms.** The share of a guide's visual authoring that is
-  Microsoft arrows and hands decides how much the author re-does in AR;
-  the summary says it, and Phase 0 tells us what the two guides contain.
-- **Question steps with many responses** fold to linear; the ME resolves in
-  the Designer.
-- **Schema version.** Guides on schema v3 or v4 need Microsoft's upgrade
-  first; current guides are v5.
-- **Licence.** Only the customer's own models and media are copied.
-
-## To start
-
-The two guide names and the tenant, the ME who will run the export (with
-`pac` installed - a winget / npm install, no admin rights), and whether a
-HoloLens is available to look at one guide's anchor during Phase 0.
+- `GuideAssembly.source` and `ImportGuideRequest.sourceType` (shared types)
+  gain the word `'dynamics'` once agreed; until then a Dynamics assembly is
+  recorded as a placed CAD model and the guide menu's Import log button
+  keys on that word.
+- A Dynamics assembly's USDZ status stays `pending` (the app renders the
+  GLB with per-part control, as for Cortona); marking it `not-needed` is a
+  one-token change in `routes/models.ts` once agreed.
+- Videos stay unlinked (SIB has no guide video store); the report counts
+  them. AROMS-367: batch import, idempotent re-import by GUID + version,
+  a Dataverse Web API source on the same mapper.

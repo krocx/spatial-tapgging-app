@@ -159,7 +159,7 @@ flowchart LR
   end
   subgraph DOMAIN["Domain"]
     GUIDES["guides/<br/>store · copy · bundle · ingest · assembly · step-models"]
-    IMPORT["import/<br/>jobs · worker · cortona/*"]
+    IMPORT["import/<br/>jobs · worker · cortona/* · dynamics/*"]
     MODELSD["models/<br/>glb-geometry · variants · reduce-clustering · glb-nodes"]
     OMS["oms/<br/>usage-log · insights · step-validation · signals · assertions"]
     TAG["tag/ · uam/ · loto/ · gemba/"]

@@ -24,6 +24,7 @@
     "brand:fonts": "node scripts/brand-fonts.mjs",
     "brand:check": "node scripts/brand-check.mjs",
     "testflight:notes": "node scripts/testflight-notes.mjs",
+    "guide:inspect": "node scripts/guide-inspect.mjs",
     "arch:graph": "node scripts/arch-graph.mjs",
     "arch:check": "node scripts/arch-graph.mjs --check",
     "build": "npm run build --workspaces --if-present",

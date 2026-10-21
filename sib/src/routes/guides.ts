@@ -17,7 +17,10 @@
 
 import express, { Router } from 'express';
 import type { Request, Response } from 'express';
-import { enqueueCortonaImport, enqueueVariants, getImportJob, importQueueDepth } from '../import/jobs.js';
+import { enqueueCortonaImport, enqueueDynamicsImport, enqueueVariants, getImportJob, importQueueDepth } from '../import/jobs.js';
+import { reportText as dynamicsReportText, type DynamicsImportReport } from '../import/dynamics/importer.js';
+import { DEFAULT_TAR_LIMITS } from '../import/dynamics/tar.js';
+import { writeStepImageBuffer } from '../guides/store.js';
 import { switchAssembledPose, type AssembledPose } from '../models/assembled-pose.js';
 import { readinessReport } from '../guides/readiness.js';
 import { readDeviceProfiles } from './devices.js';
@@ -56,6 +59,7 @@ import {
   getInstructionsSourceAdapter,
   getActiveInstructionsSourceAdapter,
 } from '../adapters/instructions-source-adapter.js';
+import '../adapters/dynamics-guides-adapter.js';   // registers sourceType 'dynamics' (text path)
 import {
   guideStore,
   guideStepStore,
@@ -73,8 +77,13 @@ import { applyImportedGuide } from '../guides/ingest.js';
 const IMPORT_LOG_DIR = path.join(DATA_DIR, 'import-logs');
 export interface ImportLogRecord {
   guideId: string; guideName: string; importedAt: string; importedBy: string; anchorId: string;
-  source: 'cortona'; sourceFilename?: string; options: Record<string, unknown>;
-  modelId: string; steps: number; glbBytes: number; triangles?: number;
+  source: 'cortona' | 'dynamics'; sourceFilename?: string; options: Record<string, unknown>;
+  /** Absent for a text-only Dynamics guide (nothing placed, no assembly). */
+  modelId?: string; steps: number; glbBytes: number; triangles?: number;
+  /** Dynamics: source guide GUID and per-asset version / ETag, for re-import checks. */
+  provenance?: unknown;
+  /** Dynamics: the report rendered as text (what `npm run guide:inspect` prints). */
+  logText?: string;
   variants?: { budget: number; triangles: number; bytes: number }[];
   log: unknown;
 }
@@ -132,23 +141,30 @@ function withEffectiveModels(step: GuideStep): GuideStep {
 export { guideStore, guideStepStore };
 
 // ── Import de-duplication (backlog #2) ──────────────────────────────────────
-// A Cortona import that finds a guide with the same name stops after the
-// parse (the heavy part) and keeps what it parsed here until the caller
-// says update / new / discard. Held for an hour, like the job itself.
+// A file import (Cortona3D, Dynamics 365 Guides) that finds a guide with the
+// same name stops after the parse (the heavy part) and keeps what it parsed
+// here until the caller says update / new / discard. Held for an hour, like
+// the job itself.
 type ImportMode = 'ask' | 'update' | 'new';
 type CortonaLog = { procedure: { commands?: Record<string, number> }; warnings: string[]; units?: { factor: number; chosen: string; publishedExtentM: number } };
-interface PendingCortona {
-  imported: ImportedGuide; model: Model3D; log: CortonaLog; glbBytes: number; ladder: LadderResult;
+interface PendingImport {
+  source: 'cortona' | 'dynamics';
+  imported: ImportedGuide;
+  /** The registered assembly; absent for a Dynamics guide that places nothing. */
+  model?: Model3D; log: unknown; glbBytes: number; ladder: LadderResult;
+  /** Dynamics: step images by sequence number, written once the step ids exist. */
+  stepImages?: { seq: number; bytes: Buffer }[];
+  provenance?: unknown;
   anchorId: string; createdBy: string; opts: Record<string, unknown>; sourceFilename?: string; heldAt: number;
 }
-const pendingCortona = new Map<string, PendingCortona>();
+const pendingImports = new Map<string, PendingImport>();
 setInterval(() => {
   const cutoff = Date.now() - 60 * 60 * 1000;
-  for (const [id, h] of pendingCortona) if (h.heldAt < cutoff) { pendingCortona.delete(id); deleteModel3D(h.model.id); }
+  for (const [id, h] of pendingImports) if (h.heldAt < cutoff) { pendingImports.delete(id); if (h.model) deleteModel3D(h.model.id); }
 }, 10 * 60 * 1000).unref();
 
-/** Persist a parsed Cortona import as a new guide, or into `guideId` (update). */
-async function applyCortona(h: PendingCortona, guideId?: string) {
+/** Persist a parsed file import as a new guide, or into `guideId` (update). */
+async function applyPendingImport(h: PendingImport, guideId?: string) {
   const { imported, model, log } = h;
   const prevModelId = guideId ? guideStore.findById(guideId)?.assembly?.modelId : undefined;
   const applied = await applyImportedGuide(imported, {
@@ -156,20 +172,38 @@ async function applyCortona(h: PendingCortona, guideId?: string) {
     ...(guideId ? { guideId, existingStepIdBySeq: existingStepIdsBySeq(guideId, imported.steps.map(s => s.sequenceNumber)) } : {}),
   });
   // An update replaces the assembly; the previous one goes unless something else still uses it.
-  if (prevModelId && prevModelId !== model.id && !modelInUse(prevModelId)) deleteModel3D(prevModelId);
-  const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: h.glbBytes,
+  if (prevModelId && prevModelId !== model?.id && !modelInUse(prevModelId)) deleteModel3D(prevModelId);
+  // Step images that arrived inside the package (Dynamics): written beside the
+  // step now that it has an id, the same store every imported image uses.
+  let imagesWritten = 0;
+  for (const im of h.stepImages ?? []) {
+    const step = applied.steps.find(s => s.sequenceNumber === im.seq); if (!step) continue;
+    try {
+      if (step.mediaPath) deleteStepImage(step.mediaPath);
+      const mediaPath = writeStepImageBuffer(applied.guide.id, step.id, im.bytes);
+      const saved = guideStepStore.update(step.id, { mediaPath }); if (saved) { step.mediaPath = mediaPath; imagesWritten++; }
+    } catch (err) { console.warn(`[SIB] step image not saved for step ${step.id}: ${(err as Error).message}`); }
+  }
+  const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model?.id, glbBytes: h.glbBytes, stepImages: imagesWritten,
                     variants: h.ladder.variants.map(v => ({ budget: v.budget, triangles: v.triangles, bytes: v.bytes })), triangles: h.ladder.triangles,
                     ...(guideId ? { updated: true, stepsUpdated: applied.updated, stepsCreated: applied.created, stepsRemoved: applied.removed } : {}) };
-  console.log(`[SIB] Guide ${guideId ? 'updated' : 'imported'} (cortona): ${applied.guide.id} - ${applied.steps.length} steps, model ${model.id}, ` +
-    `${log.procedure.commands ? Object.values(log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
-    (log.warnings.length ? `, ${log.warnings.length} warning(s)` : ''));
+  const warnings = (log as { warnings?: string[] }).warnings?.length ?? 0;
+  const detail = h.source === 'cortona'
+    ? `${(log as CortonaLog).procedure.commands ? Object.values((log as CortonaLog).procedure.commands!).reduce((a, b) => a + b, 0) : 0} commands`
+    : `${(log as DynamicsImportReport).objects.placements} placements, ${imagesWritten} image(s)`;
+  console.log(`[SIB] Guide ${guideId ? 'updated' : 'imported'} (${h.source}): ${applied.guide.id} - ${applied.steps.length} steps, ${model ? `model ${model.id}` : 'no model'}, ${detail}` +
+    (warnings ? `, ${warnings} warning(s)` : ''));
+  // Dynamics: the report as the CLI prints it, so the portal and the saved
+  // log show the same text without a second renderer.
+  const logText = h.source === 'dynamics' ? dynamicsReportText(log as DynamicsImportReport, h.sourceFilename ?? 'guide') : undefined;
   saveImportLog({
     guideId: applied.guide.id, guideName: applied.guide.name, importedAt: new Date().toISOString(), importedBy: h.createdBy, anchorId: h.anchorId,
-    source: 'cortona', sourceFilename: h.sourceFilename, options: { ...h.opts, ...(guideId ? { updatedExisting: true } : {}) },
-    modelId: model.id, steps: applied.steps.length, glbBytes: h.glbBytes, triangles: h.ladder.triangles, variants: summary.variants, log,
+    source: h.source, sourceFilename: h.sourceFilename, options: { ...h.opts, ...(guideId ? { updatedExisting: true } : {}) },
+    modelId: model?.id, steps: applied.steps.length, glbBytes: h.glbBytes, triangles: h.ladder.triangles, variants: summary.variants, log,
+    ...(logText ? { logText } : {}), ...(h.provenance ? { provenance: h.provenance } : {}),
   });
-  const data: { guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; summary: typeof summary } =
-    { guide: applied.guide, steps: applied.steps, model, log, summary };
+  const data: { guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; logText?: string; source: PendingImport['source']; summary: typeof summary } =
+    { guide: applied.guide, steps: applied.steps, model: model ?? null, log, ...(logText ? { logText } : {}), source: h.source, summary };
   return data;
 }
 function modelInUse(modelId: string): boolean {
@@ -331,21 +365,105 @@ router.post(
         ...(r.bounds ? { bounds: r.bounds as { min: [number, number, number]; max: [number, number, number] } } : {}),
         ...(r.assembledPose ? { assembledPose: r.assembledPose } : {}),
       };
-      const held: PendingCortona = { imported, model, log, glbBytes: r.glb.length, ladder: r.ladder, anchorId, createdBy, opts, sourceFilename, heldAt: Date.now() };
+      const held: PendingImport = { source: 'cortona', imported, model, log, glbBytes: r.glb.length, ladder: r.ladder, anchorId, createdBy, opts, sourceFilename, heldAt: Date.now() };
       const existing = mode === 'new' ? null : findExistingGuide(imported.name, anchorId);
       if (existing && mode === 'ask') {
         // Parsed and the model written; the guide waits for the caller's
         // choice (POST /guides/import/jobs/:id/apply or /discard).
-        pendingCortona.set(job.id, held);
+        pendingImports.set(job.id, held);
         console.log(`[SIB] Cortona import ${job.id} waiting: "${imported.name}" already exists as guide ${existing.guideId} (${existing.matches} match(es))`);
         return { exists: existing, summary: { pendingApply: true, modelId: model.id, steps: imported.steps.length } };
       }
-      return applyCortona(held, existing && mode === 'update' ? existing.guideId : undefined);
+      return applyPendingImport(held, existing && mode === 'update' ? existing.guideId : undefined);
     }, memoryLimitBytes());
     console.log(`[SIB] Cortona import queued: job ${job.id}, ${(body.length / 1048576).toFixed(1)} MB, queue depth ${importQueueDepth()}`);
     res.status(202).json({ data: { jobId: job.id, status: job.status, position: job.position ?? 0 }, timestamp: new Date().toISOString() });
   },
 );
+
+// POST /guides/import/dynamics - import a Microsoft Dynamics 365 Guides
+// `.guide` package (the file "Export guide" writes: a flat POSIX tar of
+// Guide_Manifest, Guide_Body, Metadata_<guid> and the Model/Image/Video
+// bodies). Query: anchorId, createdBy, name?, mode?, flipZ? ("0" keeps
+// Unity's left-handed frame - for diagnosis only), invisible? (hidden | drop).
+//
+// Every placed 3D object becomes a node `pl:<placementGuid>` of ONE merged
+// GLB in the Guides anchor frame, registered as the guide's assembly (the
+// author places it once at the SIB QR); steps carry show / hide / ghost /
+// colour deltas and the attention director's position. Step images come out
+// of the package into the step-image store. Guides concepts SIB cannot hold
+// (triggers, interactables, anchor objects, animation takes, videos) are
+// listed in the import report, which is content-free: counts and GUIDs only.
+// Same job queue, polling and apply / discard as the Cortona route.
+router.post(
+  '/import/dynamics',
+  (req: Request, res: Response, next) => { express.raw({ type: '*/*', limit: '600mb' })(req, res, next); },
+  async (req: Request, res: Response): Promise<void> => {
+    const q = req.query as Record<string, string | undefined>;
+    const anchorId = (q.anchorId ?? '').trim(); const createdBy = (q.createdBy ?? '').trim();
+    if (!anchorId || !createdBy) { res.status(400).json({ error: 'anchorId and createdBy query parameters are required', timestamp: new Date().toISOString() }); return; }
+    const body = req.body as Buffer;
+    if (!Buffer.isBuffer(body) || body.length === 0) { res.status(400).json({ error: 'Request body must be the .guide package', timestamp: new Date().toISOString() }); return; }
+    if (body.length > DEFAULT_TAR_LIMITS.maxTotalBytes) { res.status(413).json({ error: `The package is larger than the ${Math.round(DEFAULT_TAR_LIMITS.maxTotalBytes / 1048576)} MB limit`, timestamp: new Date().toISOString() }); return; }
+    const mem = checkWorkerMemory(importNeedBytes(body.length), 'This package');
+    if (!mem.ok) {
+      console.warn(`[SIB] Dynamics import refused: ~${mem.needMB} MB needed, ${mem.haveMB} MB available to a worker`);
+      res.status(413).json({ error: mem.message, timestamp: new Date().toISOString() });
+      return;
+    }
+    const opts = {
+      name: q.name?.trim() || undefined,
+      frame: { flipZ: !(q.flipZ === '0' || q.flipZ === 'false') },
+      invisible: (q.invisible === 'drop' ? 'drop' : 'hidden') as 'hidden' | 'drop',
+    };
+    const mode: ImportMode = q.mode === 'update' || q.mode === 'new' ? q.mode : 'ask';
+    const sourceFilename = (req.headers['x-filename'] as string | undefined) || undefined;
+    const originalFilename = (sourceFilename?.replace(/\.[^.]+$/, '') || 'guide') + '.glb';
+    const ab = new Uint8Array(body).slice().buffer as ArrayBuffer;
+    const modelId = uuidv4();
+    const job = enqueueDynamicsImport(ab, opts, modelId, MODELS_DIR, async (r) => {
+      const imported = r.imported as ImportedGuide;
+      const report = r.report as DynamicsImportReport;
+      let model: Model3D | undefined;
+      if (r.glb) {
+        model = registerGeneratedGlb({
+          id: modelId, ladder: r.ladder,
+          name: `${imported.name} - assembly`, glb: r.glb, anchorId, uploadedBy: createdBy, category: 'dynamics', originalFilename,
+        });
+        for (const s of imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
+        imported.assembly = {
+          modelId: model.id, source: DYNAMICS_ASSEMBLY_SOURCE,
+          ...(r.initialNodes.length ? { initialNodes: r.initialNodes as GuideStepNode[] } : {}),
+          ...(r.bounds ? { bounds: r.bounds as { min: [number, number, number]; max: [number, number, number] } } : {}),
+        };
+      } else {
+        // Nothing placed: a text-and-pictures guide. No assembly, so the
+        // per-step node deltas (there are none) and cadPositions are dropped.
+        for (const s of imported.steps) { delete s.nodes; delete s.cadPosition; }
+      }
+      const held: PendingImport = {
+        source: 'dynamics', imported, model, log: report, glbBytes: r.glb?.length ?? 0, ladder: r.ladder,
+        stepImages: r.stepImages.map(s => ({ seq: s.seq, bytes: s.bytes })), provenance: r.provenance,
+        anchorId, createdBy, opts: { ...opts, frame: opts.frame.flipZ ? 'unity→rh (z flipped)' : 'as exported' }, sourceFilename, heldAt: Date.now(),
+      };
+      const existing = mode === 'new' ? null : findExistingGuide(imported.name, anchorId);
+      if (existing && mode === 'ask') {
+        pendingImports.set(job.id, held);
+        console.log(`[SIB] Dynamics import ${job.id} waiting: guide ${report.manifest.guideId?.slice(0, 8) ?? '?'} already exists as guide ${existing.guideId} (${existing.matches} match(es))`);
+        return { exists: existing, summary: { pendingApply: true, modelId: model?.id, steps: imported.steps.length } };
+      }
+      return applyPendingImport(held, existing && mode === 'update' ? existing.guideId : undefined);
+    }, memoryLimitBytes());
+    console.log(`[SIB] Dynamics import queued: job ${job.id}, ${(body.length / 1048576).toFixed(1)} MB, queue depth ${importQueueDepth()}`);
+    res.status(202).json({ data: { jobId: job.id, status: job.status, position: job.position ?? 0 }, timestamp: new Date().toISOString() });
+  },
+);
+
+// Where a Dynamics assembly says it came from. GuideAssembly.source is a
+// shared type ('cortona' | 'cad'); adding 'dynamics' is a one-word change to
+// shared/src/index.ts that needs Karthik's go (AROMS-366). Until then the
+// assembly is a placed CAD model, which is exactly how the app treats it.
+const DYNAMICS_ASSEMBLY_SOURCE: NonNullable<ImportedGuide['assembly']>['source'] = 'cad';
 
 // GET /guides/import/jobs/:id - poll an import. `status` is queued |
 // processing | done | failed; `result` (done) has guide, steps, model, log,
@@ -359,25 +477,25 @@ router.get('/import/jobs/:id', (req: Request, res: Response): void => {
 });
 
 // POST /guides/import/jobs/:id/apply { mode: 'update' | 'new' } - finish a
-// Cortona import that stopped on an existing guide: update that guide
+// file import that stopped on an existing guide: update that guide
 // (steps refreshed by position; id, anchor, configuration, sharing, sessions,
 // map, placement and validation training kept) or create a new one.
 router.post('/import/jobs/:id/apply', async (req: Request, res: Response): Promise<void> => {
-  const held = pendingCortona.get(req.params.id);
+  const held = pendingImports.get(req.params.id);
   if (!held) { res.status(404).json({ error: 'Nothing is waiting for this import (choices are kept for an hour)', timestamp: new Date().toISOString() }); return; }
   const mode = (req.body as { mode?: string } | undefined)?.mode;
   if (mode !== 'update' && mode !== 'new') { res.status(400).json({ error: 'mode must be "update" or "new"', timestamp: new Date().toISOString() }); return; }
   const existing = mode === 'update' ? findExistingGuide(held.imported.name, held.anchorId) : null;
   if (mode === 'update' && !existing) { res.status(409).json({ error: 'The guide to update is no longer in the library - choose "new"', code: 'gone', timestamp: new Date().toISOString() }); return; }
-  pendingCortona.delete(req.params.id);
-  const data = await applyCortona(held, existing?.guideId);
+  pendingImports.delete(req.params.id);
+  const data = await applyPendingImport(held, existing?.guideId);
   res.status(201).json({ data, timestamp: new Date().toISOString() });
 });
 // POST /guides/import/jobs/:id/discard - the caller cancelled; drop the
 // parsed guide and the assembly model it registered.
 router.post('/import/jobs/:id/discard', (req: Request, res: Response): void => {
-  const held = pendingCortona.get(req.params.id);
-  if (held) { pendingCortona.delete(req.params.id); deleteModel3D(held.model.id); }
+  const held = pendingImports.get(req.params.id);
+  if (held) { pendingImports.delete(req.params.id); if (held.model) deleteModel3D(held.model.id); }
   res.status(204).send();
 });
 

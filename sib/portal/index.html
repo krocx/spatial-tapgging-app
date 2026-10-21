@@ -1251,8 +1251,8 @@
     <input id="import-author-name" type="text" placeholder="Your name" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;margin-bottom:14px">
 
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-      <button class="btn btn-sm" onclick="document.getElementById('import-guide-file').click()" style="font-weight:600"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Choose file (.xlsx / .json / .htm)</button>
-      <input type="file" id="import-guide-file" accept=".xlsx,.xls,.json,.htm,.html,.zip" style="display:none" onchange="importGuideFileChosen(event)">
+      <button class="btn btn-sm" onclick="document.getElementById('import-guide-file').click()" style="font-weight:600"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Choose file (.xlsx / .json / .htm / .guide)</button>
+      <input type="file" id="import-guide-file" accept=".xlsx,.xls,.json,.htm,.html,.zip,.guide" style="display:none" onchange="importGuideFileChosen(event)">
       <span id="import-file-name" style="font-size:0.78rem;color:var(--muted)"></span>
       <button class="btn btn-ghost btn-sm" onclick="downloadGuideXlsxTemplate()" style="margin-left:auto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel template</button>
     </div>
@@ -4444,7 +4444,7 @@ async function renderGuideAnalytics(guideId) {
       </div>
       <div class="ax-card" style="margin-top:16px"><div class="ax-eyebrow" style="margin-bottom:6px">Evidence · what the scorecard can point at</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${guide.assembly?.source === 'cortona' ? `<button class="ax-btn ax-btn--sm" onclick="showSavedImportLog('${guideId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>` : ''}
+          ${(guide.assembly?.source === 'cortona' || guide.assembly?.source === 'dynamics') ? `<button class="ax-btn ax-btn--sm" onclick="showSavedImportLog('${guideId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>` : ''}
           <button class="ax-btn ax-btn--sm" onclick="showReadiness('${guideId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Readiness report</button>
           <button class="ax-btn ax-btn--sm" onclick="showXrQr('${guideId}','${esc((guide.name || '').replace(/'/g, ''))}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Open on a headset</button>
           <button class="ax-btn ax-btn--sm" onclick="location.hash='#analytics/runs'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Signed-off runs</button>
@@ -5456,7 +5456,7 @@ function openImportGuideModal(preselectAnchorId) {
   document.getElementById('import-guide-error').style.display = 'none';
   // Reset parse state from any previous open
   importParsedPayload = null;
-  importCortonaFile = null;
+  importCortonaFile = null; importFileKind = null;
   document.getElementById('import-cortona-strict-row').style.display = 'none';
   document.getElementById('import-cortona-rest-row').style.display = 'none';
   document.getElementById('import-preview').style.display = 'none';
@@ -5611,12 +5611,25 @@ async function importGuideFileChosen(event) {
   document.getElementById('import-file-name').textContent = file.name;
   const errEl = document.getElementById('import-guide-error');
   errEl.style.display = 'none';
-  importCortonaFile = null;
+  importCortonaFile = null; importFileKind = null;
   document.getElementById('import-cortona-strict-row').style.display = 'none';
   document.getElementById('import-cortona-rest-row').style.display = 'none';
+  if (/\.guide$/i.test(file.name)) {
+    // Microsoft Dynamics 365 Guides export - read on the server (flat tar of
+    // the guide record, its steps and the model / image bodies).
+    importCortonaFile = file; importFileKind = 'dynamics';
+    importParsedPayload = null;
+    const box = document.getElementById('import-preview');
+    box.style.display = 'block';
+    box.innerHTML = `<b>${esc(file.name)}</b> <span style="color:var(--muted)">· Dynamics 365 Guides package · ${(file.size / 1048576).toFixed(1)} MB</span><br>` +
+      `<span style="color:var(--muted)">Read on the server: tasks → sections, steps and question branches → steps, every placed 3D object → one assembly model with per-step show / hide / ghost, step images kept. You place the assembly once at the anchor afterwards. Triggers, interactables and videos are listed in the import log, not imported.</span>` +
+      `<div style="margin-top:6px;color:var(--ax-green)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Ready to import</div>`;
+    const btn = document.getElementById('import-guide-submit'); btn.disabled = false; btn.style.opacity = '1';
+    return;
+  }
   if (/\.(htm|html|zip)$/i.test(file.name)) {
     // Cortona3D RapidManual publication - parsed on the server (VRML97 + PROTOs).
-    importCortonaFile = file;
+    importCortonaFile = file; importFileKind = 'cortona';
     importParsedPayload = null;
     const box = document.getElementById('import-preview');
     box.style.display = 'block';
@@ -5695,7 +5708,8 @@ function applyPendingModelPin() {
   setTimeout(() => document.addEventListener('pointerdown', clear, true), 400);
 }
 
-let importCortonaFile = null;
+let importCortonaFile = null;          // the file chosen for a server-side import (Cortona3D or Dynamics 365 Guides)
+let importFileKind = null;             // 'cortona' | 'dynamics'
 
 /** What each "Assembled pose" choice does to the imported model, in plain words. */
 function cortonaRestHint() {
@@ -5713,10 +5727,11 @@ async function submitImportCortona(anchorId, createdBy) {
   const strict = document.getElementById('import-cortona-strict').checked ? '1' : '0';
   const restPose = document.getElementById('import-cortona-rest').value || 'auto';
   const units = document.getElementById('import-cortona-units').value || 'auto';
+  const dynamics = importFileKind === 'dynamics';
   btn.disabled = true; btn.textContent = 'Importing…';
   try {
-    const q = new URLSearchParams({ anchorId, createdBy, strict, restPose, units });
-    const res = await fetch(`/guides/import/cortona?${q}`, {
+    const q = dynamics ? new URLSearchParams({ anchorId, createdBy }) : new URLSearchParams({ anchorId, createdBy, strict, restPose, units });
+    const res = await fetch(dynamics ? `/guides/import/dynamics?${q}` : `/guides/import/cortona?${q}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': importCortonaFile.name, 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() },
       body: importCortonaFile,
@@ -5754,18 +5769,25 @@ async function submitImportCortona(anchorId, createdBy) {
     if (!data || !data.guide) {
       // The server hands the full result to the first poll only; if this tab
       // missed it, the guide exists all the same - point at it.
-      closeImportGuideModal(); importCortonaFile = null;
+      closeImportGuideModal(); importCortonaFile = null; importFileKind = null;
       toast(data?.summary?.guideId ? `Imported - guide ${data.summary.guideId.slice(0, 8)}… is in the library (open its menu for the import log).` : 'Import finished - refresh the Guide Library.', 6000);
       if (typeof loadGuideLibrary === 'function') loadGuideLibrary();
       return;
     }
-    const { guide, steps, model, log, summary } = data;
-    lastCortonaImportLog = { guideName: guide.name, ...summary, log };
+    const { guide, steps, model, log, logText, source, summary } = data;
+    lastCortonaImportLog = { guideName: guide.name, ...summary, log, logText, source: source || 'cortona' };
     closeImportGuideModal();
-    importCortonaFile = null;
-    const cmds = Object.values(log.procedure.commands || {}).reduce((a, b) => a + b, 0);
-    toast(`${summary?.updated ? 'Updated' : 'Imported'} "${guide.name}" - ${steps.length} steps${summary?.updated ? ` (${summary.stepsUpdated} refreshed, ${summary.stepsCreated} added, ${summary.stepsRemoved} removed; placement and training kept)` : ''}, ${cmds} presentation commands, ${log.scene.meshes} meshes. ` +
-          (log.warnings.length ? `${log.warnings.length} warning(s) - see log.` : 'No warnings.'), 5000);
+    importCortonaFile = null; importFileKind = null;
+    const updatedNote = summary?.updated ? ` (${summary.stepsUpdated} refreshed, ${summary.stepsCreated} added, ${summary.stepsRemoved} removed; placement and training kept)` : '';
+    if (source === 'dynamics') {
+      const placed = log.objects?.placements ?? 0;
+      toast(`${summary?.updated ? 'Updated' : 'Imported'} "${guide.name}" - ${steps.length} steps${updatedNote}, ${placed} placed object(s)${model ? ' in one assembly' : ''}, ${summary.stepImages ?? 0} image(s). ` +
+            (log.warnings.length ? `${log.warnings.length} note(s) - see log.` : 'No notes.') + (model ? ' Next: Place Assembly on the anchor.' : ''), 6000);
+    } else {
+      const cmds = Object.values(log.procedure.commands || {}).reduce((a, b) => a + b, 0);
+      toast(`${summary?.updated ? 'Updated' : 'Imported'} "${guide.name}" - ${steps.length} steps${updatedNote}, ${cmds} presentation commands, ${log.scene.meshes} meshes. ` +
+            (log.warnings.length ? `${log.warnings.length} warning(s) - see log.` : 'No warnings.'), 5000);
+    }
     showCortonaImportLog();
     location.hash = '#content/guides';
     await loadGuideLibrary();
@@ -5786,7 +5808,14 @@ function showCortonaImportLog(rec) {
   const R = rec || lastCortonaImportLog;
   if (!R) return;
   const L = R.log;
-  const lines = [
+  const dynamics = R.source === 'dynamics' || !!R.logText;
+  const lines = dynamics ? [
+    `Dynamics 365 Guides import log - ${R.importedAt || new Date().toISOString()}${R.guideName ? ` · ${R.guideName}` : ''}${R.importedBy ? ` · by ${R.importedBy}` : ''}`,
+    `guide ${R.guideId} · ${R.steps} steps · ${R.modelId ? `model ${R.modelId} (${(R.glbBytes/1048576).toFixed(2)} MB GLB)` : 'no assembly (nothing placed)'}${R.sourceFilename ? ` · file ${R.sourceFilename}` : ''}${R.options ? ` · options ${JSON.stringify(R.options)}` : ''}`,
+    `source guide ${R.provenance?.guideId || L.manifest?.guideId || '?'} · solution ${L.manifest?.solutionVersion || '?'} · ${(R.provenance?.assets || []).length} asset version(s) recorded`,
+    '',
+    R.logText || JSON.stringify(L, null, 1),
+  ] : [
     `Cortona3D import log - ${R.importedAt || new Date().toISOString()}${R.guideName ? ` · ${R.guideName}` : ''}${R.importedBy ? ` · by ${R.importedBy}` : ''}`,
     `guide ${R.guideId} · ${R.steps} steps · model ${R.modelId} (${(R.glbBytes/1048576).toFixed(2)} MB GLB)${R.sourceFilename ? ` · file ${R.sourceFilename}` : ''}${R.options ? ` · options ${JSON.stringify(R.options)}` : ''}`,
     `source: ${L.source.kind} ${(L.source.bytes/1048576).toFixed(1)} MB · bundle entries ${L.bundle.entries} (${L.bundle.inventory.map(e => e.kind).join(', ')}) · interactivity ${L.bundle.hasInteractivity} · rwi ${L.bundle.hasRwi} · svg ${L.bundle.svgs}`,
@@ -5811,8 +5840,8 @@ function showCortonaImportLog(rec) {
     m.style.cssText = 'display:none;position:fixed;inset:0;background:var(--ax-scrim);z-index:9100;align-items:center;justify-content:center;';
     m.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 26px;width:min(760px,94vw);max-height:88vh;overflow:auto;position:relative">
       <button onclick="document.getElementById('cortona-log-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
-      <h3 style="margin:0 0 6px;font-size:1rem;font-weight:700">Cortona3D import log</h3>
-      <p style="margin:0 0 10px;font-size:0.78rem;color:var(--muted)">Content-free: counts, structure and warnings only - no step text or part numbers. Safe to share with the AppliedX team.</p>
+      <h3 id="cortona-log-title" style="margin:0 0 6px;font-size:1rem;font-weight:700">Import log</h3>
+      <p style="margin:0 0 10px;font-size:0.78rem;color:var(--muted)">Content-free: counts, structure and warnings only - no step text, part numbers or asset names. Safe to share with the AppliedX team.</p>
       <pre id="cortona-log-pre" style="white-space:pre-wrap;font-size:0.78rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:56vh;overflow:auto"></pre>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
         <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('cortona-log-pre').textContent).then(()=>toast('Log copied'))">Copy</button>
@@ -5821,6 +5850,7 @@ function showCortonaImportLog(rec) {
     document.body.appendChild(m);
   }
   document.getElementById('cortona-log-pre').textContent = text;
+  document.getElementById('cortona-log-title').textContent = dynamics ? 'Dynamics 365 Guides import log' : 'Cortona3D import log';
   m.style.display = 'flex';
 }
 /** Which steps each wearable can deliver, and how (docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md). */
@@ -6006,7 +6036,8 @@ function downloadCortonaImportLog() {
   const text = document.getElementById('cortona-log-pre')?.textContent || '';
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
   const first = text.split('\n')[1] || ''; const gid = (first.match(/^guide (\S+)/) || [])[1] || Date.now();
-  a.download = `cortona-import-log-${gid}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  const kind = /^Dynamics/.test(text) ? 'dynamics' : 'cortona';
+  a.download = `${kind}-import-log-${gid}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 async function submitImportGuide() {
@@ -6823,7 +6854,7 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
     <hr>
     <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Guides QR Anchor</a>
     ${modelLinks}
-    ${guide?.assembly?.source === 'cortona' ? `<button onclick="showSavedImportLog('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>
+    ${(guide?.assembly?.source === 'cortona' || guide?.assembly?.source === 'dynamics') ? `<button onclick="showSavedImportLog('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>
     <button onclick="openAssembledPose('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Assembled pose: ${guide?.assembly?.assembledPose === 'final' ? 'after the last step' : 'as published'}…</button>
     <button onclick="checkGuideParts('${guideId}');closeRowMenu()" title="Find every step part in the current model; a part the model renamed since the guide was written is re-pointed by objectID, part number or name"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Check parts against the model…</button>` : ''}
     <hr>

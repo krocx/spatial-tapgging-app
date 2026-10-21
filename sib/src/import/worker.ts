@@ -1,8 +1,10 @@
 // worker.ts - the heavy jobs, off the request thread.
 //
-// Started per job by import/jobs.ts. Two kinds:
+// Started per job by import/jobs.ts. Three kinds:
 //   cortona  - parse a published RapidManual, write the GLB, then build the
 //              variant ladder for it (MODEL-VARIANTS.md) in the same worker.
+//   dynamics - read a Dynamics 365 Guides .guide package, merge its models
+//              into one GLB (null for a text-only guide), build the ladder.
 //   variants - (re)build the ladder for a model already on disk.
 // The buffer arrives transferred (zero copy); the GLB goes back the same
 // way. If this worker dies for memory the main process stays up and the
@@ -12,11 +14,13 @@ import { parentPort, workerData } from 'node:worker_threads';
 import fs from 'node:fs';
 import path from 'node:path';
 import { importCortonaBundle, type CortonaImportOptions } from './cortona/importer.js';
+import { importGuidePackage, type DynamicsImportOptions } from './dynamics/importer.js';
 import { buildLadder, type LadderResult } from '../models/variants.js';
 import { clusteringReducer } from '../models/reduce-clustering.js';
 
 type Input =
   | { kind: 'cortona'; buffer: ArrayBuffer; opts: CortonaImportOptions; modelId: string; modelsDir: string }
+  | { kind: 'dynamics'; buffer: ArrayBuffer; opts: DynamicsImportOptions; modelId: string; modelsDir: string }
   | { kind: 'variants'; modelId: string; modelsDir: string };
 
 const input = workerData as Input;
@@ -44,6 +48,23 @@ try {
       ladder,
       glb,
     }, [glb]);
+  } else if (input.kind === 'dynamics') {
+    const result = importGuidePackage(Buffer.from(input.buffer), input.opts);
+    const empty: LadderResult = { variants: [], triangles: 0, skipped: [] };
+    const ladder = result.glb ? ladderFor(result.glb, input.modelId, input.modelsDir) : empty;
+    const glb = result.glb ? (new Uint8Array(result.glb).slice().buffer as ArrayBuffer) : null;
+    const stepImages = [...result.stepImages].map(([seq, m]) => ({ seq, sniffed: m.sniffed, bytes: new Uint8Array(m.bytes).slice().buffer as ArrayBuffer }));
+    parentPort!.postMessage({
+      ok: true,
+      imported: result.imported,
+      report: result.report,
+      initialNodes: result.initialNodes,
+      bounds: result.bounds,
+      provenance: result.provenance,
+      stepImages,
+      ladder,
+      glb,
+    }, [...(glb ? [glb] : []), ...stepImages.map(s => s.bytes)]);
   } else {
     const glb = fs.readFileSync(path.join(input.modelsDir, `${input.modelId}.glb`));
     const ladder = ladderFor(glb, input.modelId, input.modelsDir);
