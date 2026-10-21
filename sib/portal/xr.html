@@ -188,7 +188,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DEFAULT_SPEED, GHOST_OPACITY, stateBefore, stateAfter, scheduleStep, scheduleLength, stepParts, originForSurface, attentionFor } from '/portal/xr-engine.js';
-import { restoreNames, prepareMeshes, buildParts } from '/portal/assembly-model.js';
+import { restoreNames, prepareMeshes, buildParts, isPartName } from '/portal/assembly-model.js';
 import { XRPanel } from '/portal/xr-panel.js';
 import { XRHands } from '/portal/xr-hands.js';
 
@@ -412,7 +412,7 @@ async function loadBundle() {
     camera.near = Math.max(0.0005, span / 500); camera.far = Math.max(50, span * 60); camera.updateProjectionMatrix(); }
   // Instances that share a DEF share a name; part control is by name, so only
   // the last one answers. Say so in the console rather than silently.
-  { const seen = new Map(); root.traverse(o => { if (typeof o.name === 'string' && o.name.startsWith('cmp:')) seen.set(o.name, (seen.get(o.name) || 0) + 1); });
+  { const seen = new Map(); root.traverse(o => { if (isPartName(o.name)) seen.set(o.name, (seen.get(o.name) || 0) + 1); });
     const dup = [...seen].filter(([, n]) => n > 1); if (dup.length) console.info(`[xr] ${dup.length} part name(s) used by more than one node - every instance follows that name:`, dup.slice(0, 10)); }
   assemblyBounds = guide.assembly?.bounds || { min: modelBox.min.toArray(), max: modelBox.max.toArray() };
   // Size comes from the model (the portal's saved scale), not from an iPad
@@ -583,7 +583,7 @@ function whereWords(st) {
   return w.join(', ');
 }
 // A part's readable name (Model3D.partLabels, carried in the bundle), else the CAD name tidied.
-const labelOf = n => ((bundle?.models || []).find(m => m.role === 'assembly')?.partLabels || {})[n] || n.replace(/^cmp:/, '').replace(/[_-]+/g, ' ');
+const labelOf = n => ((bundle?.models || []).find(m => m.role === 'assembly')?.partLabels || {})[n] || n.replace(/^(cmp|pl):/, '').replace(/[_-]+/g, ' ');
 function stepScript(st, names) {
   const bits = [`Step ${idx + 1} of ${steps.length}. ${st.title || ''}.`, st.ttsText || st.text || ''];
   const where = whereWords(st); if (where) bits.push(`Location: ${where}.`);
@@ -645,7 +645,7 @@ function showStep(k) {
   $('stepTitle').textContent = st.title || `Step ${k + 1}`;
   $('stepText').textContent = st.text || '';
   const names = stepParts(st);
-  $('partChips').innerHTML = names.slice(0, 6).map(n => `<span class="chip" data-node="${n}">${(parts.get(n)?.displayName || n.replace(/^cmp:/, '')).replace(/[<>&]/g, '')}</span>`).join('');
+  $('partChips').innerHTML = names.slice(0, 6).map(n => `<span class="chip" data-node="${n}">${(parts.get(n)?.displayName || n.replace(/^(cmp|pl):/, '')).replace(/[<>&]/g, '')}</span>`).join('');
   const v = validationFor(st);
   $('verdictRow').classList.toggle('hidden', !v);
   $('btnNext').textContent = k === steps.length - 1 ? 'Done ✓' : 'Next ›';
@@ -712,7 +712,7 @@ function observeTick() {
     const hits = ray.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01);
     if (hits.length) {
       hitsAssembly = true;
-      let o = hits[0].object; while (o && !(o.name || '').startsWith('cmp:')) o = o.parent;
+      let o = hits[0].object; while (o && !isPartName(o.name)) o = o.parent;
       if (o && names.includes(o.name)) hitsTarget = true;
     }
   }
@@ -876,7 +876,7 @@ function startHandSim(controls) {
     const m = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(m, camera);
     const hit = ray.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01)[0];
-    if (hit) { point = hit.point.clone(); let o = hit.object; while (o && !(typeof o.name === 'string' && o.name.startsWith('cmp:'))) o = o.parent; underPointer = o ? o.name : null; }
+    if (hit) { point = hit.point.clone(); let o = hit.object; while (o && !isPartName(o.name)) o = o.parent; underPointer = o ? o.name : null; }
     else { underPointer = null; const c = new THREE.Box3().setFromObject(assembly).getCenter(new THREE.Vector3()); plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), c); const p = new THREE.Vector3(); point = ray.ray.intersectPlane(plane, p) ? p : point; }
   });
   canvas.addEventListener('pointerleave', () => { point = null; });
@@ -904,7 +904,7 @@ function startHandSim(controls) {
 function tapAt(rc) {
   const hits = rc.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01);
   if (!hits.length) return;
-  let o = hits[0].object; while (o && !(o.name || '').startsWith('cmp:')) o = o.parent;
+  let o = hits[0].object; while (o && !isPartName(o.name)) o = o.parent;
   if (!o) return;
   const names = stepParts(steps[idx] || {});
   const wrong = names.length && !names.includes(o.name);

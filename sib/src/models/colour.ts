@@ -33,11 +33,13 @@ type Mesh = { name?: string; primitives: Prim[] };
 type Material = { name?: string; pbrMetallicRoughness?: { baseColorFactor?: number[]; baseColorTexture?: unknown; metallicFactor?: number; roughnessFactor?: number }; emissiveFactor?: number[] };
 type Gltf = { nodes?: Node[]; meshes?: Mesh[]; materials?: Material[]; textures?: unknown[] };
 
-const isPart = (n: Node): boolean => typeof n.name === 'string' && n.name.startsWith('cmp:') && !isPlaybackNode(n.name);
+// Same rule as sib/portal/assembly-model.js isPartName: Cortona `cmp:<part>`,
+// Dynamics `pl:<placementGuid>` (top level only). Change both together.
+const isPart = (n: Node): boolean => typeof n.name === 'string' && (n.name.startsWith('cmp:') || /^pl:[^/]+$/.test(n.name)) && !isPlaybackNode(n.name);
 
 /** BOLT_M6_01 → bolt_m6 · O_RING.2 → o_ring · HOUSING → housing */
 export function familyOf(partName: string): string {
-  let s = partName.replace(/^cmp:/, '').toLowerCase().replace(/\s*\(\d+\)$/, '');
+  let s = partName.replace(/^(cmp|pl):/, '').toLowerCase().replace(/\s*\(\d+\)$/, '');
   // Instance counters sit behind a separator: _01, .2, -3. A digit glued to a
   // word (m6, housing2) is part of the name.
   for (let i = 0; i < 3; i++) s = s.replace(/[\s_\-.]+\d+$/, '');

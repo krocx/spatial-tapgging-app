@@ -6458,7 +6458,7 @@ function gpAssemblyStateAt(idx) {
 function gpPartsHtml(step) {
   const nodes = Array.isArray(step.nodes) ? step.nodes : [];
   if (!nodes.length && !step.view) return '';
-  const label = n => esc(n.node.replace(/^cmp:/, '').replace(/_/g, ' '));
+  const label = n => esc(n.node.replace(/^(cmp|pl):/, '').replace(/_/g, ' '));
   const rows = nodes.slice(0, 12).map(n => {
     const bits = [];
     if (n.animate) bits.push({ insert: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> insert', remove: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> remove', move: '↔ move' }[n.animate] || n.animate);
@@ -6889,7 +6889,7 @@ async function checkGuideParts(guideId) {
     if (r.note) { toast(r.note === 'no assembly' ? 'This guide has no assembly model - nothing to check.' : 'The model file is not on this server, so the parts cannot be checked here.', 4000); return; }
     if (!r.renamed.length && !r.unmatched.length) { toast(`All ${r.total} step parts are in the model.`, 3000); return; }
     // Names as people read them: the part, not the exporter's handle; playback frames summarised.
-    const nice = n => n.replace(/^cmp:/, '').replace(/#s\d+f\d+$/, ' (animation frame)').replace(/#rest$/, ' (rest tube)');
+    const nice = n => n.replace(/^(cmp|pl):/, '').replace(/#s\d+f\d+$/, ' (animation frame)').replace(/#rest$/, ' (rest tube)');
     const frames = r.unmatched.filter(n => /#(s\d+f\d+|rest)$/.test(n)).length;
     const lines = [`${r.matched} of ${r.total} step parts found in the model.`];
     if (r.renamed.length) lines.push(`${r.renamed.length} renamed since the guide was written and found again by ${[...new Set(r.renamed.map(x => x.by))].join(' / ')}:\n  ` + r.renamed.slice(0, 8).map(x => `${nice(x.from)} → ${nice(x.to)}`).join('\n  ') + (r.renamed.length > 8 ? '\n  …' : ''));

@@ -2,6 +2,8 @@ Spatial Tagging for AR OMS · 2026.4.50
 
 NEW IN THIS BUILD
 
+Guides imported from Microsoft Dynamics 365 Guides now draw their 3D objects. Some Guides placements carry an empty rotation, which the app turned into an invisible model; the app now treats it as no rotation, the way the portal does. Any assembly model with the same flaw in its file renders too.
+
 Readings, labels and barcodes on a step. A step can now check what the camera reads: a value on an instrument display (multimeter, torque tool, leak checker), words on a label, or a barcode / QR / Data Matrix. The frame with the read is the step's evidence.
 
 • Label checks mean "must say", not "says only" - a real label carries more than the words that matter.

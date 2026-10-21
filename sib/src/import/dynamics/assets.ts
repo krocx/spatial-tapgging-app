@@ -43,10 +43,23 @@ export function convertPosition(p: Vec3, f: FrameConversion = DEFAULT_FRAME): Ve
 export function convertRotation(q: Quat, f: FrameConversion = DEFAULT_FRAME): Quat { return f.flipZ ? [neg(q[0]), neg(q[1]), q[2], q[3]] : [q[0], q[1], q[2], q[3]]; }
 export function convertScale(s: Vec3): Vec3 { return [s[0], s[1], s[2]]; }
 
+/** A unit quaternion, or identity when the source is degenerate. Some guides
+ *  store every placement rotation as (0, 0, 0, 0): three.js happens to treat
+ *  that as identity, but SceneKit's simd_float4x4(simd_quatf) turns it into a
+ *  zero matrix and the model draws as nothing on iOS. `repaired` says whether
+ *  the input was unusable (zero length or non-finite), so the report can count it. */
+export function normalizeQuat(q: Quat): { q: Quat; repaired: boolean } {
+  if (!q.every(Number.isFinite)) return { q: [0, 0, 0, 1], repaired: true };
+  const n = Math.hypot(q[0], q[1], q[2], q[3]);
+  if (n < 1e-6) return { q: [0, 0, 0, 1], repaired: true };
+  if (Math.abs(n - 1) < 1e-6) return { q: [q[0], q[1], q[2], q[3]], repaired: false };
+  return { q: [q[0] / n, q[1] / n, q[2] / n, q[3] / n], repaired: false };
+}
+
 /** Quaternion (x, y, z, w) → axis-angle [x, y, z, radians] (SIB's GuideStepNode rotation form). */
-export function quatToAxisAngle(q: Quat): [number, number, number, number] {
-  const n = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
-  const x = q[0] / n, y = q[1] / n, z = q[2] / n, w = Math.max(-1, Math.min(1, q[3] / n));
+export function quatToAxisAngle(input: Quat): [number, number, number, number] {
+  const q = normalizeQuat(input).q;
+  const x = q[0], y = q[1], z = q[2], w = Math.max(-1, Math.min(1, q[3]));
   const angle = 2 * Math.acos(w);
   const s = Math.sqrt(Math.max(0, 1 - w * w));
   if (s < 1e-6) return [0, 1, 0, 0];

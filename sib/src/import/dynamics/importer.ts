@@ -18,7 +18,7 @@
 import type { ImportedGuide, ImportedGuideStep, GuideStepNode } from '@spatial/shared';
 import { readTar, parseEntryName, decodeEtag, type TarEntry, type TarLimits, DEFAULT_TAR_LIMITS } from './tar.js';
 import { parseJsonEntry, parseManifest, parseGuideBody, parseGuideMeta, parseAssetMeta, orderByPrevious, type GuideRoot, type Step, type Placement, type AssetMeta, type Manifest, type GuideMeta } from './body.js';
-import { sniff, convertPosition, convertRotation, convertScale, quatToAxisAngle, DEFAULT_FRAME, type FrameConversion, type Sniffed } from './assets.js';
+import { sniff, normalizeQuat, convertPosition, convertRotation, convertScale, quatToAxisAngle, DEFAULT_FRAME, type FrameConversion, type Sniffed } from './assets.js';
 import { mergeGlbs, type MergeNodeSpec, type MergeStats } from './glb-merge.js';
 import { STEP_TEMPLATE, RESPONSE_ACTION, ANCHOR_TYPE, ATTENTION_ENDPOINT, ANIMATION_MODE, labelOf, styleToNode, isStockHologram } from './enums.js';
 
@@ -40,7 +40,7 @@ export interface DynamicsImportReport {
   tasks:      number;
   steps:      { total: number; default: number; question: number; completion: number; withImage: number; withVideo: number; withAttention: number; withText: number };
   branching:  { responses: number; goToStep: number; goToNext: number; noAction: number; crossTask: number; unresolved: number; foldedToLinear: number };
-  objects:    { stepObjects: number; placements: number; unplaced: number; withoutPlacement: number; completionObjects: number; completionPlacements: number; stock: number; invisible: number; animated: number; triggers: number };
+  objects:    { stepObjects: number; placements: number; unplaced: number; withoutPlacement: number; completionObjects: number; completionPlacements: number; stock: number; invisible: number; animated: number; triggers: number; rotationRepaired: number };
   styles:     Record<string, number>;
   assets:     { models: number; images: number; videos: number; audio: number; unknownKind: number; referencedMissing: number; unreferenced: number; formatMismatch: number };
   merge?:     MergeStats;
@@ -125,7 +125,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
   // ── Placements → nodes ──────────────────────────────────────────────────
   const objById = new Map(root.stepObjects.map(o => [o.id, o]));
   const placementsByStep = new Map<string, Placement[]>();
-  let unplaced = 0, withoutPlacement = 0, stockCount = 0, invisibleCount = 0, animatedCount = 0, triggerCount = 0, referencedMissing = 0;
+  let unplaced = 0, withoutPlacement = 0, stockCount = 0, invisibleCount = 0, animatedCount = 0, triggerCount = 0, referencedMissing = 0, rotationRepaired = 0;
   const styles: Record<string, number> = {}; let unknownEnumValues = 0, labelsUsed = 0;
   const objHasPlacement = new Set<string>();
   for (const p of root.placements) {
@@ -139,6 +139,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
   const completionPlacements = root.completionPlacements.filter(p => p.isPlaced !== false);
   const nodeSpecs: MergeNodeSpec[] = []; const glbs = new Map<string, Buffer>();
   const nodeByPlacement = new Map<string, string>();
+  const labelByNode = new Map<string, string>();   // the asset's display name - guide content, carried on the step node, never logged
   const nodeFor = (p: Placement, where: string): string | null => {
     const assetId = p.assetId ?? (p.stepObjectId ? objById.get(p.stepObjectId)?.assetId : undefined) ?? undefined;
     if (!assetId) { warnings.push(`placement ${p.id.slice(0, 8)} has no 3D object - skipped`); return null; }
@@ -150,10 +151,13 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
     const invisible = name?.trim().toLowerCase() === 'invisible'; if (invisible) { invisibleCount++; if (opts.invisible === 'drop') return null; }
     glbs.set(assetId, a.bytes);
     const node = `pl:${p.id}`;
+    // A (0,0,0,0) rotation is not a rotation; it is repaired to identity and
+    // counted - never written into the GLB, where iOS would draw nothing.
+    const rot = p.rotation ? normalizeQuat(p.rotation) : undefined; if (rot?.repaired) rotationRepaired++;
     nodeSpecs.push({ name: node, assetKey: assetId,
-      translation: p.position ? convertPosition(p.position, frame) : undefined, rotation: p.rotation ? convertRotation(p.rotation, frame) : undefined, scale: p.scale ? convertScale(p.scale) : undefined,
+      translation: p.position ? convertPosition(p.position, frame) : undefined, rotation: rot ? convertRotation(rot.q, frame) : undefined, scale: p.scale ? convertScale(p.scale) : undefined,
       extras: { sibSource: 'dynamics', placementId: p.id, assetId, where, ...(stock ? { stock: true } : {}), ...(invisible ? { invisible: true } : {}) } });
-    nodeByPlacement.set(p.id, node);
+    nodeByPlacement.set(p.id, node); if (name?.trim()) labelByNode.set(node, name.trim());
     return node;
   };
 
@@ -192,7 +196,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
       const st = styleToNode(p.style, p.styleLabel); const key = labelOf(p.style, p.styleLabel, { Original: 937380000, XRay: 937380007, Green: 937380009 }); styles[key] = (styles[key] ?? 0) + 1;
       if (!st.known) { unknownEnumValues++; if (p.styleLabel) labelsUsed++; }
       const invisible = assets.get(p.assetId ?? objById.get(p.stepObjectId ?? '')?.assetId ?? '')?.meta?.displayName?.trim().toLowerCase() === 'invisible';
-      const d: GuideStepNode = { node, show: invisible ? 'hidden' : (p.ghost ? 'ghost' : st.show), ...(st.show === 'ghost' || p.ghost ? { opacity: 0.45 } : {}), ...(st.color ? { color: st.color } : {}), sourceKey: p.id };
+      const d: GuideStepNode = { node, show: invisible ? 'hidden' : (p.ghost ? 'ghost' : st.show), ...(st.show === 'ghost' || p.ghost ? { opacity: 0.45 } : {}), ...(st.color ? { color: st.color } : {}), sourceKey: p.id, ...(labelByNode.has(node) ? { label: labelByNode.get(node) } : {}) };
       if (p.animated) {
         animatedCount++; d.animate = 'move';
         if (p.animationMode !== undefined && p.animationMode !== ANIMATION_MODE.Loop) { unknownEnumValues++; unmapped.add(`animation mode "${labelOf(p.animationMode, p.animationModeLabel, ANIMATION_MODE)}"`); }
@@ -230,7 +234,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
   // The guide-level completion (text, media, objects) becomes the last step when no Completion-type step exists.
   if (!hasCompletionStep && (root.completion.text || completionPlacements.length || root.completion.imageId)) {
     const seq = steps.length + 1; const nodes: GuideStepNode[] = []; stepNodes.set(seq, nodes); const pts: [number, number, number][] = [];
-    for (const p of completionPlacements) { const node = nodeFor(p, 'completion'); if (!node) continue; allNodeNames.push(node); const st = styleToNode(p.style, p.styleLabel); nodes.push({ node, show: st.show, ...(st.color ? { color: st.color } : {}), sourceKey: p.id }); if (p.position) pts.push(convertPosition(p.position, frame)); }
+    for (const p of completionPlacements) { const node = nodeFor(p, 'completion'); if (!node) continue; allNodeNames.push(node); const st = styleToNode(p.style, p.styleLabel); nodes.push({ node, show: st.show, ...(st.color ? { color: st.color } : {}), sourceKey: p.id, ...(labelByNode.has(node) ? { label: labelByNode.get(node) } : {}) }); if (p.position) pts.push(convertPosition(p.position, frame)); }
     const attPos = useAttention(root.completion.attention, seq);
     const centroid = attPos ?? (pts.length ? pts.reduce((a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], [0, 0, 0]).map(v => v / pts.length) as [number, number, number] : undefined);
     if (root.completion.imageId) { const a = assets.get(root.completion.imageId); if (a?.bytes && a.kind === 'Image' && (a.sniffed === 'png' || a.sniffed === 'jpeg')) { stepImages.set(seq, { guid: a.guid, kind: 'image', sniffed: a.sniffed, bytes: a.bytes, etag: a.etag }); mediaCounts.stepImages++; } }
@@ -292,6 +296,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
   if (root.anchorObjectId) referenced.add(root.anchorObjectId); if (root.anchorImageId) referenced.add(root.anchorImageId);
   const unreferenced = [...assets.keys()].filter(g => !referenced.has(g)).length;
   if (unreferenced) warnings.push(`${unreferenced} asset(s) in the package are not used by any step`);
+  if (rotationRepaired) warnings.push(`${rotationRepaired} placement(s) carry a (0,0,0,0) rotation - imported as no rotation`);
 
   // ── Anchor ──────────────────────────────────────────────────────────────
   const anchorKnown = root.anchorType === ANCHOR_TYPE.Holographic;
@@ -312,7 +317,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
     tasks: tasksO.items.length,
     steps: { total: steps.length, ...counts },
     branching: br,
-    objects: { stepObjects: root.stepObjects.length, placements: root.placements.length, unplaced, withoutPlacement, completionObjects: root.completionObjects.length, completionPlacements: root.completionPlacements.length, stock: stockCount, invisible: invisibleCount, animated: animatedCount, triggers: triggerCount },
+    objects: { stepObjects: root.stepObjects.length, placements: root.placements.length, unplaced, withoutPlacement, completionObjects: root.completionObjects.length, completionPlacements: root.completionPlacements.length, stock: stockCount, invisible: invisibleCount, animated: animatedCount, triggers: triggerCount, rotationRepaired },
     styles,
     assets: { ...assetCounts, unknownKind: unknownEntries, referencedMissing, unreferenced, formatMismatch },
     ...(merge ? { merge } : {}),
@@ -332,7 +337,7 @@ export function reportText(r: DynamicsImportReport, name = 'guide'): string {
   const L: string[] = [];
   L.push(`${name}: ${r.tasks} task(s), ${r.steps.total} step(s) (${r.steps.default} default · ${r.steps.question} question · ${r.steps.completion} completion), schema v${r.manifest.schemaVersion ?? '?'}`);
   L.push(`anchor: ${r.anchor.label}${r.anchor.known ? '' : ' (unverified value)'}${r.anchor.hasObject ? ' · with anchor object' : ''}`);
-  L.push(`objects: ${r.objects.stepObjects} step object(s), ${r.objects.placements} placement(s) (${r.objects.unplaced} not placed, ${r.objects.withoutPlacement} object(s) without placement), ${r.objects.completionPlacements} on completion, ${r.objects.stock} stock hologram(s), ${r.objects.animated} animated, ${r.objects.triggers} trigger(s)`);
+  L.push(`objects: ${r.objects.stepObjects} step object(s), ${r.objects.placements} placement(s) (${r.objects.unplaced} not placed, ${r.objects.withoutPlacement} object(s) without placement), ${r.objects.completionPlacements} on completion, ${r.objects.stock} stock hologram(s), ${r.objects.animated} animated, ${r.objects.triggers} trigger(s)` + (r.objects.rotationRepaired ? `, ${r.objects.rotationRepaired} zero rotation(s) repaired to identity` : ''));
   L.push(`styles: ${Object.entries(r.styles).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'}`);
   L.push(`assets: ${r.assets.models} model(s), ${r.assets.images} image(s), ${r.assets.videos} video(s), ${r.assets.audio} audio; ${r.assets.referencedMissing} referenced but missing, ${r.assets.unreferenced} unreferenced, ${r.assets.formatMismatch} format mismatch(es), ${r.assets.unknownKind} unknown entries`);
   if (r.merge) L.push(`assembly: ${r.merge.instances} instance(s) of ${r.merge.assets} model(s), ${r.merge.triangles} triangles, ${r.merge.animations} animation(s), ${r.merge.specGlossFolded} spec/gloss folded, ${r.merge.defaultMaterials} default material(s)`);

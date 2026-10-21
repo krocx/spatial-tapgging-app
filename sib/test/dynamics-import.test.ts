@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readTar, parseEntryName, decodeEtag, safeEntryName, TarError } from '../src/import/dynamics/tar.js';
 import { orderByPrevious } from '../src/import/dynamics/body.js';
-import { sniff, convertPosition, convertRotation, quatToAxisAngle } from '../src/import/dynamics/assets.js';
+import { sniff, normalizeQuat, convertPosition, convertRotation, quatToAxisAngle } from '../src/import/dynamics/assets.js';
 import { mergeGlbs, parseGlb } from '../src/import/dynamics/glb-merge.js';
 import { styleToNode, labelOf, OBJECT_STYLE, RESPONSE_ACTION, ANCHOR_TYPE } from '../src/import/dynamics/enums.js';
 import { buildGuidePackage, writeTar, tinyGlb, tinyPng, tinyJpeg } from '../src/import/dynamics/fixture.js';
@@ -226,6 +226,22 @@ test('9 · malicious tars are rejected safely', () => {
   assert.throws(() => importGuidePackage(writeTar([{ name: 'Guide_Body', bytes: Buffer.alloc(5000) }]), { limits: { maxEntries: 10, maxEntryBytes: 1000, maxTotalBytes: 10000 } }), TarError);
   assert.throws(() => importGuidePackage(writeTar([{ name: 'Guide_Manifest', bytes: Buffer.from('{}') }])), /no Guide_Body/);
   assert.throws(() => importGuidePackage(writeTar([{ name: 'Guide_Body', bytes: Buffer.from('not json') }])), /not valid JSON/);
+});
+
+test('zero placement rotations are repaired to identity in the GLB and counted (iOS drew nothing)', () => {
+  assert.deepEqual(normalizeQuat([0, 0, 0, 0]), { q: [0, 0, 0, 1], repaired: true });
+  assert.deepEqual(normalizeQuat([NaN, 0, 0, 1]), { q: [0, 0, 0, 1], repaired: true });
+  assert.deepEqual(normalizeQuat([0, 0, 0, 2]), { q: [0, 0, 0, 1], repaired: false });
+  assert.deepEqual(quatToAxisAngle([0, 0, 0, 0]), [0, 1, 0, 0]);
+  const fx = buildGuidePackage({ models: { m: {} }, tasks: [{ steps: [{ text: 'x', objects: [{ model: 'm', placements: [
+    { model: 'm', position: [0, 0, 1], rotation: [0, 0, 0, 0] }, { model: 'm', position: [1, 0, 0], rotation: [0, 0, 0, 0] }, { model: 'm', position: [0, 1, 0], rotation: [0, Math.SQRT1_2, 0, Math.SQRT1_2] },
+  ] }] }] }] });
+  const r = importGuidePackage(fx.tar);
+  assert.equal(r.report.objects.rotationRepaired, 2);
+  assert.ok(r.report.warnings.some(w => w.includes('(0,0,0,0) rotation')));
+  const nodes = parseGlb(r.glb!).json.nodes.filter((n: { name: string }) => /^pl:[^/]+$/.test(n.name));
+  assert.equal(nodes.length, 3);
+  for (const n of nodes) { const q = n.rotation ?? [0, 0, 0, 1]; assert.ok(Math.abs(Math.hypot(...(q as number[])) - 1) < 1e-6, `unit quaternion on ${n.name}`); }
 });
 
 test('golden: the report shape is stable and content-free', () => {

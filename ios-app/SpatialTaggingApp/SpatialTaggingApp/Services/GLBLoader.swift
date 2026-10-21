@@ -483,6 +483,11 @@ enum GLBLoader {
         if let v = nj["translation"] as? [Double], v.count == 3 { t = simd_float3(Float(v[0]), Float(v[1]), Float(v[2])) }
         if let v = nj["scale"]       as? [Double], v.count == 3 { s = simd_float3(Float(v[0]), Float(v[1]), Float(v[2])) }
         if let v = nj["rotation"]    as? [Double], v.count == 4 { q = simd_quatf(ix: Float(v[0]), iy: Float(v[1]), iz: Float(v[2]), r: Float(v[3])) }
+        // A degenerate quaternion (all zero, or NaN - some Dynamics 365 Guides
+        // placements ship (0,0,0,0)) would make simd_float4x4(q) a zero matrix
+        // and the node draw as nothing. three.js treats it as identity; so do we.
+        let len = q.length
+        q = (len.isFinite && len > 1e-6) ? q / len : simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
         var m = simd_float4x4(q)
         m.columns.0 *= s.x; m.columns.1 *= s.y; m.columns.2 *= s.z
         m.columns.3 = simd_float4(t, 1)

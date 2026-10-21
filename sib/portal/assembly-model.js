@@ -8,6 +8,15 @@
 
 /** Baked hose flipbook frames (`<owner>#s<n>f<k>`) and the owner's rest tube (`<owner>#rest`). */
 export const isFrameNode = name => /#s\d+f\d+$/.test(String(name || ''));
+/**
+ * A node that steps address by name: Cortona exports `cmp:<part>`; Dynamics
+ * 365 Guides imports `pl:<placementGuid>` (top level only - a placement's own
+ * subtree is `pl:<guid>/<child>` and belongs to its placement). The server's
+ * models/colour.ts keeps the same rule; change both together.
+ */
+export const isPartName = name => typeof name === 'string' && (name.startsWith('cmp:') || /^pl:[^/]+$/.test(name));
+/** The name shown on chips and labels: the exporter's label, else the name without its prefix. */
+export const partDisplayName = o => o?.userData?.displayName || o?.userData?.def || String(o?.name || '').replace(/^(cmp|pl):/, '');
 export const isPlaybackNode = name => /#(s\d+f\d+|rest)$/.test(String(name || ''));
 
 /**
@@ -67,15 +76,16 @@ export function prepareMeshes(root, THREE, { frames = 'keep' } = {}) {
 export function buildParts(root, THREE, refs = []) {
   const parts = new Map();
   const depthOf = o => { let d = 0, c = o; while (c && c !== root) { d++; c = c.parent; } return d; };
+  const referencedNames = new Set(refs.map(d => d.node));   // a name the steps use is a part whatever it is called
   root.traverse(o => {
-    if (typeof o.name !== 'string' || !o.name.startsWith('cmp:')) return;
+    if (!isPartName(o.name) && !referencedNames.has(o.name)) return;
     const meshes = []; o.traverse(m => { if (m.isMesh) meshes.push(m); });
     const bb = new THREE.Box3().setFromObject(o); const center = bb.isEmpty() ? new THREE.Vector3() : bb.getCenter(new THREE.Vector3());
     o.updateMatrixWorld();
     const inst = { obj: o, rest: { pos: o.position.clone(), quat: o.quaternion.clone() } };
     const prev = parts.get(o.name);
     if (prev) { prev.insts.push(inst); prev.meshes.push(...meshes); return; }
-    parts.set(o.name, { obj: o, rest: inst.rest, insts: [inst], meshes, depth: depthOf(o), centerLocal: o.parent ? o.parent.worldToLocal(center.clone()) : center, displayName: o.userData?.displayName || o.userData?.def || o.name.slice(4) });
+    parts.set(o.name, { obj: o, rest: inst.rest, insts: [inst], meshes, depth: depthOf(o), centerLocal: o.parent ? o.parent.worldToLocal(center.clone()) : center, displayName: partDisplayName(o) });
   });
   const duplicates = [...parts.values()].filter(p => p.insts.length > 1).length;
   const byOid = new Map();

@@ -32,7 +32,7 @@ provenance kept in the import log), `adapters/dynamics-guides-adapter.ts`
 | step text | `text` |
 | question responses | 1st acting → `nextOnSuccessSeq` (omitted when it is simply the next step), 2nd → `nextOnFailureSeq`; a 3rd+ counted as `foldedToLinear`; texts appended as `1. … 2. …` |
 | completion step | last step, `completionRequired`, `evidenceRequired`; its objects shown |
-| placement (`isPlaced` only) | node `pl:<guid>`, TRS converted; per step: hide the previous step's nodes, show mine with style → `show: solid | ghost`, `color` |
+| placement (`isPlaced` only) | node `pl:<guid>` (the web player's `isPartName` and the server's `models/colour.ts` accept `cmp:*` and top-level `pl:*`), TRS converted, `label` = the asset's display name; per step: hide the previous step's nodes, show mine with style → `show: solid | ghost`, `color` |
 | attention director at a placement / position | `effect: 'flash'` on that node, `cadPosition`; else the centroid of the step's shown nodes |
 | step image | out of the package, by sequence number, into the step-image store (route layer) |
 | `GuideAssembly` | `modelId`, `initialNodes` (everything hidden), `bounds`, `source: 'dynamics'` |
@@ -46,7 +46,7 @@ warning.
 
 Coordinates: Guides placements are in the Guides anchor frame (Unity,
 left-handed, Y up, metres). `convertPosition` → `(x, y, −z)`,
-`convertRotation` → `(−x, −y, z, w)`, scale unchanged. The SIB assembly
+`convertRotation` → `(−x, −y, z, w)`, scale unchanged. Placement quaternions go through `normalizeQuat` first: a (0,0,0,0) or non-finite rotation (seen on every placement of a real guide) becomes identity and is counted as `objects.rotationRepaired` - SceneKit would otherwise build a zero matrix and draw nothing. The SIB assembly
 frame is right-handed Y up; the author places the assembly at the QR.
 `flipZ: false` keeps the source frame (diagnosis only).
 

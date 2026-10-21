@@ -60,7 +60,7 @@ export function resolvePart(idx: PartIndex, ref: Pick<GuideStepNode, 'node' | 's
   const oid = ref.sourceKey && /^\d+$/.test(ref.sourceKey) ? ref.sourceKey : extrasOfRef?.objectID !== undefined ? String(extrasOfRef.objectID) : undefined;
   if (oid) { const n = one(idx.byObjectId.get(oid)); if (n) return { name: n, by: 'objectID' }; }
   if (extrasOfRef?.partNumber) { const n = one(idx.byPartNumber.get(norm(extrasOfRef.partNumber))); if (n) return { name: n, by: 'partNumber' }; }
-  const display = extrasOfRef?.displayName ? norm(extrasOfRef.displayName) : norm(ref.node.replace(/^cmp:/, ''));
+  const display = extrasOfRef?.displayName ? norm(extrasOfRef.displayName) : norm(ref.node.replace(/^(cmp|pl):/, ''));
   { const n = one(idx.byDisplay.get(display)); if (n) return { name: n, by: 'displayName' }; }
   return null;
 }
