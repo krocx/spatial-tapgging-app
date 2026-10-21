@@ -2,6 +2,10 @@
  "generatedBy": "scripts/arch-graph.mjs",
  "sib": {
   "adapters/ai-guide-adapter.ts": [],
+  "adapters/dynamics-guides-adapter.ts": [
+   "adapters/instructions-source-adapter.ts",
+   "import/dynamics/importer.ts"
+  ],
   "adapters/instructions-source-adapter.ts": [],
   "adapters/mindmap-sib-adapter.ts": [
    "routes/anchors.ts",
@@ -178,13 +182,31 @@
   ],
   "import/cortona/xml-lite.ts": [],
   "import/cortona/zip-lite.ts": [],
+  "import/dynamics/assets.ts": [],
+  "import/dynamics/body.ts": [],
+  "import/dynamics/enums.ts": [],
+  "import/dynamics/fixture.ts": [
+   "import/dynamics/body.ts",
+   "import/dynamics/enums.ts"
+  ],
+  "import/dynamics/glb-merge.ts": [],
+  "import/dynamics/importer.ts": [
+   "import/dynamics/assets.ts",
+   "import/dynamics/body.ts",
+   "import/dynamics/enums.ts",
+   "import/dynamics/glb-merge.ts",
+   "import/dynamics/tar.ts"
+  ],
+  "import/dynamics/tar.ts": [],
   "import/jobs.ts": [
    "import/cortona/importer.ts",
+   "import/dynamics/importer.ts",
    "memory.ts",
    "models/variants.ts"
   ],
   "import/worker.ts": [
    "import/cortona/importer.ts",
+   "import/dynamics/importer.ts",
    "models/reduce-clustering.ts",
    "models/variants.ts"
   ],
@@ -359,6 +381,7 @@
    "tag/tag-subscribe.ts"
   ],
   "routes/guides.ts": [
+   "adapters/dynamics-guides-adapter.ts",
    "adapters/instructions-source-adapter.ts",
    "data-dir.ts",
    "guides/assembly.ts",
@@ -370,6 +393,8 @@
    "guides/readiness.ts",
    "guides/step-models.ts",
    "guides/store.ts",
+   "import/dynamics/importer.ts",
+   "import/dynamics/tar.ts",
    "import/jobs.ts",
    "memory.ts",
    "middleware/auth.ts",
