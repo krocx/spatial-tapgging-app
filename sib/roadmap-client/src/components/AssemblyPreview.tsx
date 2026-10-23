@@ -40,8 +40,10 @@ interface Props {
   poses?: PartStateMap;
   /** This step on its own clock: the state it starts from and its deltas. Enables Play. */
   play?: { base: PartStateMap; deltas: GuideStepNode[]; speed?: number };
-  /** Which parts carry built-in animation clips (known once the model is read). */
-  onClips?: (parts: string[]) => void;
+  /** Built-in animation clips, once the model is read: the top-level parts that own one, and
+   *  for every named node under such a part, its owner - so a selection anywhere in the
+   *  subtree switches the owner's clip (the flag every player reads). */
+  onClips?: (owners: string[], ownerOf: Record<string, string>) => void;
   onPick?: (name: string) => void;
   /** Identify: a single click names the part (the Studio's focus card); double click = onPick. */
   onFocus?: (name: string) => void;
@@ -178,19 +180,30 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         // nearest part above the nodes it drives; it plays only when that
         // part's pose says so (clip.play), the way the XR kit and the app do.
         if (gltf.animations?.length) {
-          const mixer = new THREE.AnimationMixer(root); const byPart = new Map<string, any[]>();
+          // A clip belongs to the TOP-LEVEL part above the nodes it drives
+          // (a Dynamics placement `pl:<guid>`, a Cortona `cmp:` part), the
+          // node the importer flags and the XR kit reads - not the driven
+          // child. Every named node under that owner maps to it.
+          const topLevel = (n: string) => n.startsWith('cmp:') || /^pl:[^/]+$/.test(n);
+          const ownerOfNode = (node: any): string | undefined => {
+            let found: string | undefined;
+            for (let p = node; p && p !== root; p = p.parent) { const n = partName(p); if (n && partNames.has(n)) { found = n; if (topLevel(n)) break; } }
+            return found;
+          };
+          const mixer = new THREE.AnimationMixer(root); const byPart = new Map<string, any[]>(); const ownerOf: Record<string, string> = {};
           for (const clip of gltf.animations) {
             const owners = new Set<string>();
             for (const track of clip.tracks) {
               const node = THREE.PropertyBinding.findNode(root, THREE.PropertyBinding.parseTrackName(track.name).nodeName);
-              for (let p = node; p && p !== root; p = p.parent) { const n = partName(p); if (n && partNames.has(n)) { owners.add(n); break; } }
+              const o = ownerOfNode(node); if (o) owners.add(o);
             }
             if (!owners.size) continue;
             const action = mixer.clipAction(clip); action.enabled = false;
             for (const n of owners) byPart.set(n, [...(byPart.get(n) ?? []), action]);
           }
+          root.traverse((o: any) => { const n = partName(o); if (!n || !partNames.has(n)) return; const own = ownerOfNode(o); if (own && byPart.has(own)) ownerOf[n] = own; });
           st.clips = byPart.size ? { mixer, clock: new THREE.Clock(), byPart } : null;
-          onClips?.([...byPart.keys()]);
+          onClips?.([...byPart.keys()], ownerOf);
         }
 
         // Frame the whole assembly (drawn geometry only: not the baked hose frames).

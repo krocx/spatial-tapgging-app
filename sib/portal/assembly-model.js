@@ -54,7 +54,7 @@ export function applyClipState(bound, partName, clipState, THREE) {
     } else if (a.enabled) { a.stop(); a.enabled = false; }
   }
 }
-export const partDisplayName = o => o?.userData?.displayName || o?.userData?.def || String(o?.name || '').replace(/^(cmp|pl):/, '');
+export const partDisplayName = o => o?.userData?.displayName || o?.userData?.def || String(o?.name || '').replace(/^pl:[^/]+\//, '').replace(/^(cmp|pl):/, '');
 export const isPlaybackNode = name => /#(s\d+f\d+|rest)$/.test(String(name || ''));
 
 /**
