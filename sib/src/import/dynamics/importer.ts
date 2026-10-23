@@ -38,7 +38,7 @@ export interface DynamicsImportReport {
   anchor:     { type?: number; label: string; known: boolean; hasObject: boolean; hasInstruction: boolean; poseEstimated: boolean };
   folder:     { hierarchyDepth: number; parentFolder: boolean };
   tasks:      number;
-  steps:      { total: number; default: number; question: number; completion: number; withImage: number; withVideo: number; withAttention: number; withText: number };
+  steps:      { total: number; default: number; question: number; completion: number; withImage: number; withVideo: number; withAttention: number; withText: number; positionInherited: number };
   branching:  { responses: number; goToStep: number; goToNext: number; noAction: number; crossTask: number; unresolved: number; foldedToLinear: number };
   objects:    { stepObjects: number; placements: number; unplaced: number; withoutPlacement: number; completionObjects: number; completionPlacements: number; stock: number; invisible: number; animated: number; triggers: number; rotationRepaired: number };
   styles:     Record<string, number>;
@@ -170,7 +170,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
 
   // ── Steps ────────────────────────────────────────────────────────────────
   const steps: ImportedGuideStep[] = []; const seqByStepId = new Map<string, number>();
-  const counts = { default: 0, question: 0, completion: 0, withImage: 0, withVideo: 0, withAttention: 0, withText: 0 };
+  const counts = { default: 0, question: 0, completion: 0, withImage: 0, withVideo: 0, withAttention: 0, withText: 0, positionInherited: 0 };
   const stepImages = new Map<number, ImportedMedia>(); const media: ImportedMedia[] = [];
   const mediaCounts = { stepImages: 0, videosAsLinks: 0, audioAsLinks: 0 };
   const allNodeNames: string[] = [];
@@ -249,6 +249,26 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
     if (root.completion.imageId) { const a = assets.get(root.completion.imageId); if (a?.bytes && a.kind === 'Image' && (a.sniffed === 'png' || a.sniffed === 'jpeg')) { stepImages.set(seq, { guid: a.guid, kind: 'image', sniffed: a.sniffed, bytes: a.bytes, etag: a.etag }); mediaCounts.stepImages++; } }
     steps.push({ sequenceNumber: seq, title: 'Complete', section: 'Completion', text: root.completion.text || 'Procedure complete.', completionRequired: true, evidenceRequired: true, ...(centroid ? { cadPosition: centroid } : {}) });
     counts.completion++;
+  }
+
+  // ── Positions for steps that place nothing ──────────────────────────────
+  // A text-only step (a question, a sign-off) has no director and no
+  // placements, so no cadPosition - and Place Assembly on the iPad would
+  // leave it "not placed" with nothing to derive from. It inherits the
+  // nearest positioned step's spot (the next one first - the instruction
+  // usually prepares what comes next - else the previous), so one Place
+  // Assembly places the whole guide. Counted, not logged by content.
+  if (nodeSpecs.length) {   // something is placed (the GLB is merged below)
+    const positioned = steps.map((s, i) => (s.cadPosition ? i : -1)).filter(i => i >= 0);
+    if (positioned.length) {
+      for (let i = 0; i < steps.length; i++) {
+        if (steps[i].cadPosition) continue;
+        const next = positioned.find(j => j > i); const prev = [...positioned].reverse().find(j => j < i);
+        const from = next ?? prev; if (from === undefined) continue;
+        steps[i].cadPosition = [...steps[from].cadPosition!] as [number, number, number];
+        counts.positionInherited++;
+      }
+    }
   }
 
   // ── Branching: two passes ───────────────────────────────────────────────
@@ -352,7 +372,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
 /** The report as a person reads it. Content-free. */
 export function reportText(r: DynamicsImportReport, name = 'guide'): string {
   const L: string[] = [];
-  L.push(`${name}: ${r.tasks} task(s), ${r.steps.total} step(s) (${r.steps.default} default · ${r.steps.question} question · ${r.steps.completion} completion), schema v${r.manifest.schemaVersion ?? '?'}`);
+  L.push(`${name}: ${r.tasks} task(s), ${r.steps.total} step(s) (${r.steps.default} default · ${r.steps.question} question · ${r.steps.completion} completion), schema v${r.manifest.schemaVersion ?? '?'}` + (r.steps.positionInherited ? ` · ${r.steps.positionInherited} step(s) without objects positioned at the nearest step's spot` : ''));
   L.push(`anchor: ${r.anchor.label}${r.anchor.known ? '' : ' (unverified value)'}${r.anchor.hasObject ? ' · with anchor object' : ''}`);
   L.push(`objects: ${r.objects.stepObjects} step object(s), ${r.objects.placements} placement(s) (${r.objects.unplaced} not placed, ${r.objects.withoutPlacement} object(s) without placement), ${r.objects.completionPlacements} on completion, ${r.objects.stock} stock hologram(s), ${r.objects.animated} animated, ${r.objects.triggers} trigger(s)` + (r.objects.rotationRepaired ? `, ${r.objects.rotationRepaired} zero rotation(s) repaired to identity` : ''));
   L.push(`styles: ${Object.entries(r.styles).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'}`);

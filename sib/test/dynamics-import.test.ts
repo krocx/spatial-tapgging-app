@@ -260,6 +260,24 @@ test('animated placements carry a clip flag (no keyframe-less motion); a QR-anch
   assert.equal(h.anchorPose, undefined); assert.equal(h.report.anchor.poseEstimated, false);
 });
 
+test('steps that place nothing inherit the nearest positioned step\'s spot, so one Place Assembly places the whole guide', () => {
+  const fx = buildGuidePackage({ models: { m: {} }, tasks: [{ steps: [
+    { text: 'Read this first' }, { text: 'Question?', type: 'question' },
+    { text: 'Fit', objects: [{ model: 'm', placements: [{ model: 'm', position: [1, 0, 0] }] }] },
+    { text: 'Then', objects: [{ model: 'm', placements: [{ model: 'm', position: [0, 0, 2] }] }] },
+    { text: 'Sign off' },
+  ] }] });
+  const r = importGuidePackage(fx.tar);
+  const pos = r.imported.steps.map(s => s.cadPosition);
+  assert.deepEqual(pos[0], pos[2]); assert.deepEqual(pos[1], pos[2]);     // next positioned step
+  assert.deepEqual(pos[4], pos[3]);                                        // previous when nothing follows
+  assert.equal(r.report.steps.positionInherited, 3);
+  assert.ok(reportText(r.report).includes('3 step(s) without objects positioned'));
+  // a text-only guide (no GLB) gets no positions at all
+  const t = importGuidePackage(buildGuidePackage({ tasks: [{ steps: [{ text: 'a' }, { text: 'b' }] }] }).tar);
+  assert.ok(t.imported.steps.every(s => !s.cadPosition)); assert.equal(t.report.steps.positionInherited, 0);
+});
+
 test('golden: the report shape is stable and content-free', () => {
   const fx = buildGuidePackage({ name: 'Secret procedure X', models: { m: { name: 'Proprietary part 42' } }, tasks: [{ name: 'Confidential task', steps: [{ text: 'Torque the secret bolt to 12 Nm', objects: [{ model: 'm', placements: [{ model: 'm' }] }] }] }] });
   const r = importGuidePackage(fx.tar);
