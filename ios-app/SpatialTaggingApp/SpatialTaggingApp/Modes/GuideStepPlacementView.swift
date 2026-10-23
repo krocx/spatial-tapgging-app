@@ -151,6 +151,8 @@ struct GuideStepPlacementView: View {
     // ── Pin placement state ───────────────────────────────────────────────────
     @State private var stepPositions:  [String: simd_float3] = [:]
     @State private var activeStepIndex: Int                  = 0
+    /// Steps whose built-in-animation flags were switched here (saved on the server already; the editor reloads on dismiss).
+    @State private var clipEdits: [String: GuideStep]        = [:]
     @State private var stepNodes:      [String: SCNNode]     = [:]
 
     // ── V1: cone training for validation steps ────────────────────────────────
@@ -1083,6 +1085,9 @@ struct GuideStepPlacementView: View {
                         if s.title != nil {
                             Text(s.text).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(2).truncationMode(.tail)
                         }
+                        // Objects with their own animation on this step: one capsule each, lit while it plays.
+                        StepAnimationRow(guideId: guide.id, step: clipEdits[s.id] ?? s) { saved in clipEdits[saved.id] = saved }
+                            .padding(.top, 4)
                     } else {
                         Text("All steps placed")
                             .font(.subheadline.bold()).foregroundStyle(.green)

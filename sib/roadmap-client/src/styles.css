@@ -1007,3 +1007,8 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .needs-chip.on { background: var(--ax-blue-fill); border-color: var(--ax-blue); color: var(--ax-cyan); }
 .needs-chip.changed { border-style: dashed; }
 .needs-reset { font-size: 11px; padding: 2px 8px; }
+
+/* ▶ beside a part that owns a built-in animation (AROMS-370): lit while it plays on this step. */
+.pt-clip { border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 999px; font-size: 10px; line-height: 1; padding: 2px 6px; margin-left: 4px; cursor: pointer; }
+.pt-clip:hover { color: var(--text); border-color: var(--text); }
+.pt-clip.on { color: var(--ax-green); border-color: var(--ax-green); }

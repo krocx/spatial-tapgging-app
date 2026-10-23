@@ -545,6 +545,13 @@ struct StepEditorRow: View {
                         Label(n > 1 ? "3D ×\(n)" : "3D", systemImage: "cube")
                             .font(.caption2).foregroundStyle(.teal)
                     }
+                    // Objects with their own animation on this step (Dynamics 365 Guides clips): lit when one plays.
+                    let animated = StepAnimationRow.animatedNodes(step)
+                    if !animated.isEmpty {
+                        let playing = animated.contains { $0.clip?.play == true }
+                        Label(playing ? "Anim." : "Anim. off", systemImage: playing ? "play.circle.fill" : "play.circle")
+                            .font(.caption2).foregroundStyle(playing ? .green : .white.opacity(0.5))
+                    }
                     // B2: validation / evidence status at a glance - the
                     // pre-publish training checklist for the Author.
                     if step.needsValidation {

@@ -2,7 +2,7 @@ Spatial Tagging for AR OMS · 2026.4.50
 
 NEW IN THIS BUILD
 
-Imported Guides animate. An object that carried its own animation in Dynamics 365 Guides (a turning arrow, a pointing hand) now plays it on the step, in the app as in the Designer Studio and the XR kit. Author mode: when a step's objects have such an animation, a play button beside the whole-assembly toggle opens "Built-in animation" - switch it on or off per object for that step; the choice is saved to the guide.
+Imported Guides animate. An object that carried its own animation in Dynamics 365 Guides (a turning arrow, a pointing hand) now plays it on the step, in the app as in the Designer Studio and the XR kit. Author: on Place Steps (and in the guide session), a step whose objects carry their own animation shows an "Animation" row under the step text - one capsule per object, lit while it plays, tap to switch; saved at once. The Edit Guide list marks such steps "Anim." in green when one plays.
 
 Scan and see. A Guides guide that was anchored on a printed QR appears at the code as soon as you scan it - an estimate from the import that the author checks once; placing the assembly or a chamber default replaces it.
 

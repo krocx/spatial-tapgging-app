@@ -64,6 +64,7 @@
     .hint { border-left:3px solid var(--cyan); padding-left:10px; margin-top:8px; color:var(--text); font-size:13px; }
     .hidden { display:none !important; }
     .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    .chip .clip { color:var(--muted); font-size:10px; } .chip .clip.on { color:var(--green); }
     .stepImage { margin:8px 0 0; cursor:zoom-in; }
     .stepImage img { display:block; width:100%; max-height:160px; object-fit:contain; border-radius:8px; background:var(--bg); }
     .stepImage.large img { max-height:60vh; }
@@ -670,7 +671,8 @@ function showStep(k) {
   $('stepText').textContent = st.text || '';
   showStepImage(st);
   const names = stepParts(st);
-  $('partChips').innerHTML = names.slice(0, 6).map(n => `<span class="chip" data-node="${n}">${(parts.get(n)?.displayName || n.replace(/^(cmp|pl):/, '')).replace(/[<>&]/g, '')}</span>`).join('');
+  const clipOn = n => (st.nodes || []).some(d => d.node === n && d.clip?.play);
+  $('partChips').innerHTML = names.slice(0, 6).map(n => `<span class="chip" data-node="${n}">${(parts.get(n)?.displayName || n.replace(/^(cmp|pl):/, '')).replace(/[<>&]/g, '')}${clips?.byPart.has(n) ? ` <span class="clip${clipOn(n) ? ' on' : ''}" title="${clipOn(n) ? 'built-in animation plays on this step' : 'built-in animation at rest on this step'}">${clipOn(n) ? '▶' : '▷'}</span>` : ''}</span>`).join('');
   const v = validationFor(st);
   $('verdictRow').classList.toggle('hidden', !v);
   $('btnNext').textContent = k === steps.length - 1 ? 'Done ✓' : 'Next ›';

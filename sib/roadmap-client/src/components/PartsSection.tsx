@@ -247,6 +247,12 @@ export function usePartsPicker(nodeId: string | null) {
     patchStepMeta(nodeId, { nodes });
     say(play ? 'Built-in animation plays on this step - in the app, the XR kit and here.' : 'Built-in animation at rest on this step.');
   };
+  /** The ▶ beside a part that owns a built-in animation: lit while it plays on this step, click switches. */
+  const clipBadge = (name: string) => (clipOwner(name) === name ? (
+    <button className={`pt-clip${clipPlaying(name) ? ' on' : ''}`} onClick={e => { e.stopPropagation(); setClipMany([name], !clipPlaying(name)); }}
+      title={clipPlaying(name) ? 'Built-in animation plays on this step - click to leave it at rest' : 'This part has its own animation - click to play it on this step'}>{clipPlaying(name) ? '▶' : '▷'}</button>
+  ) : null);
+  const animatedOnStep = Object.values(clipOwnerOf).filter((o, i, a) => a.indexOf(o) === i).filter(o => partSet.has(o) || clipPlaying(o));
   const [note, setNote] = useState<string | null>(null);
   const say = (t: string) => { setNote(t); window.clearTimeout((say as unknown as { h?: number }).h); (say as unknown as { h?: number }).h = window.setTimeout(() => setNote(null), 6000); };
   /** Colour from this step on (a `color` delta - the app applies it, last wins). null clears. */
@@ -398,6 +404,7 @@ export function usePartsPicker(nodeId: string | null) {
             <input type="checkbox" checked={own || viaParent} onChange={() => toggle(n.name)} />
           </label>
           <span className={`pt-name pt-name-btn${focusList.includes(n.name) ? ' is-focus' : ''}${hover === n.name ? ' is-hover' : ''}`} data-part={n.name} title={labels[n.name] ? `${labels[n.name]} - ${n.name} - click to find it` : 'Click to find this part in the 3D view · shift-click adds to the selection'} onClick={e => focusOn((e.shiftKey ? '+' : '') + n.name)}>{label(n.name)}</span>
+          {clipBadge(n.name)}
           {n.children.length > 0 && own && <span className="pt-tag pt-tag-group">group</span>}
           {eff === 'before' && <span className="pt-tag">earlier</span>}
           {eff === 'after'  && <span className="pt-tag pt-tag-after">later</span>}
@@ -412,6 +419,7 @@ export function usePartsPicker(nodeId: string | null) {
       {parts.map(p => (
         <span key={p} className={`pt-chip${focusList.includes(p) ? ' is-focus' : ''}`} title={p} onClick={e => focusOn((e.shiftKey ? '+' : '') + p)}>
           <span className="pt-chip-name">{label(p)}</span>
+          {clipBadge(p)}
           <button onClick={e => { e.stopPropagation(); toggle(p); }} title="Remove from this step">✕</button>
         </span>
       ))}
@@ -470,7 +478,7 @@ export function usePartsPicker(nodeId: string | null) {
   );
   const search = <input className="pt-search" placeholder="Find a part…" value={query} onChange={e => setQuery(e.target.value)} />;
   const summary = assembly ? (
-    <span className="step-check-hint"> - {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
+    <span className="step-check-hint"> - {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier{animatedOnStep.length ? ` · ${animatedOnStep.filter(clipPlaying).length} of ${animatedOnStep.length} animated playing` : ''}</span>
   ) : null;
 
   return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context, poses, play,
