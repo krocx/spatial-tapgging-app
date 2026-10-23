@@ -50,7 +50,7 @@ export interface CortonaImportLog {
                  hoses?: { built: number; skipped: number; controlPoints: number };
                  /** Flipbook frames baked for hoses that move in a sub-step (hose-frames.ts). */
                  hoseFrames?: HoseFrameStats };
-  procedure:   { steps: number; substeps: number; setupSubsteps: number; workItems: number; unreferencedSubsteps: number; stepSource: 'workItems' | 'substeps';
+  procedure:   { steps: number; substeps: number; setupSubsteps: number; workItems: number; unreferencedSubsteps: number; stepSource: 'workItems' | 'substeps'; leadingPositioned: number;
                  commands: Record<string, number>; unresolvedRoutes: number; withView: number; withCallouts: number };
   text:        { stepsWithTitle: number; stepsWithText: number; fromInteractivity: number };
   parts:       { docItems: number; rwiBomRows: number; nodesWithObjectId: number; nodesWithPartNumber: number };
@@ -224,7 +224,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     ];
     let cad: [number, number, number] | undefined;
     for (const t of tiers) { cad = centroidOf(t.map(n => n.node.replace(/^cmp:/, '')), scene.boundsByDef); if (cad) break; }
-    cad = cad ?? lastCad ?? assemblyCentre;
+    cad = cad ?? lastCad;              // a step without parts stays where the last one was
     if (cad) { step.cadPosition = cad; lastCad = cad; }
     if (m.view) step.view = scaleView(frame.corrected ? rotateView(m.view, frame.matrix!) : m.view, unitFactor);
     if (m.durationSec) step.durationSec = m.durationSec;
@@ -278,6 +278,13 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
 
   const procTitle = (proc.id && inter?.textById.get(proc.id)?.title) || proc.title;
   const name = (opts.name ?? procTitle ?? rwi?.jobTitle ?? bundle.vrmlName.replace(/\.wrl$/i, '')).trim() || 'Imported procedure';
+  // Leading steps without parts (a read-this-first, before anything is
+  // touched) take the first positioned step's spot - the same rule as the
+  // Dynamics importer - else the assembly centre, so one Place Assembly
+  // places every step.
+  const firstCad = steps.find(s => s.cadPosition)?.cadPosition ?? assemblyCentre;
+  let leadingPositioned = 0;
+  for (const s of steps) { if (s.cadPosition) break; if (firstCad) { s.cadPosition = [...firstCad] as [number, number, number]; leadingPositioned++; } }
   const imported: ImportedGuide = { name, description: proc.comment?.trim() || undefined, steps };
 
   const glb = writeGlb(scene, extras);
@@ -313,7 +320,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     scene:  { nodes: countNodes(scene.roots), defs: scene.byDef.size, meshes: scene.meshCount, triangles: scene.triangleCount, timelineHidden,
               extentM: scene.bbox ? [0, 1, 2].map(a => round(scene.bbox!.max[a] - scene.bbox!.min[a])) as [number, number, number] : undefined,
               hoses: scene.hoses, hoseFrames: hoseFrames.stats },
-    procedure: { steps: proc.stepCount, substeps: proc.substeps.length, setupSubsteps, workItems: workItems.length, unreferencedSubsteps: unreferenced, stepSource,
+    procedure: { steps: proc.stepCount, substeps: proc.substeps.length, setupSubsteps, workItems: workItems.length, unreferencedSubsteps: unreferenced, stepSource, leadingPositioned,
                  commands: proc.commandCounts, unresolvedRoutes: proc.unresolvedRoutes, withView, withCallouts },
     text:   { stepsWithTitle: withTitle, stepsWithText: withText, fromInteractivity: fromInter },
     parts:  { docItems: inter?.partByObjectID.size ?? 0, rwiBomRows: rwi?.bom.length ?? 0, nodesWithObjectId: proc.objectIdByDef.size, nodesWithPartNumber: nodesWithPart },
