@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.50 - 2026-10-13
 
 ### Fixed
+- **AROMS-368 · 369 · 371: the first two real Guides.** A placement
+  rotation of (0,0,0,0) went into the model unchanged - three.js reads it as
+  identity, SceneKit as a zero matrix, so iOS drew nothing; the importer
+  repairs it (counted in the report) and the app's loader guards against
+  it in any model. Preview 3D only knew Cortona's `cmp:` part names, so
+  every Guides object showed on every step - one part-name rule now. Part
+  names showed as `pl:<guid>`: the import seeds the model's part labels.
+  Guides' PNG step pictures were dropped by the Designer's JPEG-only image
+  store, which now takes PNG; Preview 3D shows the step picture. A step
+  that places nothing had no position, so Place Assembly left it "not
+  placed": it now takes the nearest positioned step's spot - Cortona's
+  leading steps follow the same rule.
 - **AROMS-353: reads in the Usage Log, and a false pass on scientific
   notation.** Every step visit in the Usage Log now carries a "Reads" column
   with what the camera read (reading, label, barcode), the same chips as the
@@ -59,6 +71,35 @@ it, it gets a line.
   existing guide" to refresh a guide imported before this.
 
 ### Added
+- **AROMS-364 · 365 · 366: import a guide from Microsoft Dynamics 365
+  Guides.** Content → Import takes the `.guide` package "Export guide"
+  writes (a flat tar of the guide record, its steps and the model / image
+  bodies). Read in a worker on the same queue as Cortona, with the same
+  poll and update-or-new prompt: tasks become sections, steps keep their
+  text and picture, a question's responses become the success / failure
+  branches, the completion step becomes the last step with evidence
+  required, and every placed object - the author's models and Microsoft's
+  stock holograms alike - becomes a node of one assembly model in the Guides
+  anchor frame with per-step show / hide / X-ray / colour. Coordinates are
+  converted from Unity's left-handed frame. Triggers, interactables, anchor
+  objects, animation takes, videos and audio are listed as "not
+  represented" in a content-free report (counts and GUIDs, never
+  instruction text or asset names) kept with the guide together with the
+  source guide's GUID and asset versions. `npm run guide:inspect -- file.guide
+  --tree` dry-runs a package and writes nothing; `--make-sample` writes a
+  synthetic one. Built and tested on synthetic packages only.
+- **AROMS-370 · 372: built-in animation from imported models plays
+  everywhere, and the switch is where the author is.** A Guides object's own
+  animation (a turning arrow, a hand - a glTF clip in the asset) now plays on
+  the step in the app, the XR kit, Preview 3D and the Designer Studio; a
+  step delta carries `clip { play, loop }` and the bundle carries it to every
+  player. The author switches it per object on the iPad's Place Steps, Place
+  Assembly preview and guide session ("Animation" row of capsules), and in
+  the Studio with a ▷ / ▶ beside every part that owns a clip. The placed
+  assembly now shows on Place Steps, playing the active step. A QR-anchored
+  Guides guide gets an estimated assembly pose so it appears as soon as the
+  code is scanned, until someone places it.
+
 - **AROMS-361: Business Readiness · Impact - the scorecard's second half.**
   `/scorecard` → Business: three pillars - Productivity, Velocity, Customer
   Trust - as fifteen needles with a baseline, last quarter, now and target.
