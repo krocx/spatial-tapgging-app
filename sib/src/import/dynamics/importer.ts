@@ -58,6 +58,8 @@ export interface DynamicsImportResult {
   glb:       Buffer | null;
   bounds?:   { min: [number, number, number]; max: [number, number, number] };
   initialNodes: GuideStepNode[];
+  /** Node name → the asset's display name, for Model3D.partLabels (what the Studio and the XR kit show). */
+  partLabels: Record<string, string>;
   /** Step images by 1-based sequence number, to be stored by the caller. */
   stepImages: Map<number, ImportedMedia>;
   /** Videos / audio the caller may store and link (optional; else links are dropped with a note). */
@@ -156,7 +158,9 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
     const rot = p.rotation ? normalizeQuat(p.rotation) : undefined; if (rot?.repaired) rotationRepaired++;
     nodeSpecs.push({ name: node, assetKey: assetId,
       translation: p.position ? convertPosition(p.position, frame) : undefined, rotation: rot ? convertRotation(rot.q, frame) : undefined, scale: p.scale ? convertScale(p.scale) : undefined,
-      extras: { sibSource: 'dynamics', placementId: p.id, assetId, where, ...(stock ? { stock: true } : {}), ...(invisible ? { invisible: true } : {}) } });
+      // displayName is what the Studio's parts list, the XR kit's chips and the
+      // app show for the node (the Cortona convention) - guide content, not log.
+      extras: { sibSource: 'dynamics', placementId: p.id, assetId, where, ...(name?.trim() ? { displayName: name.trim() } : {}), ...(stock ? { stock: true } : {}), ...(invisible ? { invisible: true } : {}) } });
     nodeByPlacement.set(p.id, node); if (name?.trim()) labelByNode.set(node, name.trim());
     return node;
   };
@@ -329,7 +333,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
   };
   if (root.schemaVersion !== undefined && (root.schemaVersion < 5 || root.schemaVersion > 6)) warnings.push(`schema version ${root.schemaVersion} is outside the tested range (5-6)`);
 
-  return { imported, glb, bounds, initialNodes, stepImages, media, provenance: { guideId: root.id || manifest.guideId || '', assets: [...assets.values()].map(a => ({ guid: a.guid, etag: a.etag ?? a.meta?.etag, versionNumber: a.meta?.versionNumber })) }, report };
+  return { imported, glb, bounds, initialNodes, partLabels: Object.fromEntries(labelByNode), stepImages, media, provenance: { guideId: root.id || manifest.guideId || '', assets: [...assets.values()].map(a => ({ guid: a.guid, etag: a.etag ?? a.meta?.etag, versionNumber: a.meta?.versionNumber })) }, report };
 }
 
 /** The report as a person reads it. Content-free. */

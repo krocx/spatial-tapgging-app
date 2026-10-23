@@ -60,6 +60,7 @@ try {
       report: result.report,
       initialNodes: result.initialNodes,
       bounds: result.bounds,
+      partLabels: result.partLabels,
       provenance: result.provenance,
       stepImages,
       ladder,

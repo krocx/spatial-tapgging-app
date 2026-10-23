@@ -110,7 +110,7 @@ export function usePartsPicker(nodeId: string | null) {
     mindmapApi.model(modelId).then(m => { if (live) setLabels(m.partLabels ?? {}); }).catch(() => { /* labels optional */ });
     return () => { live = false; };
   }, [modelId]);
-  const label = (n: string) => labels[n] || n.replace(/^cmp:/, '');
+  const label = (n: string) => labels[n] || n.replace(/^(cmp|pl):/, '');
   const familyOf = (n: string) => colours?.partFamilies?.[n];
   const familyColour = (f: string): [number, number, number] | undefined => { const fam = colours?.families.find(x => x.family === f); return fam ? (fam.applied ?? fam.suggested) : undefined; };
   const renameLabel = async (name: string) => {
@@ -287,7 +287,7 @@ export function usePartsPicker(nodeId: string | null) {
         {!many && <button className="pt-focus-rename" onClick={() => renameLabel(focus)} title="Give this part a name people will read">rename</button>}
         <button className="pt-focus-x" onClick={() => { focusOn(null); setIsolate(false); }} title="Clear (Esc)">✕</button>
       </div>
-      {!many && labels[focus] && <div className="pt-focus-cad" title="CAD name">{focus.replace(/^cmp:/, '')}</div>}
+      {!many && labels[focus] && <div className="pt-focus-cad" title="CAD name">{focus.replace(/^(cmp|pl):/, '')}</div>}
       {!many && focusInfo && focusInfo.parents.length > 0 && <div className="pt-focus-crumb">{focusInfo.parents.map(p => <button key={p} onClick={() => focusOn(p)} title={p}>{label(p)}</button>)}</div>}
       <div className="pt-focus-meta">
         {!many && focusInfo?.where && <span>{focusInfo.where}</span>}

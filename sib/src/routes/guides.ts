@@ -120,7 +120,7 @@ import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.j
 import { compareAgainstPassState } from '../perception/image-comparator.js';
 import { boundGuideId } from '../procedure/export.js';
 import { mindmapStore, mindmapAccessStore } from '../models/mindmap.model.js';
-import { saveDesignerImage } from '../procedure/designer-images.js';
+import { saveDesignerImage, GUIDE_COPY_MAX_BYTES } from '../procedure/designer-images.js';
 import { saveValidationRef, deleteValidationRef, validateStepFrame } from '../oms/step-validation.js';
 import {
   sanitizeStepModelSlots, applySlotsToLegacy, applyLegacyToSlots,
@@ -429,6 +429,7 @@ router.post(
         model = registerGeneratedGlb({
           id: modelId, ladder: r.ladder,
           name: `${imported.name} - assembly`, glb: r.glb, anchorId, uploadedBy: createdBy, category: 'dynamics', originalFilename,
+          partLabels: r.partLabels,
         });
         for (const s of imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
         imported.assembly = {
@@ -749,8 +750,8 @@ router.post('/:id/edit-map', (req: Request, res: Response): void => {
       if (existingImg) { imageFileByStepId[st.id] = existingImg; continue; }   // reuse the designer copy
       try {
         const buf = fs.readFileSync(path.join(STEP_IMG_DIR, st.mediaPath));
-        imageFileByStepId[st.id] = saveDesignerImage(buf.toString('base64'));
-      } catch { /* missing on disk - ingest keeps the guide's mediaPath anyway */ }
+        imageFileByStepId[st.id] = saveDesignerImage(buf.toString('base64'), GUIDE_COPY_MAX_BYTES);
+      } catch (err) { console.warn(`[edit-map] step image not copied for step ${st.id}: ${(err as Error).message}`); }
     }
     const { map: merged, summary } = mergeGuideIntoMap(linked, guide, steps, imageFileByStepId);
     mindmapStore.save(merged);
@@ -771,9 +772,9 @@ router.post('/:id/edit-map', (req: Request, res: Response): void => {
     if (!s.mediaPath) continue;
     try {
       const buf = fs.readFileSync(path.join(STEP_IMG_DIR, s.mediaPath));
-      imageFileByStepId[s.id] = saveDesignerImage(buf.toString('base64'));
-    } catch {
-      console.warn(`[edit-map] step image missing on disk: ${s.mediaPath} (guide ${guide.id})`);
+      imageFileByStepId[s.id] = saveDesignerImage(buf.toString('base64'), GUIDE_COPY_MAX_BYTES);
+    } catch (err) {
+      console.warn(`[edit-map] step image not copied for step ${s.id} (guide ${guide.id}): ${(err as Error).message}`);
     }
   }
 

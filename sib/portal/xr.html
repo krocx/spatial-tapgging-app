@@ -64,6 +64,11 @@
     .hint { border-left:3px solid var(--cyan); padding-left:10px; margin-top:8px; color:var(--text); font-size:13px; }
     .hidden { display:none !important; }
     .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    .stepImage { margin:8px 0 0; cursor:zoom-in; }
+    .stepImage img { display:block; width:100%; max-height:160px; object-fit:contain; border-radius:8px; background:var(--bg); }
+    .stepImage.large img { max-height:60vh; }
+    .stepImage.large { cursor:zoom-out; }
+    .stepImage figcaption { font-size:11px; margin-top:4px; }
     .chip { font-size:12px; padding:3px 8px; border-radius:999px; background:rgba(34,211,238,.12); border:1px solid rgba(34,211,238,.35); color:var(--cyan); cursor:pointer; }
     /* Text / spoken profile */
     #textMode { position:fixed; inset:0; background:var(--bg); color:var(--text); display:flex; flex-direction:column; gap:14px; padding:18px 20px 22px; z-index:20; }
@@ -151,6 +156,7 @@
       <div class="card" id="stepCard">
         <h2 id="stepTitle">–</h2>
         <p id="stepText"></p>
+        <figure class="stepImage hidden" id="stepImage"><img id="stepImageImg" alt="Reference picture for this step"><figcaption class="muted">Reference picture · tap to enlarge</figcaption></figure>
         <div class="chips" id="partChips"></div>
         <div class="row" id="placeRow">
           <button class="primary grow" id="btnLock" disabled>Lock placement</button>
@@ -637,6 +643,21 @@ function startText() {
   }
   openLive().then(() => showStep(0));       // the session record says which profile ran it (workContext)
 }
+// The step's reference picture (what the iPad shows): fetched with the key
+// into a blob URL, since an <img src> cannot send one. One at a time.
+let stepImageUrl = null;
+async function showStepImage(st) {
+  const fig = $('stepImage'); fig.classList.remove('large');
+  if (stepImageUrl) { URL.revokeObjectURL(stepImageUrl); stepImageUrl = null; }
+  if (!st?.mediaPath) { fig.classList.add('hidden'); return; }
+  try {
+    const r = await fetch(`/guides/step-image/${encodeURIComponent(st.mediaPath)}`, { headers: hdr() });
+    if (!r.ok) throw new Error(String(r.status));
+    stepImageUrl = URL.createObjectURL(await r.blob());
+    $('stepImageImg').src = stepImageUrl; fig.classList.remove('hidden');
+  } catch { fig.classList.add('hidden'); }
+}
+document.getElementById('stepImage').addEventListener('click', e => e.currentTarget.classList.toggle('large'));
 function showStep(k) {
   flushObservations();
   idx = k; const st = steps[k]; stepEnteredAt = performance.now(); hands.resetEvidence(); handsOn = null;
@@ -644,6 +665,7 @@ function showStep(k) {
   $('stepPill').textContent = `Step ${k + 1} / ${steps.length}`;
   $('stepTitle').textContent = st.title || `Step ${k + 1}`;
   $('stepText').textContent = st.text || '';
+  showStepImage(st);
   const names = stepParts(st);
   $('partChips').innerHTML = names.slice(0, 6).map(n => `<span class="chip" data-node="${n}">${(parts.get(n)?.displayName || n.replace(/^(cmp|pl):/, '')).replace(/[<>&]/g, '')}</span>`).join('');
   const v = validationFor(st);

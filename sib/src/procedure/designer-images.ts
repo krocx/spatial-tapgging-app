@@ -22,26 +22,33 @@ const DATA_DIR = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data
 export const DESIGNER_IMG_DIR = path.join(DATA_DIR, 'designer-images');
 fs.mkdirSync(DESIGNER_IMG_DIR, { recursive: true });
 
-/** JPEG magic bytes - the client always uploads JPEG (canvas re-encode). */
+/** JPEG magic bytes - the canvas uploads JPEG (client re-encode). */
 function looksLikeJpeg(buf: Buffer): boolean {
   return buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
 }
+/** PNG magic bytes - step pictures copied from an imported guide (Dynamics 365 Guides exports PNG). */
+function looksLikePng(buf: Buffer): boolean {
+  return buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+}
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB - generous for a 1024px JPEG
+/** Copies of a guide's own step pictures (imports ship full-size PNG screenshots). */
+export const GUIDE_COPY_MAX_BYTES = 8 * 1024 * 1024;
 
 export class DesignerImageError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
-/** Store a base64 JPEG; returns the content-addressed filename. */
-export function saveDesignerImage(base64: string): string {
+/** Store a base64 JPEG or PNG; returns the content-addressed filename (extension says which). */
+export function saveDesignerImage(base64: string, limitBytes = MAX_BYTES): string {
   const buf = Buffer.from(base64, 'base64');
   if (buf.length === 0)       throw new DesignerImageError(400, 'Empty image payload');
-  if (buf.length > MAX_BYTES) throw new DesignerImageError(413, 'Image too large - resize below 2 MB');
-  if (!looksLikeJpeg(buf))    throw new DesignerImageError(415, 'Only JPEG images are accepted');
+  if (buf.length > limitBytes) throw new DesignerImageError(413, `Image too large - resize below ${Math.round(limitBytes / 1048576)} MB`);
+  const ext = looksLikeJpeg(buf) ? 'jpg' : looksLikePng(buf) ? 'png' : null;
+  if (!ext)                   throw new DesignerImageError(415, 'Only JPEG or PNG images are accepted');
 
   const hash     = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 24);
-  const filename = `${hash}.jpg`;
+  const filename = `${hash}.${ext}`;
   const full     = path.join(DESIGNER_IMG_DIR, filename);
   if (!fs.existsSync(full)) fs.writeFileSync(full, buf);
   return filename;
@@ -53,7 +60,7 @@ export function saveDesignerImage(base64: string): string {
  * server-generated, so anything else is rejected outright.
  */
 export function designerImagePath(filename: string): string | null {
-  if (!/^[a-f0-9]{24}\.jpg$/.test(filename)) return null;
+  if (!/^[a-f0-9]{24}\.(jpg|png)$/.test(filename)) return null;
   const full = path.join(DESIGNER_IMG_DIR, filename);
   return fs.existsSync(full) ? full : null;
 }

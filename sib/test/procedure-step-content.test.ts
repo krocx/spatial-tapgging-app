@@ -215,8 +215,13 @@ test('designer image store is content-addressed and validates payloads', () => {
   const b = saveDesignerImage(TINY_JPEG.toString('base64'));
   assert.equal(a, b, 'same bytes → same filename');
   assert.throws(() => saveDesignerImage(Buffer.from('not a jpeg').toString('base64')),
-    /Only JPEG/);
+    /Only JPEG or PNG/);
   assert.throws(() => saveDesignerImage(''), /Empty/);
+  // PNG (an imported guide's step picture) is stored under its own extension and served by it
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c636000010000050001', 'hex');
+  const c = saveDesignerImage(png.toString('base64'));
+  assert.match(c, /\.png$/); assert.notEqual(c, a);
+  assert.throws(() => saveDesignerImage(png.toString('base64'), 10), /too large/);
 });
 
 // ── U5: multiple model slots from the canvas ───────────────────────────────
