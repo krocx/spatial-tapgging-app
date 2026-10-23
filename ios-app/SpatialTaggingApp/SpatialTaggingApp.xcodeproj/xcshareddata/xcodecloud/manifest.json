@@ -1,0 +1,9 @@
+{
+  "id" : "f31adb1d-ddc8-4e2d-9996-0f9a646a26a3",
+  "targets" : [
+    {
+      "id" : "8A469B74-8BAF-40AD-9BBE-FA23B497989C",
+      "name" : "SpatialTaggingApp"
+    }
+  ]
+}

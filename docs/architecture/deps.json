@@ -615,7 +615,8 @@
    "Components/ARContainerView.swift"
   ],
   "Components/CoachMarkOverlay.swift": [
-   "App/GuidedTourManager.swift"
+   "App/GuidedTourManager.swift",
+   "Services/GLBLoader.swift"
   ],
   "Components/ContextPrompts.swift": [
    "App/AppSettings.swift",
@@ -636,8 +637,12 @@
    "Models/LocTagModels.swift"
   ],
   "Components/HelpSheet.swift": [],
-  "Components/HoneycombDiagram.swift": [],
-  "Components/HoneycombHUD.swift": [],
+  "Components/HoneycombDiagram.swift": [
+   "Services/GLBLoader.swift"
+  ],
+  "Components/HoneycombHUD.swift": [
+   "Services/GLBLoader.swift"
+  ],
   "Components/ModelNodeStyle.swift": [
    "Services/AppLog.swift"
   ],
@@ -819,6 +824,7 @@
    "Models/SIBTypes.swift",
    "Services/ARSessionManager.swift",
    "Services/AnchorEncryption.swift",
+   "Services/GLBLoader.swift",
    "Services/SIBClient.swift"
   ],
   "Modes/AssemblyPlacementView.swift": [
@@ -1209,11 +1215,13 @@
    "Services/ARSessionManager.swift",
    "Services/AnchorEncryption.swift",
    "Services/AppLog.swift",
+   "Services/GLBLoader.swift",
    "Services/SIBClient.swift",
    "Services/WorldMapCache.swift"
   ],
   "Modes/ROIPickerView.swift": [
-   "Models/SIBTypes.swift"
+   "Models/SIBTypes.swift",
+   "Services/GLBLoader.swift"
   ],
   "Modes/SettingsView.swift": [
    "App/AppSettings.swift",
