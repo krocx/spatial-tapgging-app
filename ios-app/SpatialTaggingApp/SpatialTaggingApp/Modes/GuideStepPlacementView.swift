@@ -153,6 +153,11 @@ struct GuideStepPlacementView: View {
     @State private var activeStepIndex: Int                  = 0
     /// Steps whose built-in-animation flags were switched here (saved on the server already; the editor reloads on dismiss).
     @State private var clipEdits: [String: GuideStep]        = [:]
+    /// The placed assembly, shown at its pose while the author places pins (the
+    /// same model the operator sees), playing the active step's deltas and clips.
+    @State private var assemblyNode: AssemblyNode?           = nil
+    @State private var assemblyLoading                       = false
+    @State private var assemblyReplayTask: Task<Void, Never>? = nil
     @State private var stepNodes:      [String: SCNNode]     = [:]
 
     // ── V1: cone training for validation steps ────────────────────────────────
@@ -382,6 +387,7 @@ struct GuideStepPlacementView: View {
         }
         .onChange(of: activeStepIndex) { _, idx in
             presenceFocus.stepId = idx < steps.count ? steps[idx].id : nil
+            replayAssemblyStep()
         }
         .onDisappear { stopPresence() }
         .overlay(alignment: .bottom) {
@@ -571,6 +577,7 @@ struct GuideStepPlacementView: View {
         }
         .onDisappear {
             logClosed()
+            assemblyReplayTask?.cancel(); assemblyNode?.cancelPlayback(); assemblyNode?.root.removeFromParentNode(); assemblyNode = nil
             for perStep in modelNodes.values { for node in perStep.values { node.removeFromParentNode() } }
             focusRing?.cleanup()
             focusRing = nil
@@ -1086,7 +1093,7 @@ struct GuideStepPlacementView: View {
                             Text(s.text).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(2).truncationMode(.tail)
                         }
                         // Objects with their own animation on this step: one capsule each, lit while it plays.
-                        StepAnimationRow(guideId: guide.id, step: clipEdits[s.id] ?? s) { saved in clipEdits[saved.id] = saved }
+                        StepAnimationRow(guideId: guide.id, step: clipEdits[s.id] ?? s) { saved in clipEdits[saved.id] = saved; replayAssemblyStep() }
                             .padding(.top, 4)
                     } else {
                         Text("All steps placed")
@@ -1865,6 +1872,49 @@ struct GuideStepPlacementView: View {
 
     /// A: draw the saved pins. Called for a new guide immediately, or after
     /// ARKit relocalized into the guide map and the author tapped "I'm Here".
+    // ── The placed assembly ──────────────────────────────────────────────────
+    // Once the assembly has a pose (Place Assembly, a chamber default, or an
+    // import's QR estimate) the author sees it here too, playing the active
+    // step - with the model in view, "where does this pin go" and "is the
+    // animation right" are answered on the same screen. Per-step ghost
+    // copies of the assembly slot are skipped by the slot loader as before.
+    private func loadPlacedAssembly() async {
+        guard assemblyNode == nil, !assemblyLoading, let asm = guide.assembly, let pose = asm.pose else { return }
+        assemblyLoading = true; defer { assemblyLoading = false }
+        let client = SIBClient(settings: settings)
+        let budget = GLBLoadOptions.forThisDevice().triangleBudget
+        guard let f = try? await AssemblyModelCache.glb(modelId: asm.modelId, budget: budget, client: client) else {
+            AppLog.warn("assembly", "Place Steps: assembly GLB unavailable for \(asm.modelId)"); return
+        }
+        let data = f.data
+        let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data) }.value
+        guard let glb = built, !glb.parts.isEmpty else { AppLog.warn("assembly", "Place Steps: assembly GLB unreadable"); return }
+        let node = AssemblyNode(assembly: glb)
+        node.root.simdTransform = pose.transform
+        node.root.opacity = 0.85
+        arManager.sceneView.scene.rootNode.addChildNode(node.root)
+        assemblyNode = node
+        AppLog.info("assembly", "Place Steps: assembly shown - parts=\(glb.parts.count) clips=\(glb.clips.count) pose=\(pose.source)")
+        replayAssemblyStep()
+    }
+
+    /// Play the active step on the placed assembly (state before it, then its deltas and clips), looping.
+    private func replayAssemblyStep() {
+        guard let node = assemblyNode else { return }
+        let index = min(activeStepIndex, steps.count - 1)
+        guard index >= 0 else { return }
+        assemblyReplayTask?.cancel()
+        let engine = AssemblyStateEngine(initial: guide.assembly?.initialNodes, steps: steps.map { clipEdits[$0.id] ?? $0 })
+        node.apply(state: engine.state(after: index - 1))
+        let dur = node.play(deltas: engine.deltas(at: index), speed: guide.assembly?.effectiveAnimationSpeed ?? 0.5)
+        guard dur > 0 else { return }
+        assemblyReplayTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64((dur + 2.0) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            replayAssemblyStep()
+        }
+    }
+
     private func placeExistingPinNodes() {
         Task {
             try? await Task.sleep(nanoseconds: 600_000_000)
@@ -1877,6 +1927,7 @@ struct GuideStepPlacementView: View {
                 stepNodes[step.id] = node
             }
             applyStepVisibility()
+            await loadPlacedAssembly()
         }
     }
 

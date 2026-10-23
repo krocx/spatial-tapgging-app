@@ -79,7 +79,10 @@ struct AssemblyPlacementView: View {
     @State private var speed: Double = 0.5
     @State private var speedDirty = false
     @State private var previewTask: Task<Void, Never>? = nil
-    private var engine: AssemblyStateEngine { AssemblyStateEngine(initial: guide.assembly?.initialNodes, steps: steps) }
+    /// Steps whose built-in-animation flags were switched here (saved on the server already).
+    @State private var clipEdits: [String: GuideStep] = [:]
+    private var editedSteps: [GuideStep] { steps.map { clipEdits[$0.id] ?? $0 } }
+    private var engine: AssemblyStateEngine { AssemblyStateEngine(initial: guide.assembly?.initialNodes, steps: editedSteps) }
 
     // Gesture baselines
     @State private var panBase: simd_float3 = .zero
@@ -270,6 +273,11 @@ struct AssemblyPlacementView: View {
             .foregroundStyle(.white)
             if previewOn, previewIndex < steps.count {
                 Text(steps[previewIndex].displayTitle).font(.caption).foregroundStyle(.white.opacity(0.8)).lineLimit(2).multilineTextAlignment(.center)
+                // Objects with their own animation on this step: switch here while the preview plays.
+                StepAnimationRow(guideId: guide.id, step: editedSteps[previewIndex]) { saved in
+                    clipEdits[saved.id] = saved
+                    playPreview()
+                }
             }
             HStack(spacing: 8) {
                 Image(systemName: "tortoise.fill").font(.caption).foregroundStyle(.white.opacity(0.7))

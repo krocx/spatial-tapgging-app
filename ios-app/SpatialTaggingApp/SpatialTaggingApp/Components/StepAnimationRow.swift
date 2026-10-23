@@ -34,9 +34,9 @@ struct StepAnimationRow: View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Image(systemName: "play.circle").font(.caption2).foregroundStyle(.white.opacity(0.6))
-                    Text("Animation").font(.caption2).foregroundStyle(.white.opacity(0.6))
-                    if let e = error { Text(e).font(.caption2).foregroundStyle(.orange).lineLimit(1) }
+                    Image(systemName: "play.circle").font(.caption).foregroundStyle(.white.opacity(0.7))
+                    Text("Animation").font(.caption.bold()).foregroundStyle(.white.opacity(0.7))
+                    if let e = error { Text(e).font(.caption).foregroundStyle(.orange).lineLimit(1) }
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
@@ -45,12 +45,13 @@ struct StepAnimationRow: View {
                             Button {
                                 toggle(n, to: !on)
                             } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: on ? "play.fill" : "pause").font(.caption2)
-                                    Text(n.label ?? n.partName).font(.caption).lineLimit(1)
-                                    if busy == n.node { ProgressView().controlSize(.mini) }
+                                HStack(spacing: 6) {
+                                    Image(systemName: on ? "play.fill" : "pause.fill").font(.subheadline)
+                                    Text(n.label ?? n.partName).font(.subheadline.weight(.semibold)).lineLimit(1)
+                                    Text(on ? "playing" : "off").font(.caption).opacity(0.8)
+                                    if busy == n.node { ProgressView().controlSize(.small) }
                                 }
-                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .padding(.horizontal, 14).padding(.vertical, 9)
                                 .background(on ? Color.green.opacity(0.28) : Color.white.opacity(0.12))
                                 .overlay(Capsule().stroke(on ? Color.green : Color.white.opacity(0.25), lineWidth: 1))
                                 .foregroundStyle(on ? Color.green : Color.white)
