@@ -203,8 +203,8 @@ async function applyPendingImport(h: PendingImport, guideId?: string) {
     modelId: model?.id, steps: applied.steps.length, glbBytes: h.glbBytes, triangles: h.ladder.triangles, variants: summary.variants, log,
     ...(logText ? { logText } : {}), ...(h.provenance ? { provenance: h.provenance } : {}),
   });
-  const data: { guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; logText?: string; source: PendingImport['source']; summary: typeof summary } =
-    { guide: applied.guide, steps: applied.steps, model: model ?? null, log, ...(logText ? { logText } : {}), source: h.source, summary };
+  const data: { guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; logText?: string; source: PendingImport['source']; provenance?: unknown; summary: typeof summary } =
+    { guide: applied.guide, steps: applied.steps, model: model ?? null, log, ...(logText ? { logText } : {}), source: h.source, ...(h.provenance ? { provenance: h.provenance } : {}), summary };
   return data;
 }
 function modelInUse(modelId: string): boolean {

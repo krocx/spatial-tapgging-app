@@ -42,7 +42,7 @@ if (sample) {
   const fx = buildGuidePackage({ name: 'Sample pump rebuild (synthetic)', models: { bolt: { name: 'Bolt' }, arrow: { name: 'Arrow', variant: 'animated' } }, images: { pic: {} }, tasks: [
     { name: 'Prepare', steps: [{ text: 'Isolate the pump and tag it out.', image: 'pic' }, { text: 'Is the pressure gauge at zero?', type: 'question', responses: [{ text: 'Yes', action: 937380001 }, { text: 'No', action: 937380002, step: 'vent' }] }] },
     { name: 'Rebuild', steps: [
-      { id: 'vent', text: 'Vent the line at the bleed valve.', objects: [{ model: 'arrow', placements: [{ id: 'pa', model: 'arrow', position: [0.2, 0.1, 0.4] }] }], attention: { placement: 'pa' } },
+      { id: 'vent', text: 'Vent the line at the bleed valve.', objects: [{ model: 'arrow', placements: [{ id: 'pa', model: 'arrow', position: [0.2, 0.1, 0.4], animated: true }] }], attention: { placement: 'pa' } },
       { text: 'Fit the four bolts hand-tight.', objects: [{ model: 'bolt', placements: [{ model: 'bolt', position: [0, 0, 0.5] }, { model: 'bolt', position: [0.1, 0, 0.5], style: 937380009 }, { model: 'bolt', position: [0, 0.1, 0.5], style: 937380007 }] }] },
     ] },
   ], completion: { text: 'Pump rebuilt - sign off.' } });

@@ -5774,8 +5774,8 @@ async function submitImportCortona(anchorId, createdBy) {
       if (typeof loadGuideLibrary === 'function') loadGuideLibrary();
       return;
     }
-    const { guide, steps, model, log, logText, source, summary } = data;
-    lastCortonaImportLog = { guideName: guide.name, ...summary, log, logText, source: source || 'cortona' };
+    const { guide, steps, model, log, logText, source, provenance, summary } = data;
+    lastCortonaImportLog = { guideName: guide.name, ...summary, log, logText, provenance, source: source || 'cortona' };
     closeImportGuideModal();
     importCortonaFile = null; importFileKind = null;
     const updatedNote = summary?.updated ? ` (${summary.stepsUpdated} refreshed, ${summary.stepsCreated} added, ${summary.stepsRemoved} removed; placement and training kept)` : '';
