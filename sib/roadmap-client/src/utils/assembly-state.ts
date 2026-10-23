@@ -23,6 +23,8 @@ export interface PartPose {
   /** nil = rest pose (the model's own transform). */
   position?: [number, number, number];
   rotation?: [number, number, number, number];
+  /** Built-in glTF clips under the part: play (looping unless loop is false) or rest. */
+  clip?: { play: boolean; loop?: boolean };
 }
 export type PartStateMap = Map<string, PartPose>;
 
@@ -35,13 +37,14 @@ function toPoses(st: EngineState): PartStateMap {
     if (p.color && p.color.length === 3) pose.color = [p.color[0], p.color[1], p.color[2]];
     if (p.position && p.position.length === 3) pose.position = [p.position[0], p.position[1], p.position[2]];
     if (p.rotation && p.rotation.length === 4) pose.rotation = [p.rotation[0], p.rotation[1], p.rotation[2], p.rotation[3]];
+    if (p.clip) pose.clip = { play: !!p.clip.play, ...(p.clip.loop === false ? { loop: false } : {}) };
     out.set(name, pose);
   }
   return out;
 }
 function toEngine(poses: PartStateMap): EngineState {
   const out: EngineState = new Map();
-  for (const [name, p] of poses) out.set(name, { show: p.show, opacity: p.opacity, color: p.color, position: p.position ?? null, rotation: p.rotation ?? null });
+  for (const [name, p] of poses) out.set(name, { show: p.show, opacity: p.opacity, color: p.color, position: p.position ?? null, rotation: p.rotation ?? null, clip: p.clip });
   return out;
 }
 

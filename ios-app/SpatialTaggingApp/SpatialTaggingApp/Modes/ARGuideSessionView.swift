@@ -302,6 +302,10 @@ struct ARGuideSessionView: View {
     /// part deltas are applied cumulatively on it (initial state + steps 0…i).
     @State private var assemblyNode:       AssemblyNode?        = nil
     @State private var assemblyEngine:     AssemblyStateEngine? = nil
+    /// Author: the step deltas as edited in this session (built-in animation
+    /// toggles) - `steps` is immutable, so the engine is rebuilt from these.
+    @State private var editedNodes:        [String: [GuideStepNode]] = [:]
+    @State private var showClipSheet       = false
     @State private var assemblyReplayTask: Task<Void, Never>?   = nil
     @State private var assemblyStepIndex:  Int                  = -1
     /// 2026.4.46: "Show whole assembly" - parts not yet installed render as a
@@ -1103,6 +1107,36 @@ struct ARGuideSessionView: View {
                             .foregroundStyle(hintsMuted ? Color.white.opacity(0.45) : Color.yellow)
                     }
                     .accessibilityLabel(hintsMuted ? "Hints muted - tap to turn on" : "Contextual hints on")
+
+                    // Author: built-in animation of this step's parts (Dynamics 365 Guides clips).
+                    if appState.mode == .author, !clipChoices.isEmpty {
+                        Button { showClipSheet = true } label: {
+                            Image(systemName: clipChoices.contains { $0.playing } ? "play.circle.fill" : "play.circle")
+                                .font(.system(size: 16))
+                                .foregroundStyle(clipChoices.contains { $0.playing } ? Color.green : Color.white)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Built-in animation on this step")
+                        .sheet(isPresented: $showClipSheet) {
+                            NavigationStack {
+                                List {
+                                    Section {
+                                        ForEach(clipChoices, id: \.node) { c in
+                                            Toggle(isOn: Binding(get: { c.playing }, set: { setClip(node: c.node, play: $0) })) {
+                                                Text(c.label)
+                                            }
+                                        }
+                                    } header: { Text("Step \(assemblyStepIndex + 1)") } footer: {
+                                        Text("These parts carry their own animation from the imported model. On plays it while the part is shown on this step - in the app, the XR kit and the Designer Studio alike.")
+                                    }
+                                }
+                                .navigationTitle("Built-in animation")
+                                .navigationBarTitleDisplayMode(.inline)
+                                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showClipSheet = false } } }
+                            }
+                            .presentationDetents([.medium, .large])
+                        }
+                    }
 
                     // 2026.4.46: whole-assembly context (only when an assembly is loaded)
                     if assemblyNode != nil {
@@ -4589,7 +4623,7 @@ extension ARGuideSessionView {
         let node = AssemblyNode(assembly: glb)
         node.root.simdTransform = (demoFrame ?? matrix_identity_float4x4) * pose.transform
         arManager.sceneView.scene.rootNode.addChildNode(node.root)
-        let engine = AssemblyStateEngine(initial: asm.initialNodes, steps: sortedSteps)
+        let engine = AssemblyStateEngine(initial: asm.initialNodes, steps: sortedSteps.map(stepWithEdits))
         node.apply(state: engine.initialState())
         assemblyNode = node; assemblyEngine = engine
         AppLog.info("assembly", "loaded parts=\(glb.parts.count) tris=\(glb.triangleCount) source=\(glb.info.sourceTriangles) budget=\(glb.info.budget) pose=\(pose.source)")
@@ -4643,6 +4677,44 @@ extension ARGuideSessionView {
         lookHint = (a.distance, a.angle, aligned)
         if aligned && !obsWasAligned { observeInteraction("look-aligned") }
         obsWasAligned = aligned
+    }
+
+    /// A step with this session's author edits applied (built-in animation flags).
+    private func stepWithEdits(_ s: GuideStep) -> GuideStep {
+        guard let nodes = editedNodes[s.id] else { return s }
+        var c = s; c.nodes = nodes; return c
+    }
+
+    /// Author: switch a part's built-in animation on this step, on the server
+    /// and in the running engine, then replay so the change is seen at once.
+    private func setClip(node name: String, play: Bool) {
+        guard let asm = guide.assembly, assemblyStepIndex >= 0, assemblyStepIndex < sortedSteps.count else { return }
+        let step = sortedSteps[assemblyStepIndex]
+        Task { @MainActor in
+            do {
+                let saved = try await SIBClient(settings: settings).setStepNodeClip(guideId: guide.id, stepId: step.id, node: name, play: play)
+                editedNodes[step.id] = saved.nodes ?? []
+                assemblyEngine = AssemblyStateEngine(initial: asm.initialNodes, steps: sortedSteps.map(stepWithEdits))
+                replayAssemblyStep()
+                let label = play ? "Animation plays on this step" : "Animation at rest on this step"
+                withAnimation(.easeOut(duration: 0.15)) { visibilityToast = label }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation { if visibilityToast == label { visibilityToast = nil } } }
+            } catch {
+                showNotice("Could not save the animation setting: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// The parts of the current step that carry a built-in clip, with the step's flag for each.
+    private var clipChoices: [(node: String, label: String, playing: Bool)] {
+        guard let a = assemblyNode, assemblyStepIndex >= 0, assemblyStepIndex < sortedSteps.count else { return [] }
+        let step = stepWithEdits(sortedSteps[assemblyStepIndex])
+        let deltas = step.nodes ?? []
+        return a.clipOwners.sorted().compactMap { name in
+            guard let d = deltas.first(where: { $0.node == name }), d.show != "hidden" else { return nil }
+            let label = d.label ?? (a.extras[name]?["displayName"] as? String) ?? d.partName
+            return (name, label, d.clip?.play ?? false)
+        }
     }
 
     func replayAssemblyStep() {

@@ -43,6 +43,18 @@ test('stateBefore folds initial nodes then steps cumulatively (last write wins)'
   assert.deepEqual(s3.get('cmp:A').position, [0, 1, 0]);
 });
 
+test('clip: a built-in animation flag folds like show, counts as a step part, and survives a flash-only entry', () => {
+  const st = [{ nodes: [{ node: 'pl:a', show: 'solid', clip: { play: true, loop: true } }] }, { nodes: [{ node: 'pl:a', clip: { play: false } }] }, { nodes: [{ node: 'pl:a', effect: 'flash' }] }];
+  assert.deepEqual(E.stateBefore([], st, 1).get('pl:a').clip, { play: true, loop: true });
+  assert.deepEqual(E.stateBefore([], st, 2).get('pl:a').clip, { play: false });
+  assert.deepEqual(E.stateBefore([], st, 3).get('pl:a').clip, { play: false });     // the flash left it alone
+  assert.deepEqual(E.stepParts(st[1]), ['pl:a']);                                    // a clip-only delta names its part
+  const sched = E.scheduleStep(st[0].nodes, 1);
+  assert.deepEqual(E.stateDuring(new Map(), sched, 0).get('pl:a').clip, { play: true, loop: true });
+  // Cortona-shaped deltas never gain the key
+  assert.equal(E.stateBefore(initial, steps, 1).get('cmp:A').clip, undefined);
+});
+
 test('a motion on a hidden part moves it but leaves it hidden in the settled state (the app rule)', () => {
   const s = E.stateBefore([{ node: 'cmp:X', show: 'hidden' }], [{ nodes: [{ node: 'cmp:X', to: [1, 0, 0] }] }], 1);
   assert.equal(s.get('cmp:X').show, 'hidden');

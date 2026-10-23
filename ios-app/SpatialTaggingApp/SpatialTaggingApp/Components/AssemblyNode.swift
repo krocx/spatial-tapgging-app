@@ -46,6 +46,12 @@ final class AssemblyNode {
     /// They rest hidden, the Studio's rule, whether or not the importer
     /// named them in initialNodes; a step's own state still shows them.
     private var hiddenAtRest: Set<SCNNode> = []
+    /// Built-in glTF clips (GLBLoader), driven by SCNActions on their own
+    /// clock while a step's state asks for them (`clip.play`). `clipRest`
+    /// keeps the driven nodes' transforms so a stopped clip settles at rest.
+    let clips: [GLBClip]
+    private var clipRest: [ObjectIdentifier: simd_float4x4] = [:]
+    private var clipsRunning: Set<Int> = []
 
     init(assembly: GLBAssembly) {
         root = assembly.root
@@ -53,6 +59,8 @@ final class AssemblyNode {
         rest = assembly.restTransforms
         extras = assembly.extras
         bounds = assembly.bounds
+        clips = assembly.clips
+        for c in assembly.clips { for ch in c.channels { clipRest[ObjectIdentifier(ch.node)] = ch.node.simdTransform } }
         var depth: [String: Int] = [:]
         let partNames = Set(assembly.parts.keys)
         for (name, node) in assembly.parts {
@@ -140,9 +148,47 @@ final class AssemblyNode {
         }
         current = state
         SCNTransaction.commit()
+        syncClips(state)
         let unknown = state.keys.filter { parts[$0] == nil }.count
         let shown = root.childNodes.reduce(0) { $0 + visibleMeshCount($1) }
         AppLog.info("assembly", "state applied: \(hidden) hidden · \(ghost) ghost · \(solid) solid · \(unknown + missing) unknown names · \(shown) mesh nodes visible")
+    }
+
+    /// Part names that own a built-in clip (for an author's animation toggle).
+    var clipOwners: Set<String> { Set(clips.flatMap { $0.owners.prefix(1) }) }
+
+    /// Start or rest every built-in clip from the state: a clip plays when
+    /// the nearest of its owner parts that has a state is shown and says
+    /// `clip.play`; a stopped clip returns its nodes to rest. Each running
+    /// clip is one repeating SCNAction sampling its channels.
+    private func syncClips(_ state: [String: PartState]) {
+        for (i, c) in clips.enumerated() {
+            let owner = c.owners.compactMap { state[$0] }.first
+            let on = owner.map { $0.show != .hidden && ($0.clip?.play ?? false) } ?? false
+            let key = "clip\(i)"
+            if on {
+                if clipsRunning.contains(i) { continue }
+                clipsRunning.insert(i)
+                let loop = owner?.clip?.loop ?? true
+                let len = TimeInterval(max(c.duration, 0.05))
+                let tick = SCNAction.customAction(duration: len) { _, elapsed in
+                    let t = Float(elapsed)
+                    for ch in c.channels {
+                        let v = ch.sample(t)
+                        switch ch.path {
+                        case .translation: ch.node.simdPosition = simd_float3(v.x, v.y, v.z)
+                        case .rotation:    ch.node.simdOrientation = simd_quatf(ix: v.x, iy: v.y, iz: v.z, r: v.w)
+                        case .scale:       ch.node.simdScale = simd_float3(v.x, v.y, v.z)
+                        }
+                    }
+                }
+                root.runAction(loop ? .repeatForever(tick) : tick, forKey: key)
+            } else if clipsRunning.contains(i) {
+                clipsRunning.remove(i)
+                root.removeAction(forKey: key)
+                for ch in c.channels { if let r = clipRest[ObjectIdentifier(ch.node)] { ch.node.simdTransform = r } }
+            }
+        }
     }
 
     private func visibleMeshCount(_ n: SCNNode) -> Int {
@@ -188,6 +234,16 @@ final class AssemblyNode {
                 }
             }
         }
+        // Built-in clips follow the step's show / clip flags from the start of
+        // the step (the state the deltas settle to), not each delta's timing.
+        var settled = current
+        for d in deltas {
+            var p = settled[d.node] ?? PartState()
+            if let s = d.show, let show = PartShow(rawValue: s) { p.show = show } else if d.animate == "insert" { p.show = .solid }
+            if let c = d.clip { p.clip = c }
+            settled[d.node] = p
+        }
+        syncClips(settled)
         return total
     }
 

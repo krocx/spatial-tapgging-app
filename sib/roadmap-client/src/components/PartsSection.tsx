@@ -227,6 +227,22 @@ export function usePartsPicker(nodeId: string | null) {
     } else write(shown ? [...parts, ...names.filter(n => !partSet.has(n))] : parts.filter(p => !names.includes(p)));
   };
   const setShown = (name: string, shown: boolean) => setShownMany([name], shown);
+  // Built-in animation (glTF clips under a part - a Dynamics 365 Guides
+  // turning arrow). The preview tells us which parts have one; the toggle
+  // writes `clip: { play }` into this step's delta for the part, which the
+  // app, the XR kit and the preview all follow.
+  const [clipParts, setClipParts] = useState<Set<string>>(new Set());
+  const clipPlaying = (name: string): boolean => (Array.isArray(stepMeta?.nodes) ? (stepMeta!.nodes as Array<Record<string, unknown>>) : []).some(n => n.node === name && !!(n.clip as { play?: boolean } | undefined)?.play);
+  const setClipMany = (names: string[], play: boolean) => {
+    if (!nodeId) return;
+    const nodes = (Array.isArray(stepMeta?.nodes) ? (stepMeta!.nodes as Array<Record<string, unknown>>) : []).map(n => ({ ...n }));
+    for (const name of names) {
+      const i = nodes.findIndex(n => n.node === name);
+      if (i >= 0) nodes[i].clip = { play }; else nodes.push({ node: name, show: 'solid', clip: { play } });
+    }
+    patchStepMeta(nodeId, { nodes });
+    say(play ? 'Built-in animation plays on this step - in the app, the XR kit and here.' : 'Built-in animation at rest on this step.');
+  };
   const [note, setNote] = useState<string | null>(null);
   const say = (t: string) => { setNote(t); window.clearTimeout((say as unknown as { h?: number }).h); (say as unknown as { h?: number }).h = window.setTimeout(() => setNote(null), 6000); };
   /** Colour from this step on (a `color` delta - the app applies it, last wins). null clears. */
@@ -300,6 +316,7 @@ export function usePartsPicker(nodeId: string | null) {
         <button className="btn ghost" onClick={() => write(allOn ? parts.filter(p => !focusList.includes(p)) : [...parts, ...focusList.filter(p => !partSet.has(p))])}>{allOn ? 'Remove from step' : 'Add to step'}</button>
         <button className="btn ghost" onClick={() => setShownMany(focusList, !(focusInfo?.visible ?? true))} title={hasDeltas ? 'Writes a show / hide for these parts on this step (the app and the XR kit follow it)' : 'Authored step: on or off this step\u2019s parts list'}>{(focusInfo?.visible ?? true) ? 'Hide on this step' : 'Show on this step'}</button>
         <button className="btn ghost" onClick={() => setHiddenForGuide(focusList, !focusList.every(hiddenAtStart))} title="Every step starts without it (the imported initial state)">{focusList.every(hiddenAtStart) ? 'Show in whole guide' : 'Hide in whole guide'}</button>
+        {focusList.some(n => clipParts.has(n)) && <button className={`btn ghost${focusList.some(clipPlaying) ? ' on' : ''}`} onClick={() => setClipMany(focusList.filter(n => clipParts.has(n)), !focusList.some(clipPlaying))} title="This part carries its own animation (from the imported model). Play it on this step, or leave it at rest.">{focusList.some(clipPlaying) ? 'Animation playing' : 'Play animation'}</button>}
         <button className={`btn ghost${colourOpen ? ' on' : ''}`} onClick={() => setColourOpen(v => !v)} title="Colour the selection">Colour…</button>
         <button className={`btn ghost${isolate ? ' on' : ''}`} onClick={() => setIsolate(v => !v)} title="Show only the selection (I)">{isolate ? 'Show all' : 'Isolate'}</button>
         <button className={`btn ghost${spotlight ? ' on' : ''}`} onClick={() => setSpotlight(v => !v)} title="Grey out everything else">{spotlight ? 'Spotlight on' : 'Spotlight off'}</button>
@@ -453,7 +470,7 @@ export function usePartsPicker(nodeId: string | null) {
   ) : null;
 
   return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context, poses, play,
-    focus, focusList, isolate, setIsolate, spotlight, focusOn, setFocusInfo, focusBlock, viewControls, colourBy, labels, setHover, focusLabel: focus ? label(focus) : undefined, modelReload, note, hasDeltas, stepColours,
+    focus, focusList, isolate, setIsolate, spotlight, focusOn, setFocusInfo, focusBlock, viewControls, colourBy, labels, setHover, focusLabel: focus ? label(focus) : undefined, modelReload, note, hasDeltas, stepColours, setClipParts,
     toggleShown: () => { if (focusList.length) setShownMany(focusList, !(focusInfo?.visible ?? true)); } };
 }
 
@@ -483,7 +500,7 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
       {groupsBlock}
       {pk.contextBlock}
       {showPreview && modelId && tree && !studioOpen && (
-        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={toggle} onFocus={pk.focusOn} focus={pk.focusList} spotlight={pk.spotlight} isolate={pk.isolate} focusLabel={pk.focusLabel} colourBy={pk.colourBy} onHover={pk.setHover} onFocusInfo={pk.setFocusInfo} onExpand={() => openStudio(nodeId)} />
+        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={toggle} onFocus={pk.focusOn} focus={pk.focusList} spotlight={pk.spotlight} isolate={pk.isolate} focusLabel={pk.focusLabel} colourBy={pk.colourBy} onHover={pk.setHover} onFocusInfo={pk.setFocusInfo} onClips={names => pk.setClipParts(new Set(names))} onExpand={() => openStudio(nodeId)} />
       )}
       {pk.focusBlock}
       <div className="pt-toolbar">
@@ -588,7 +605,7 @@ export function PartsStudio(): JSX.Element | null {
       <div className="st-body">
         <div className="st-stage">
           {pk.tree && (
-            <AssemblyPreview key={reload + pk.modelReload * 1000} modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focusList} spotlight={pk.spotlight} isolate={pk.isolate} focusLabel={pk.focusLabel} colourBy={pk.colourBy} onHover={pk.setHover} onFocusInfo={pk.setFocusInfo} fill />
+            <AssemblyPreview key={reload + pk.modelReload * 1000} modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focusList} spotlight={pk.spotlight} isolate={pk.isolate} focusLabel={pk.focusLabel} colourBy={pk.colourBy} onHover={pk.setHover} onFocusInfo={pk.setFocusInfo} onClips={names => pk.setClipParts(new Set(names))} fill />
           )}
         </div>
         <aside className="st-side"><ResizeHandle cssVar="--studio-side-w" storageKey="sib.studio.side-w" min={380} max={720} />

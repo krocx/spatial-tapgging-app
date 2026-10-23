@@ -76,7 +76,7 @@
       "type": "object", "required": ["position", "rotation", "source"],
       "properties": {
         "position": { "$ref": "#/$defs/vec3" }, "rotation": { "$ref": "#/$defs/vec4" },
-        "scale": { "type": "number" }, "source": { "enum": ["tap", "object", "config", "partframe"] },
+        "scale": { "type": "number" }, "source": { "enum": ["tap", "object", "config", "partframe", "import"] },
         "setAt": { "type": "string" }, "setBy": { "type": "string" } } },
     "assembly": {
       "type": "object", "required": ["modelId"],
@@ -92,6 +92,7 @@
         "opacity": { "type": "number" }, "animate": { "enum": ["insert", "remove", "move"] },
         "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
         "rotationFrom": { "$ref": "#/$defs/vec4" }, "rotationTo": { "$ref": "#/$defs/vec4" },
+        "clip": { "type": "object", "required": ["play"], "properties": { "play": { "type": "boolean" }, "loop": { "type": "boolean" } } },
         "color": { "$ref": "#/$defs/vec3" }, "durationSec": { "type": "number" }, "delaySec": { "type": "number" },
         "effect": { "enum": ["flash"] }, "sourceKey": { "type": "string" } } },
     "view": {

@@ -59,6 +59,7 @@ export interface DynamicsWorkerResult {
   initialNodes: unknown[];
   bounds?:      unknown;
   partLabels:   Record<string, string>;
+  anchorPose?:  unknown;
   /** Step images keyed by sequence number (bytes + sniffed type). */
   stepImages:   { seq: number; sniffed: string; bytes: Buffer }[];
   provenance:   unknown;
@@ -158,7 +159,7 @@ function runWorker(input: WorkerInput, heapMb: number): Promise<unknown> {
       resourceLimits: { maxOldGenerationSizeMb: heapMb },
     });
     let settled = false;
-    worker.once('message', (m: { ok: boolean; error?: string; glb?: ArrayBuffer | null; imported?: unknown; log?: unknown; report?: unknown; initialNodes?: unknown[]; bounds?: unknown; assembledPose?: 'published' | 'final'; ladder?: LadderResult; stepImages?: { seq: number; sniffed: string; bytes: ArrayBuffer }[]; provenance?: unknown; partLabels?: Record<string, string> }) => {
+    worker.once('message', (m: { ok: boolean; error?: string; glb?: ArrayBuffer | null; imported?: unknown; log?: unknown; report?: unknown; initialNodes?: unknown[]; bounds?: unknown; assembledPose?: 'published' | 'final'; ladder?: LadderResult; stepImages?: { seq: number; sniffed: string; bytes: ArrayBuffer }[]; provenance?: unknown; partLabels?: Record<string, string>; anchorPose?: unknown }) => {
       settled = true;
       if (!m.ok) { reject(new Error(m.error ?? `${input.kind} failed`)); return; }
       const empty: LadderResult = { variants: [], triangles: 0, skipped: [] };
@@ -167,7 +168,7 @@ function runWorker(input: WorkerInput, heapMb: number): Promise<unknown> {
           ladder: m.ladder ?? empty, glb: Buffer.from(m.glb ?? new ArrayBuffer(0)) };
         resolve(r);
       } else if (input.kind === 'dynamics') {
-        const r: DynamicsWorkerResult = { imported: m.imported, report: m.report, initialNodes: m.initialNodes ?? [], bounds: m.bounds, provenance: m.provenance, partLabels: m.partLabels ?? {},
+        const r: DynamicsWorkerResult = { imported: m.imported, report: m.report, initialNodes: m.initialNodes ?? [], bounds: m.bounds, provenance: m.provenance, partLabels: m.partLabels ?? {}, anchorPose: m.anchorPose,
           stepImages: (m.stepImages ?? []).map(s => ({ seq: s.seq, sniffed: s.sniffed, bytes: Buffer.from(s.bytes) })),
           ladder: m.ladder ?? empty, glb: m.glb ? Buffer.from(m.glb) : null };
         resolve(r);

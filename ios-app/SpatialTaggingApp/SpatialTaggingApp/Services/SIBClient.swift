@@ -652,6 +652,14 @@ final class SIBClient {
         try await patch(GuideStep.self, path: "/guides/\(guideId)/steps/\(stepId)", body: req)
     }
 
+    /// Author: play or rest a part's BUILT-IN animation (glTF clips under the
+    /// node, e.g. a Dynamics 365 Guides arrow) on one step. Writes `clip`
+    /// into the step's delta for that node; every player follows it.
+    func setStepNodeClip(guideId: String, stepId: String, node: String, play: Bool) async throws -> GuideStep {
+        struct Body: Encodable { let node: String; let play: Bool }
+        return try await patch(GuideStep.self, path: "/guides/\(guideId)/steps/\(stepId)/node-clip", body: Body(node: node, play: play))
+    }
+
     /// Author: delete a single step.
     func deleteGuideStep(guideId: String, stepId: String) async throws {
         try await delete(path: "/guides/\(guideId)/steps/\(stepId)")

@@ -109,7 +109,7 @@ export function validateAssemblyPose(p: unknown): string | null {
   if (!vec(o.position, 3)) return 'assemblyPose.position must be [x, y, z]';
   if (!vec(o.rotation, 4)) return 'assemblyPose.rotation must be a quaternion [x, y, z, w]';
   if (o.scale !== undefined && !(typeof o.scale === 'number' && o.scale > 0 && Number.isFinite(o.scale))) return 'assemblyPose.scale must be a positive number';
-  if (!['tap', 'object', 'config', 'partframe'].includes(String(o.source))) return 'assemblyPose.source must be tap | object | config | partframe';
+  if (!['tap', 'object', 'config', 'partframe', 'import'].includes(String(o.source))) return 'assemblyPose.source must be tap | object | config | partframe | import';
   return null;
 }
 

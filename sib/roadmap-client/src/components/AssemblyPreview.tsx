@@ -40,6 +40,8 @@ interface Props {
   poses?: PartStateMap;
   /** This step on its own clock: the state it starts from and its deltas. Enables Play. */
   play?: { base: PartStateMap; deltas: GuideStepNode[]; speed?: number };
+  /** Which parts carry built-in animation clips (known once the model is read). */
+  onClips?: (parts: string[]) => void;
   onPick?: (name: string) => void;
   /** Identify: a single click names the part (the Studio's focus card); double click = onPick. */
   onFocus?: (name: string) => void;
@@ -86,6 +88,8 @@ interface Scene3 {
   /** name → meshes, for cheap hover highlighting. */
   meshesOf: Map<string, any[]>;
   hover: string | null;
+  /** Built-in glTF clips by the part that owns them (a Dynamics 365 Guides turning arrow), with their mixer and clock. */
+  clips: { mixer: any; clock: any; byPart: Map<string, any[]> } | null;
 }
 
 /** A brand token as a three.js colour - the scene follows tokens.css, never a literal. */
@@ -97,7 +101,7 @@ const tokenColor = (THREE: Three, name: string, fallback: string) => {
 /** GLTFLoader sanitises node names (drops `:` `.` `/`), keeping the original in userData.name. */
 const partName = (o: any): string | undefined => (o?.userData?.name as string | undefined) ?? o?.name;
 
-export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, focus = null, spotlight = true, isolate = false, focusLabel, colourBy = null, onHover, onFocusInfo, height = 220, fill = false, onExpand, unmentioned = 'base', context, poses, play }: Props): JSX.Element {
+export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, focus = null, spotlight = true, isolate = false, focusLabel, colourBy = null, onHover, onFocusInfo, height = 220, fill = false, onExpand, unmentioned = 'base', context, poses, play, onClips }: Props): JSX.Element {
   const hostRef  = useRef<HTMLDivElement | null>(null);
   const labelRef = useRef<HTMLDivElement | null>(null);
   const leadRef  = useRef<SVGLineElement | null>(null);
@@ -146,7 +150,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         const st: Scene3 = {
           THREE, renderer, scene, camera, controls, root: null,
           raycaster: new THREE.Raycaster(), pointer: new THREE.Vector2(), frame: 0, disposed: false, own: new Map(), rest: new Map(), playing: null,
-          rim: [], rimFocus: [], focusBox: null, meshesOf: new Map(), hover: null,
+          rim: [], rimFocus: [], focusBox: null, meshesOf: new Map(), hover: null, clips: null,
         };
         s3.current = st;
 
@@ -168,6 +172,26 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         });
         scene.add(root);
         st.root = root;
+        // Built-in clips: GLTFLoader binds tracks by the sanitised node name,
+        // which is still the object's name here (the original lives in
+        // userData.name), so the mixer binds as-is. Each clip belongs to the
+        // nearest part above the nodes it drives; it plays only when that
+        // part's pose says so (clip.play), the way the XR kit and the app do.
+        if (gltf.animations?.length) {
+          const mixer = new THREE.AnimationMixer(root); const byPart = new Map<string, any[]>();
+          for (const clip of gltf.animations) {
+            const owners = new Set<string>();
+            for (const track of clip.tracks) {
+              const node = THREE.PropertyBinding.findNode(root, THREE.PropertyBinding.parseTrackName(track.name).nodeName);
+              for (let p = node; p && p !== root; p = p.parent) { const n = partName(p); if (n && partNames.has(n)) { owners.add(n); break; } }
+            }
+            if (!owners.size) continue;
+            const action = mixer.clipAction(clip); action.enabled = false;
+            for (const n of owners) byPart.set(n, [...(byPart.get(n) ?? []), action]);
+          }
+          st.clips = byPart.size ? { mixer, clock: new THREE.Clock(), byPart } : null;
+          onClips?.([...byPart.keys()]);
+        }
 
         // Frame the whole assembly (drawn geometry only: not the baked hose frames).
         root.traverse((o: any) => { const n = partName(o); if (n && /#s\d+f\d+$/.test(n)) o.visible = false; });
@@ -219,6 +243,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
               }
             } else { label.style.display = 'none'; lead.style.display = 'none'; }
           }
+          if (st.clips) st.clips.mixer.update(st.clips.clock.getDelta());
           renderer.render(scene, camera);
           st.frame = requestAnimationFrame(loop);
         };
@@ -343,6 +368,14 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
       });
     });
     st.focusBox = focusSet.size && focusAny && !focusBox.isEmpty() ? focusBox.clone() : null;
+    // Built-in clips follow the part's pose: play while shown and asked for, else rest.
+    if (st.clips) for (const [name, actions] of st.clips.byPart) {
+      const ps = poseMap?.get(name); const on = !!ps && ps.show !== 'hidden' && !!ps.clip?.play;
+      for (const a of actions) {
+        if (on) { a.setLoop(ps!.clip!.loop === false ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); a.clampWhenFinished = ps!.clip!.loop === false; if (!a.enabled || !a.isRunning()) { a.enabled = true; a.reset().play(); } }
+        else if (a.enabled) { a.stop(); a.enabled = false; }
+      }
+    }
     // Describe the focused part: where it sits against the whole, its size, its parents.
     if (onFocusInfo) {
       if (primaryFocus && focusAny && !focusBox.isEmpty()) {

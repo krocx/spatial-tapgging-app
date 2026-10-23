@@ -54,6 +54,7 @@ import type {
   ApiResponse,
   ImportedGuide,
   GuideStepNode,
+  AssemblyPose,
 } from '@spatial/shared';
 import {
   getInstructionsSourceAdapter,
@@ -437,6 +438,9 @@ router.post(
           ...(r.initialNodes.length ? { initialNodes: r.initialNodes as GuideStepNode[] } : {}),
           ...(r.bounds ? { bounds: r.bounds as { min: [number, number, number]; max: [number, number, number] } } : {}),
         };
+        // QR-anchored guide: the estimated pose at the SIB QR (source 'import');
+        // ingest prefers a configuration default or a pose someone has set.
+        if (r.anchorPose) imported.assemblyPoseEstimate = r.anchorPose as AssemblyPose;
       } else {
         // Nothing placed: a text-and-pictures guide. No assembly, so the
         // per-step node deltas (there are none) and cadPositions are dropped.
@@ -1295,6 +1299,30 @@ router.post('/:id/steps', (req: Request, res: Response): void => {
 });
 
 // PATCH /guides/:id/steps/:stepId - Author updates a step
+// PATCH /guides/:id/steps/:stepId/node-clip { node, play, loop? } - the
+// author's switch for a part's BUILT-IN animation (glTF clips under the node,
+// e.g. a Dynamics 365 Guides arrow) on this step: writes `clip` into the
+// step's delta for that node (adding a shown delta when none exists). The
+// app, the XR kit and the Studio all follow it. Body is route-local on
+// purpose - the step PATCH never carries nodes (imports and the Designer own
+// them); this touches one flag. iOS Author mode and the Studio call it.
+router.patch('/:id/steps/:stepId/node-clip', (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  const step = guideStepStore.findById(req.params.stepId);
+  if (!guide || !step || step.guideId !== guide.id) { res.status(404).json({ error: 'Guide or step not found', timestamp: new Date().toISOString() }); return; }
+  const b = (req.body ?? {}) as { node?: unknown; play?: unknown; loop?: unknown };
+  if (typeof b.node !== 'string' || !b.node.trim() || typeof b.play !== 'boolean') { res.status(400).json({ error: 'node (string) and play (boolean) are required', timestamp: new Date().toISOString() }); return; }
+  const clip: GuideStepNode['clip'] = { play: b.play, ...(b.loop === false ? { loop: false } : {}) };
+  const nodes: GuideStepNode[] = (step.nodes ?? []).map(n => ({ ...n }));
+  const i = nodes.findIndex(n => n.node === b.node);
+  if (i >= 0) nodes[i].clip = clip; else nodes.push({ node: b.node.trim(), show: 'solid', clip });
+  const now = new Date().toISOString();
+  const updated = guideStepStore.update(step.id, { nodes, updatedAt: now }) ?? { ...step, nodes, updatedAt: now };
+  guideStore.update(guide.id, { updatedAt: now });
+  console.log(`[SIB] GuideStep ${step.id}: built-in animation ${b.play ? 'on' : 'off'} for 1 node`);
+  res.json({ data: withEffectiveModels(updated), timestamp: now });
+});
+
 router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) {

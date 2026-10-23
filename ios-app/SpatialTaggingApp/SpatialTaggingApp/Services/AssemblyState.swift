@@ -22,6 +22,7 @@ struct PartState: Equatable {
     var color:    simd_float3? = nil            // highlight override (r,g,b 0–1)
     var position: simd_float3? = nil            // nil = rest pose (from the model)
     var rotation: simd_float4? = nil            // axis-angle [x,y,z,rad]; nil = rest
+    var clip:     ClipFlag? = nil               // built-in glTF clips under the part: play / rest
 }
 
 struct AssemblyStateEngine {
@@ -66,7 +67,7 @@ struct AssemblyStateEngine {
     /// highlights, else reveals - for focus pulsing and the look-here arrow.
     func focusParts(at index: Int) -> [String] {
         let d = deltas(at: index)
-        let moving = d.filter { $0.animate != nil }.map(\.node)
+        let moving = d.filter { $0.animate != nil || $0.clip?.play == true }.map(\.node)
         if !moving.isEmpty { return moving }
         let lit = d.filter { $0.color != nil }.map(\.node)
         if !lit.isEmpty { return lit }
@@ -87,6 +88,7 @@ struct AssemblyStateEngine {
                 p.show = .solid; p.opacity = 1
             }
             if let c = n.color, c.count == 3 { p.color = simd_float3(Float(c[0]), Float(c[1]), Float(c[2])) }
+            if let clip = n.clip { p.clip = clip }
             if let to = n.to, to.count == 3 { p.position = simd_float3(Float(to[0]), Float(to[1]), Float(to[2])) }
             if let r = n.rotationTo, r.count == 4 { p.rotation = simd_float4(Float(r[0]), Float(r[1]), Float(r[2]), Float(r[3])) }
             st[n.node] = p

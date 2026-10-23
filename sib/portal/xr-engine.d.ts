@@ -3,7 +3,7 @@ import type { GuideStepNode } from '@spatial/shared';
 
 export const DEFAULT_SPEED: number;
 export const GHOST_OPACITY: number;
-export interface EnginePose { show?: 'solid' | 'ghost' | 'hidden'; opacity?: number; color?: number[]; position?: number[] | null; rotation?: number[] | null }
+export interface EnginePose { show?: 'solid' | 'ghost' | 'hidden'; opacity?: number; color?: number[]; position?: number[] | null; rotation?: number[] | null; clip?: { play: boolean; loop?: boolean } }
 export type EngineState = Map<string, EnginePose>;
 export interface ScheduleEntry { index: number; delta: GuideStepNode; startSec: number; durationSec: number; motion: boolean; flash: boolean; hideAfterMotion: boolean; depth: number }
 export function hasMotion(d: GuideStepNode): boolean;

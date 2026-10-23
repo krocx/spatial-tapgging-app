@@ -14,6 +14,7 @@ api: |
   POST /guides/import/jobs/:id/discard - the caller cancelled; drops the parsed guide and the assembly it registered (portal · API key)
   POST /guides/import - { sourceType: 'dynamics', payload: { packageBase64 } } the text path: steps and branches only, no 3D, no pictures (any · API key)
   GET /guides/:id/import-log - the content-free report kept for the guide, with the source guide GUID and every asset's version (portal · API key)
+  PATCH /guides/:id/steps/:stepId/node-clip - { node, play, loop? } the author's switch for a part's built-in animation (a Guides arrow or hand) on one step; the app, the XR kit and the Studio follow it (app · designer · API key)
 wireframe: portal
 arch: |
   sequenceDiagram
@@ -51,7 +52,8 @@ step becomes the last step with evidence required. Every placed 3D object -
 the author's own models and the stock holograms alike - becomes a node of one
 merged assembly model in the Guides anchor frame, so the author places the
 assembly once at the SIB QR and each step then shows, hides, ghosts (X-ray)
-or colours its objects exactly as Guides did; the attention director's
+or colours its objects exactly as Guides did, and plays an object's own
+animation (a turning arrow, a hand) where Guides did; the attention director's
 position (or the shown objects' centroid) becomes the step's position in the
 assembly. Coordinates are converted from Unity's left-handed frame behind one
 flag. Guides concepts SIB has no place for - triggers, interactables, anchor

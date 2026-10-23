@@ -135,8 +135,12 @@ export async function applyImportedGuide(
     // Assembly: the import owns model + initial state; the PLACEMENT (pose)
     // is device/config-owned and survives a re-import of the same model.
     if (imported.assembly) {
-      const keepPose = existing.assembly?.modelId === imported.assembly.modelId ? existing.assembly?.pose : undefined;
-      guide.assembly = { ...imported.assembly, ...(keepPose ? { pose: keepPose } : {}) };
+      // An importer's own estimate (source 'import' - the source frame is the
+      // printed QR, as for Dynamics 365 Guides) never replaces a pose someone
+      // has already set, whatever the model id: the frame is the same.
+      const keepPose = existing.assembly?.modelId === imported.assembly.modelId || imported.assemblyPoseEstimate ? existing.assembly?.pose : undefined;
+      const pose = keepPose ?? imported.assemblyPoseEstimate;
+      guide.assembly = { ...imported.assembly, ...(pose ? { pose } : {}) };
     }
   } else {
     guide = {
@@ -158,6 +162,8 @@ export async function applyImportedGuide(
       const cfg = anchor?.configId ? chamberConfigStore.findById(anchor.configId) : undefined;
       if (cfg?.defaultAssemblyPose) {
         guide.assembly.pose = normalizeAssemblyPose({ ...cfg.defaultAssemblyPose, source: 'config' }, opts.createdBy);
+      } else if (imported.assemblyPoseEstimate) {
+        guide.assembly.pose = imported.assemblyPoseEstimate;   // the importer's QR estimate, until someone places it
       }
     }
   }

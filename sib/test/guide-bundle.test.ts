@@ -55,7 +55,7 @@ const model = (id: string, hasGLB = true): Model3D => ({
 const guide: Guide = {
   id: 'g-1', anchorId: 'anc-1', name: 'Steering install', published: true, createdAt: now, updatedAt: now,
   assembly: { modelId: 'm-asm', source: 'cortona', animationSpeed: 0.5,
-    pose: { position: [0, 0, 0], rotation: [0, 0, 0, 1], source: 'tap' },
+    pose: { position: [0, 0, 0], rotation: [0, 0, 0, 1], source: 'import' },
     initialNodes: [{ node: 'cmp:STEM', show: 'hidden' }], bounds: { min: [-1, 0, -1], max: [1, 1, 1] } },
 } as Guide;
 const step = (n: number, extra: Partial<GuideStep> = {}): GuideStep => ({
@@ -63,7 +63,7 @@ const step = (n: number, extra: Partial<GuideStep> = {}): GuideStep => ({
 } as GuideStep);
 const steps = [
   step(2, { models: [{ slotId: 'assembly', modelId: 'm-asm' }, { slotId: 'tool', modelId: 'm-tool' }], validationRequired: true, validationTrainedAt: now }),
-  step(1, { nodes: [{ node: 'cmp:STEM', show: 'solid', delaySec: 0.1, durationSec: 0.4 }, { node: 'cmp:STEM', effect: 'flash', delaySec: 1.5, durationSec: 2.5 }],
+  step(1, { nodes: [{ node: 'cmp:STEM', show: 'solid', delaySec: 0.1, durationSec: 0.4 }, { node: 'pl:0f8fad5b-d9cb-469f-a165-70867728950e', show: 'solid', clip: { play: true, loop: true } }, { node: 'cmp:STEM', effect: 'flash', delaySec: 1.5, durationSec: 2.5 }],
             view: { position: [0, 1, 2], orientation: [0, 1, 0, 0.3] }, cadPosition: [0.1, 0.2, 0.3], modelId: 'm-missing' }),
   step(3, { validationRequired: true }),
 ];

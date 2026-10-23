@@ -16,6 +16,44 @@ export const isFrameNode = name => /#s\d+f\d+$/.test(String(name || ''));
  */
 export const isPartName = name => typeof name === 'string' && (name.startsWith('cmp:') || /^pl:[^/]+$/.test(name));
 /** The name shown on chips and labels: the exporter's label, else the name without its prefix. */
+/**
+ * Built-in animation clips (glTF `animations`), grouped by the part that owns
+ * them: a Dynamics 365 Guides placement carries its turning arrow or hand as
+ * a clip re-targeted under its `pl:` node. Call after restoreNames(), which
+ * has re-pointed every track at its object's uuid.
+ * Returns { mixer, byPart: Map<partName, AnimationAction[]> } or null when the
+ * model has no clips (every Cortona and CAD model) - callers then skip it.
+ */
+export function bindClips(gltf, root, THREE) {
+  const clips = gltf?.animations || [];
+  if (!clips.length) return null;
+  const byUuid = new Map(); root.traverse(o => byUuid.set(o.uuid, o));
+  const mixer = new THREE.AnimationMixer(root);
+  const byPart = new Map();
+  for (const clip of clips) {
+    const owners = new Set();
+    for (const track of clip.tracks) {
+      const parsed = THREE.PropertyBinding.parseTrackName(track.name);
+      const node = byUuid.get(parsed.nodeName) || THREE.PropertyBinding.findNode(root, parsed.nodeName);
+      if (!node) continue;
+      for (let o = node; o && o !== root; o = o.parent) if (isPartName(o.name)) { owners.add(o.name); break; }
+    }
+    if (!owners.size) continue;
+    const action = mixer.clipAction(clip); action.enabled = false;
+    for (const name of owners) { if (!byPart.has(name)) byPart.set(name, []); byPart.get(name).push(action); }
+  }
+  return byPart.size ? { mixer, byPart } : null;
+}
+/** Start or rest a part's built-in clips from its state (`clip: { play, loop }`). */
+export function applyClipState(bound, partName, clipState, THREE) {
+  const actions = bound?.byPart.get(partName); if (!actions) return;
+  for (const a of actions) {
+    if (clipState?.play) {
+      a.setLoop(clipState.loop === false ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); a.clampWhenFinished = clipState.loop === false;
+      if (!a.enabled || !a.isRunning()) { a.enabled = true; a.reset().play(); }
+    } else if (a.enabled) { a.stop(); a.enabled = false; }
+  }
+}
 export const partDisplayName = o => o?.userData?.displayName || o?.userData?.def || String(o?.name || '').replace(/^(cmp|pl):/, '');
 export const isPlaybackNode = name => /#(s\d+f\d+|rest)$/.test(String(name || ''));
 
@@ -28,6 +66,15 @@ export const isPlaybackNode = name => /#(s\d+f\d+|rest)$/.test(String(name || ''
 export function restoreNames(gltf) {
   const root = gltf.scene;
   const gltfNodes = gltf.parser?.json?.nodes || [];
+  // Animation tracks are bound by the sanitised node name, which is about to
+  // change back: re-point each track at the object's uuid first (bindClips
+  // resolves by uuid; PropertyBinding accepts either).
+  for (const clip of gltf.animations || []) for (const track of clip.tracks) {
+    const dot = track.name.lastIndexOf('.'); if (dot < 0) continue;
+    const nodeName = track.name.slice(0, dot).replace(/\[.*$/, '');
+    let found = null; root.traverse(o => { if (!found && (o.name === nodeName || o.uuid === nodeName)) found = o; });
+    if (found) track.name = found.uuid + track.name.slice(nodeName.length);
+  }
   root.traverse(o => {
     const idx = gltf.parser?.associations?.get(o)?.nodes;
     const orig = idx !== undefined ? gltfNodes[idx]?.name : undefined;

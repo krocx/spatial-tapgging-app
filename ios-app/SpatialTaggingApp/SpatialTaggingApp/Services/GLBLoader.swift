@@ -47,8 +47,56 @@ struct GLBAssembly {
     let triangleCount: Int
     /// Bounds in the assembly frame (root-local), if any geometry.
     let bounds:    (min: simd_float3, max: simd_float3)?
+    /// Built-in animation clips (glTF `animations`): a Dynamics 365 Guides
+    /// placement's turning arrow or hand, re-targeted under its `pl:` node by
+    /// the importer. Played by AssemblyNode when a step's delta asks for it
+    /// (`clip.play`); otherwise they rest. Cortona and CAD models have none.
+    let clips:     [GLBClip]
     /// What the loader had to do to fit the device.
     let info:      GLBLoadInfo
+}
+
+/// One glTF animation, sampled by AssemblyNode on its own clock.
+struct GLBClip {
+    let name: String
+    /// The part names the clip belongs to, nearest ancestor first - the node
+    /// it drives and the named nodes above it. A step's state for any of them
+    /// (the first that has one) decides whether the clip plays.
+    let owners: [String]
+    let channels: [GLBClipChannel]
+    /// Length in seconds (the last keyframe time across channels).
+    let duration: Float
+}
+
+struct GLBClipChannel {
+    enum Path { case translation, rotation, scale }
+    let node: SCNNode
+    let path: Path
+    let times: [Float]
+    /// xyz(1) for translation / scale, xyzw for rotation - one per keyframe.
+    let values: [simd_float4]
+    let step: Bool            // STEP interpolation; else linear (CUBICSPLINE is sampled on its keyframes only)
+    let cubic: Bool
+    /// The value at `t`, clamped to the key range.
+    func sample(_ t: Float) -> simd_float4 {
+        guard !times.isEmpty else { return values.first ?? simd_float4(0, 0, 0, 1) }
+        if t <= times[0] { return key(0) }
+        if t >= times[times.count - 1] { return key(times.count - 1) }
+        var lo = 0, hi = times.count - 1
+        while hi - lo > 1 { let mid = (lo + hi) / 2; if times[mid] <= t { lo = mid } else { hi = mid } }
+        if step { return key(lo) }
+        let span = times[hi] - times[lo]
+        let u = span > 0 ? (t - times[lo]) / span : 0
+        let a = key(lo), b = key(hi)
+        if path == .rotation {
+            let qa = simd_quatf(ix: a.x, iy: a.y, iz: a.z, r: a.w), qb = simd_quatf(ix: b.x, iy: b.y, iz: b.z, r: b.w)
+            let q = simd_slerp(qa, qb, u)
+            return simd_float4(q.imag.x, q.imag.y, q.imag.z, q.real)
+        }
+        return a + (b - a) * u
+    }
+    /// CUBICSPLINE stores in-tangent, value, out-tangent per key; the value is the middle one.
+    private func key(_ i: Int) -> simd_float4 { cubic ? values[min(values.count - 1, i * 3 + 1)] : values[min(values.count - 1, i)] }
 }
 
 struct GLBLoadInfo {
@@ -341,6 +389,38 @@ enum GLBLoader {
         let rootIds = (sceneIdx < scenesJ.count ? scenesJ[sceneIdx]["nodes"] as? [Int] : nil) ?? Array(nodesJ.indices)
         for r in rootIds { root.addChildNode(try buildNode(r, parentWorld: matrix_identity_float4x4)) }
 
+        // Built-in animation clips. Only TRS channels on nodes we built; a
+        // malformed clip is skipped with a log line, never a failed load.
+        var clips: [GLBClip] = []
+        for (ci, aj) in (json["animations"] as? [[String: Any]] ?? []).enumerated() {
+            let samplers = aj["samplers"] as? [[String: Any]] ?? []
+            var channels: [GLBClipChannel] = []; var owners: [String] = []; var duration: Float = 0
+            for ch in aj["channels"] as? [[String: Any]] ?? [] {
+                guard let si = ch["sampler"] as? Int, si < samplers.count,
+                      let target = ch["target"] as? [String: Any], let ni = target["node"] as? Int, let node = built[ni],
+                      let pathS = target["path"] as? String else { continue }
+                let path: GLBClipChannel.Path
+                switch pathS { case "translation": path = .translation; case "rotation": path = .rotation; case "scale": path = .scale; default: continue }
+                let s = samplers[si]
+                guard let ii = s["input"] as? Int, let oi = s["output"] as? Int else { continue }
+                do {
+                    let times = try readFloats(accessorIndex: ii, components: 1, accessors: accessors, views: bufferViews, bin: bin).map { $0.x }
+                    let comps = path == .rotation ? 4 : 3
+                    let values = try readFloats(accessorIndex: oi, components: comps, accessors: accessors, views: bufferViews, bin: bin)
+                    let interp = s["interpolation"] as? String ?? "LINEAR"
+                    channels.append(GLBClipChannel(node: node, path: path, times: times, values: values, step: interp == "STEP", cubic: interp == "CUBICSPLINE"))
+                    duration = max(duration, times.last ?? 0)
+                    // Owners: the driven node and every named ancestor, nearest first.
+                    var n: SCNNode? = node
+                    while let cur = n, cur !== root { if let nm = cur.name, parts[nm] != nil, !owners.contains(nm) { owners.append(nm) }; n = cur.parent }
+                } catch {
+                    AppLog.warn("model", "[GLBLoader] animation \(ci) channel skipped: \(error)")
+                }
+            }
+            if !channels.isEmpty { clips.append(GLBClip(name: aj["name"] as? String ?? "clip\(ci)", owners: owners, channels: channels, duration: duration)) }
+        }
+        if !clips.isEmpty { AppLog.info("model", "[GLBLoader] \(clips.count) built-in animation clip(s)") }
+
         // Per-part material instances: clone so a highlight on one part never
         // bleeds into another part sharing the same glTF material.
         for (_, p) in parts {
@@ -357,7 +437,7 @@ enum GLBLoader {
                                     parts.count, meshCount, triangleCount, info.sourceTriangles, info.budget, flat ? "flat" : "indexed", info.seconds))
         return GLBAssembly(root: root, parts: parts, extras: extras, restTransforms: rest,
                            meshCount: meshCount, triangleCount: triangleCount,
-                           bounds: anyGeometry ? (bmin, bmax) : nil, info: info)
+                           bounds: anyGeometry ? (bmin, bmax) : nil, clips: clips, info: info)
     }
 
     // MARK: - Geometry builders (no SCNVector3 arrays - straight into buffers)
@@ -521,6 +601,26 @@ enum GLBLoader {
                 let p = base + off + i * step
                 let x = p.loadUnaligned(as: Float.self), y = (p + 4).loadUnaligned(as: Float.self), z = (p + 8).loadUnaligned(as: Float.self)
                 out.append(simd_float3(x, y, z))
+            }
+        }
+        return out
+    }
+
+    /// float32 accessor with 1, 3 or 4 components per element, as float4 (unused lanes zero).
+    private static func readFloats(accessorIndex ai: Int, components: Int, accessors: [[String: Any]], views: [[String: Any]], bin: Data) throws -> [simd_float4] {
+        let (data, off, count, ct, stride) = try view(forAccessor: ai, accessors: accessors, views: views, bin: bin)
+        guard ct == 5126 else { throw GLBLoaderError.malformed("animation accessor must be float32") }
+        let step = stride ?? components * 4
+        guard count > 0 else { return [] }
+        guard off + (count - 1) * step + components * 4 <= data.count else { throw GLBLoaderError.malformed("animation accessor overruns BIN") }
+        var out = [simd_float4](); out.reserveCapacity(count)
+        data.withUnsafeBytes { raw in
+            let base = raw.baseAddress!
+            for i in 0 ..< count {
+                let p = base + off + i * step
+                var v = simd_float4(0, 0, 0, 0)
+                for c in 0 ..< components { v[c] = (p + c * 4).loadUnaligned(as: Float.self) }
+                out.append(v)
             }
         }
         return out

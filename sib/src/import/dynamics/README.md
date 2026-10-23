@@ -33,7 +33,9 @@ provenance kept in the import log), `adapters/dynamics-guides-adapter.ts`
 | question responses | 1st acting → `nextOnSuccessSeq` (omitted when it is simply the next step), 2nd → `nextOnFailureSeq`; a 3rd+ counted as `foldedToLinear`; texts appended as `1. … 2. …` |
 | completion step | last step, `completionRequired`, `evidenceRequired`; its objects shown |
 | placement (`isPlaced` only) | node `pl:<guid>` (the web player's `isPartName` and the server's `models/colour.ts` accept `cmp:*` and top-level `pl:*`), TRS converted, `label` = the asset's display name; per step: hide the previous step's nodes, show mine with style → `show: solid | ghost`, `color` |
+| animated placement | `clip: { play: true, loop }` on the node (the glTF clip is merged and re-targeted under it; never a keyframe-less `animate`) |
 | attention director at a placement / position | `effect: 'flash'` on that node, `cadPosition`; else the centroid of the step's shown nodes |
+| QR anchor (label matches /qr/) | `result.anchorPose` = identity, `source: 'import'`; the route puts it on `ImportedGuide.assemblyPoseEstimate`, ingest uses it only when no configuration default or set pose exists |
 | step image | out of the package, by sequence number, into the step-image store (route layer) |
 | `GuideAssembly` | `modelId`, `initialNodes` (everything hidden), `bounds`, `source: 'dynamics'` |
 

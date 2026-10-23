@@ -1331,6 +1331,12 @@ export interface GuideStepNode {
   delaySec?:     number;
   /** Transient attention effect that leaves no state behind (Cortona "flash"). */
   effect?:       'flash';
+  /** Built-in animation: the glTF animation clips baked into the model under
+   *  this node (a Dynamics 365 Guides turning arrow, a hand). `play` runs them
+   *  while the node is shown on this step (looping unless `loop` is false);
+   *  absent = the clips stay at rest. Authored motion (`animate` / `to`) is
+   *  independent and may combine with it. Every player honours it. */
+  clip?:         { play: boolean; loop?: boolean };
   /** Importer-internal (never stored): the command turned the part ON - a SwitchOFF that switches on, a
    *  transparency fade from invisible. Used to seed the initial state from the timeline. */
   reveal?:       boolean;
@@ -1362,7 +1368,10 @@ export interface AssemblyPose {
   /** Quaternion [x, y, z, w]. */
   rotation: [number, number, number, number];
   scale?:   number;                  // default 1 (models are exported in metres)
-  source:   'tap' | 'object' | 'config' | 'partframe';
+  /** 'import' = written by an importer whose source frame is the printed QR
+   *  (Dynamics 365 Guides QR anchors): an estimate to verify on the first
+   *  guide, overridden by any tap / object / config pose. */
+  source:   'tap' | 'object' | 'config' | 'partframe' | 'import';
   setAt?:   string;
   setBy?:   string;
 }
@@ -2021,6 +2030,12 @@ export interface ImportedGuide {
   /** Assembly model + initial node state (AR OJT imports). Pose is never part
    *  of an import - it is placed on device or inherited from the configuration. */
   assembly?:    Omit<GuideAssembly, 'pose'>;
+  /** The one exception, kept apart so the rule above stays visible: an
+   *  importer whose source frame IS the printed QR (Dynamics 365 Guides QR
+   *  anchors) may offer an estimated pose (source 'import'). Ingest uses it
+   *  only when nothing better exists - never over a configuration default or
+   *  a pose someone has set. */
+  assemblyPoseEstimate?: AssemblyPose;
 }
 
 /**

@@ -194,7 +194,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DEFAULT_SPEED, GHOST_OPACITY, stateBefore, stateAfter, scheduleStep, scheduleLength, stepParts, originForSurface, attentionFor } from '/portal/xr-engine.js';
-import { restoreNames, prepareMeshes, buildParts, isPartName } from '/portal/assembly-model.js';
+import { restoreNames, prepareMeshes, buildParts, isPartName, bindClips, applyClipState } from '/portal/assembly-model.js';
 import { XRPanel } from '/portal/xr-panel.js';
 import { XRHands } from '/portal/xr-hands.js';
 
@@ -403,6 +403,7 @@ async function loadBundle() {
   // with every instance of a re-used part, renamed parts found by objectID.
   const root = restoreNames(gltf);
   prepareMeshes(root, THREE, { frames: 'keep' });
+  clips = bindClips(gltf, root, THREE);   // null for a model without built-in animation
   const refs = [...(guide.assembly?.initialNodes || []), ...steps.flatMap(s => s.nodes || [])];
   const built = buildParts(root, THREE, refs);
   for (const [k, v] of built.parts) parts.set(k, v);
@@ -463,7 +464,9 @@ function applyState(state) {
     // Parents first (sorted by depth above): a group's state paints its whole
     // subtree, then a child's own state overrides - the iOS order.
     setPartOpacity(p, alpha, st.color);
+    if (clips) applyClipState(clips, name, st.show === 'hidden' ? null : st.clip, THREE);
   }
+  if (clips) for (const name of clips.byPart.keys()) if (!state.has(name)) applyClipState(clips, name, null, THREE);
   if (reducedMode) syncReducedHoses();
 }
 const isFrame = n => /#s\d+f\d+$/.test(n);
@@ -547,12 +550,12 @@ function placeFromQR(imagePose) {
   // chamber configuration; a tap-placed pose lives in the guide world map, so
   // the QR confirms identity and we still tap-place the model.
   const pose = guide.assembly?.pose;
-  if (!pose || pose.source !== 'config') { $('framePill').textContent = 'QR seen · tap to place'; $('framePill').className = 'pill ok'; return false; }
+  if (!pose || (pose.source !== 'config' && pose.source !== 'import')) { $('framePill').textContent = 'QR seen · tap to place'; $('framePill').className = 'pill ok'; return false; }
   const m = new THREE.Matrix4().fromArray(imagePose.transform.matrix);
   const local = new THREE.Matrix4().compose(new THREE.Vector3(...pose.position), new THREE.Quaternion(...pose.rotation), new THREE.Vector3().setScalar(pose.scale ?? 1));
   m.multiply(local).decompose(assembly.position, assembly.quaternion, assembly.scale);
   assembly.visible = true; placed = true; frameKind = 'qr';
-  $('framePill').textContent = 'anchored on QR'; $('framePill').className = 'pill ok'; $('btnLock').disabled = false;
+  $('framePill').textContent = pose.source === 'import' ? 'anchored on QR (import estimate)' : 'anchored on QR'; $('framePill').className = 'pill ok'; $('btnLock').disabled = false;
   return true;
 }
 
@@ -781,6 +784,7 @@ setInterval(pollHints, 4000);
 
 // ── XR session ───────────────────────────────────────────────────────────────
 let xrSession = null, hitTestSource = null, refSpace = null, qrBitmap = null;
+let clips = null;   // built-in glTF clips (bindClips), driven in the render loops
 // Drift fix: the assembly is attached to an XRAnchor (like the WebXR samples),
 // not to a one-off pose in 'local' space. ARCore keeps refining its map after
 // placement; a bare pose stays where the map WAS, an anchor moves with the
@@ -913,7 +917,7 @@ function startHandSim(controls) {
   let warned = false;
   renderer.setAnimationLoop((t) => {
     const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 1 / 60; lastT = t;
-    stepTweens(performance.now());
+    stepTweens(performance.now()); clips?.mixer.update(dt);
     try {
       if (visible) hands.simulate(point, held || sticky, camera, side, underPointer);
       if (steps.length && idx >= 0) handsFrame(null, camera, dt);
@@ -956,7 +960,7 @@ let frameRef = null;
 let lastT = 0;
 renderer.setAnimationLoop((t, frame) => {
   const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 1 / 60; lastT = t;
-  stepTweens(performance.now());
+  stepTweens(performance.now()); clips?.mixer.update(dt);
   if (frame && xrSession && hitTestSource) {
     frameRef = frame;
     if (!locked) {

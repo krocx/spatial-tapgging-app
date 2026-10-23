@@ -15,7 +15,7 @@
 //
 // Proprietary & Confidential · Applied Materials.
 
-import type { ImportedGuide, ImportedGuideStep, GuideStepNode } from '@spatial/shared';
+import type { ImportedGuide, ImportedGuideStep, GuideStepNode, AssemblyPose } from '@spatial/shared';
 import { readTar, parseEntryName, decodeEtag, type TarEntry, type TarLimits, DEFAULT_TAR_LIMITS } from './tar.js';
 import { parseJsonEntry, parseManifest, parseGuideBody, parseGuideMeta, parseAssetMeta, orderByPrevious, type GuideRoot, type Step, type Placement, type AssetMeta, type Manifest, type GuideMeta } from './body.js';
 import { sniff, normalizeQuat, convertPosition, convertRotation, convertScale, quatToAxisAngle, DEFAULT_FRAME, type FrameConversion, type Sniffed } from './assets.js';
@@ -35,7 +35,7 @@ export interface ImportedMedia { guid: string; kind: 'image' | 'video' | 'audio'
 export interface DynamicsImportReport {
   source:     { bytes: number; entries: number; unknownEntries: number };
   manifest:   { guideId?: string; solutionVersion?: string; schemaVersion?: number };
-  anchor:     { type?: number; label: string; known: boolean; hasObject: boolean; hasInstruction: boolean };
+  anchor:     { type?: number; label: string; known: boolean; hasObject: boolean; hasInstruction: boolean; poseEstimated: boolean };
   folder:     { hierarchyDepth: number; parentFolder: boolean };
   tasks:      number;
   steps:      { total: number; default: number; question: number; completion: number; withImage: number; withVideo: number; withAttention: number; withText: number };
@@ -60,6 +60,9 @@ export interface DynamicsImportResult {
   initialNodes: GuideStepNode[];
   /** Node name → the asset's display name, for Model3D.partLabels (what the Studio and the XR kit show). */
   partLabels: Record<string, string>;
+  /** QR-anchored guide: the Guides anchor IS the printed QR, so the assembly's
+   *  pose at the SIB QR is an estimate the author verifies once (source 'import'). */
+  anchorPose?: AssemblyPose;
   /** Step images by 1-based sequence number, to be stored by the caller. */
   stepImages: Map<number, ImportedMedia>;
   /** Videos / audio the caller may store and link (optional; else links are dropped with a note). */
@@ -202,7 +205,9 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
       const invisible = assets.get(p.assetId ?? objById.get(p.stepObjectId ?? '')?.assetId ?? '')?.meta?.displayName?.trim().toLowerCase() === 'invisible';
       const d: GuideStepNode = { node, show: invisible ? 'hidden' : (p.ghost ? 'ghost' : st.show), ...(st.show === 'ghost' || p.ghost ? { opacity: 0.45 } : {}), ...(st.color ? { color: st.color } : {}), sourceKey: p.id, ...(labelByNode.has(node) ? { label: labelByNode.get(node) } : {}) };
       if (p.animated) {
-        animatedCount++; d.animate = 'move';
+        // A Guides animation is a glTF clip baked in the asset (merged and
+        // re-targeted under this node): the players run it while shown.
+        animatedCount++; d.clip = { play: true, loop: p.animationMode === undefined || p.animationMode === ANIMATION_MODE.Loop };
         if (p.animationMode !== undefined && p.animationMode !== ANIMATION_MODE.Loop) { unknownEnumValues++; unmapped.add(`animation mode "${labelOf(p.animationMode, p.animationModeLabel, ANIMATION_MODE)}"`); }
         if (p.animationSpeed !== undefined && p.animationSpeed !== ANIM_SPEED_DEFAULT) unmapped.add('animation speed per placement');
         if (p.animationDirection === false) unmapped.add('reverse animation direction');
@@ -305,6 +310,14 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
   // ── Anchor ──────────────────────────────────────────────────────────────
   const anchorKnown = root.anchorType === ANCHOR_TYPE.Holographic;
   const anchorLabel = labelOf(root.anchorType, root.anchorTypeLabel, ANCHOR_TYPE);
+  // A QR-anchored guide: placements are relative to the printed code, which is
+  // the same code SIB anchors on. After the handedness flip the frames are
+  // taken as coincident - an estimate (source 'import') the author checks on
+  // the first guide; a tap, object or configuration pose replaces it. The
+  // option-set value for QR is unverified, so the label decides.
+  const anchorPose: AssemblyPose | undefined = /qr/i.test(anchorLabel) && glb
+    ? { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: 1, source: 'import', setAt: new Date().toISOString(), setBy: 'dynamics-import' }
+    : undefined;
   if (root.anchorType !== undefined && !anchorKnown) { unknownEnumValues++; if (root.anchorTypeLabel) labelsUsed++; }
   if (root.anchorObjectId) unmapped.add('anchor 3D object (holographic anchor model)');
   if (root.anchorInstruction) unmapped.add('anchor step instruction text');
@@ -316,7 +329,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
   const report: DynamicsImportReport = {
     source: { bytes: input.length, entries: entries.length, unknownEntries },
     manifest: { guideId: root.id || manifest.guideId, solutionVersion: manifest.solutionVersion, schemaVersion: root.schemaVersion },
-    anchor: { type: root.anchorType, label: anchorLabel, known: anchorKnown, hasObject: !!root.anchorObjectId, hasInstruction: !!root.anchorInstruction },
+    anchor: { type: root.anchorType, label: anchorLabel, known: anchorKnown, hasObject: !!root.anchorObjectId, hasInstruction: !!root.anchorInstruction, poseEstimated: !!anchorPose },
     folder: { hierarchyDepth: guideMeta.folderHierarchy?.length ?? 0, parentFolder: !!guideMeta.parentFolderName },
     tasks: tasksO.items.length,
     steps: { total: steps.length, ...counts },
@@ -333,7 +346,7 @@ export function importGuidePackage(input: Buffer, opts: DynamicsImportOptions = 
   };
   if (root.schemaVersion !== undefined && (root.schemaVersion < 5 || root.schemaVersion > 6)) warnings.push(`schema version ${root.schemaVersion} is outside the tested range (5-6)`);
 
-  return { imported, glb, bounds, initialNodes, partLabels: Object.fromEntries(labelByNode), stepImages, media, provenance: { guideId: root.id || manifest.guideId || '', assets: [...assets.values()].map(a => ({ guid: a.guid, etag: a.etag ?? a.meta?.etag, versionNumber: a.meta?.versionNumber })) }, report };
+  return { imported, glb, bounds, initialNodes, partLabels: Object.fromEntries(labelByNode), ...(anchorPose ? { anchorPose } : {}), stepImages, media, provenance: { guideId: root.id || manifest.guideId || '', assets: [...assets.values()].map(a => ({ guid: a.guid, etag: a.etag ?? a.meta?.etag, versionNumber: a.meta?.versionNumber })) }, report };
 }
 
 /** The report as a person reads it. Content-free. */

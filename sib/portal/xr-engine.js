@@ -28,9 +28,10 @@ export function hasMotion(d) {
  *  settled state hides it again - Cortona moves exploded parts into place
  *  before it switches them on). */
 export function applyDelta(state, d) {
-  const cur = state.get(d.node) || { show: undefined, opacity: undefined, color: undefined, position: null, rotation: null };
+  const cur = state.get(d.node) || { show: undefined, opacity: undefined, color: undefined, position: null, rotation: null, clip: undefined };
   let touched = false;
   if (d.show !== undefined) { cur.show = d.show; if (d.show === 'ghost') cur.opacity = d.opacity ?? GHOST_OPACITY; touched = true; }
+  if (d.clip !== undefined)  { cur.clip = d.clip; touched = true; }   // built-in glTF clips under the node: play / rest
   else if (d.animate === 'insert') { cur.show = 'solid'; touched = true; }
   if (Array.isArray(d.to))         { cur.position = d.to.slice(0, 3); touched = true; }
   if (Array.isArray(d.rotationTo)) { cur.rotation = d.rotationTo.slice(0, 4); touched = true; }
@@ -104,8 +105,9 @@ export function stateDuring(base, schedule, t) {
   for (const e of schedule) {
     if (e.startSec > t) continue;
     const d = e.delta;
-    const p = st.get(d.node) || { show: undefined, opacity: undefined, color: undefined, position: null, rotation: null };
-    if (e.flash && d.show === undefined && !e.motion && !d.color) continue;
+    const p = st.get(d.node) || { show: undefined, opacity: undefined, color: undefined, position: null, rotation: null, clip: undefined };
+    if (e.flash && d.show === undefined && !e.motion && !d.color && d.clip === undefined) continue;
+    if (d.clip !== undefined) p.clip = d.clip;
     const u = e.durationSec > 0 ? Math.min(1, (t - e.startSec) / e.durationSec) : 1;
     const k = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
     if (Array.isArray(d.color)) p.color = d.color.slice(0, 3);
@@ -144,7 +146,7 @@ function slerpAxisAngle(a, b, t) {
 export function stepParts(step) {
   const seen = new Set();
   for (const d of step?.nodes || []) {
-    if (d.effect === 'flash' && d.show === undefined && !hasMotion(d) && !d.color) continue;
+    if (d.effect === 'flash' && d.show === undefined && !hasMotion(d) && !d.color && d.clip === undefined) continue;
     seen.add(d.node);
   }
   return [...seen];

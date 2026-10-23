@@ -61,6 +61,7 @@ try {
       initialNodes: result.initialNodes,
       bounds: result.bounds,
       partLabels: result.partLabels,
+      anchorPose: result.anchorPose,
       provenance: result.provenance,
       stepImages,
       ladder,

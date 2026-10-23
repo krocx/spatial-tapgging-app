@@ -244,6 +244,22 @@ test('zero placement rotations are repaired to identity in the GLB and counted (
   for (const n of nodes) { const q = n.rotation ?? [0, 0, 0, 1]; assert.ok(Math.abs(Math.hypot(...(q as number[])) - 1) < 1e-6, `unit quaternion on ${n.name}`); }
 });
 
+test('animated placements carry a clip flag (no keyframe-less motion); a QR-anchored guide gets an estimated pose', () => {
+  const fx = buildGuidePackage({ anchorType: 'unknown', anchorTypeLabel: 'QR Code', models: { arrow: { variant: 'animated' }, still: {} }, tasks: [{ steps: [{ text: 'x', objects: [
+    { model: 'arrow', placements: [{ model: 'arrow', animated: true }] }, { model: 'still', placements: [{ model: 'still' }] },
+  ] }] }] });
+  const r = importGuidePackage(fx.tar);
+  const nodes = r.imported.steps[0].nodes ?? [];
+  const anim = nodes.find(n => n.clip), still = nodes.find(n => !n.clip && n.show === 'solid');
+  assert.ok(anim && still);
+  assert.deepEqual(anim!.clip, { play: true, loop: true }); assert.equal(anim!.animate, undefined);
+  assert.equal(r.report.objects.animated, 1);
+  assert.equal(r.anchorPose?.source, 'import'); assert.deepEqual(r.anchorPose?.rotation, [0, 0, 0, 1]); assert.equal(r.report.anchor.poseEstimated, true);
+  // a holographic anchor offers no estimate
+  const h = importGuidePackage(buildGuidePackage({ models: { m: {} }, tasks: [{ steps: [{ text: 'x', objects: [{ model: 'm', placements: [{ model: 'm' }] }] }] }] }).tar);
+  assert.equal(h.anchorPose, undefined); assert.equal(h.report.anchor.poseEstimated, false);
+});
+
 test('golden: the report shape is stable and content-free', () => {
   const fx = buildGuidePackage({ name: 'Secret procedure X', models: { m: { name: 'Proprietary part 42' } }, tasks: [{ name: 'Confidential task', steps: [{ text: 'Torque the secret bolt to 12 Nm', objects: [{ model: 'm', placements: [{ model: 'm' }] }] }] }] });
   const r = importGuidePackage(fx.tar);

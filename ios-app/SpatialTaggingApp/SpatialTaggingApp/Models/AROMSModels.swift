@@ -130,7 +130,7 @@ struct AssemblyPose: Codable, Equatable {
     var position: [Double]          // [x, y, z]
     var rotation: [Double]          // quaternion [x, y, z, w]
     var scale:    Double?
-    var source:   String            // "tap" | "object" | "config" | "partframe"
+    var source:   String            // "tap" | "object" | "config" | "partframe" | "import" (importer estimate from a QR-anchored source)
     var setAt:    String?
     var setBy:    String?
 
@@ -225,8 +225,16 @@ struct GuideStepNode: Codable, Equatable {
     let effect:       String?
     let label:        String?           // friendly part name (source name → BOM description → part number)
     let sourceKey:    String?
+    /// Built-in animation (glTF clips under the node, e.g. a Dynamics 365
+    /// Guides arrow): play while shown on this step, looping unless loop=false.
+    let clip:         ClipFlag?
 
-    var partName: String { node.hasPrefix("cmp:") ? String(node.dropFirst(4)) : node }
+    var partName: String { node.hasPrefix("cmp:") ? String(node.dropFirst(4)) : node.hasPrefix("pl:") ? String(node.dropFirst(3)) : node }
+}
+
+struct ClipFlag: Codable, Equatable {
+    let play: Bool
+    let loop: Bool?
 }
 
 /// Suggested camera for a step, in the assembly frame.
@@ -340,7 +348,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
     /// into the legacy fields above; read `effectiveModels` instead of either.
     let models:             [GuideStepModel]?
     // AR OJT: CAD-driven presentation - node deltas, suggested view, pin in the assembly frame
-    let nodes:              [GuideStepNode]?
+    var nodes:              [GuideStepNode]?     // var: Author mode edits a step's built-in animation flags in place
     let view:               GuideStepView?
     let cadPosition:        [Double]?
     /// 2026.4.46: what surrounds this step's parts - "installed" (default), "ghost" or "solid".
